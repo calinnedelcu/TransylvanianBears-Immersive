@@ -240,6 +240,7 @@ body.mf-lab-mode {
 
 .mf-beat--lens {
   min-height: 185dvh;
+  overflow: clip;
 }
 
 .mf-beat--passage {
@@ -329,6 +330,13 @@ body.mf-lab-mode {
   align-items: end;
   padding: 112px 7vw 38px;
   pointer-events: auto;
+  transition: opacity 160ms ease;
+}
+
+.mf-lab[data-active-chapter='proof'] .mf-lens-knot,
+.mf-lab[data-active-chapter='passage'] .mf-lens-knot {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .mf-lens-knot__heading {

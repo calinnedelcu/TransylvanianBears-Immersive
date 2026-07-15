@@ -49,10 +49,9 @@ function CameraDirector({
 
   useFrame(({ camera }, delta) => {
     const progress = cameraProgress(progressRef.current);
-    const lookAhead = Math.min(1, progress + 0.045);
+    const lookAhead = Math.min(1, progress + 0.11);
     CAMERA_PATH.getPoint(progress, targetPosition);
     CAMERA_PATH.getPoint(lookAhead, lookTarget);
-    lookTarget.y = Math.max(1.3, lookTarget.y - 1.8);
 
     const damping = reducedMotion ? 1 : 1 - Math.exp(-delta * 5.4);
     camera.position.lerp(targetPosition, damping);
@@ -106,6 +105,8 @@ function Aperture({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>) {
           <boxGeometry args={[3.7, 1.38, 0.5]} />
           <meshStandardMaterial
             color={index % 2 === 0 ? '#b8b1a1' : '#8d877b'}
+            emissive={index % 2 === 0 ? '#353127' : '#282723'}
+            emissiveIntensity={0.42}
             roughness={0.58}
             metalness={0.24}
           />
@@ -132,7 +133,12 @@ function SyntheticField({ lensMode }: Pick<MacroFlowSceneProps, 'lensMode'>) {
     <group position={[0, 0, -7]}>
       <mesh position={[0, 0.03, -15]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[7.4, 52]} />
-        <meshStandardMaterial color={lensMode === 'segmentation' ? '#5f7270' : '#1b2426'} roughness={0.9} />
+        <meshStandardMaterial
+          color={lensMode === 'segmentation' ? '#5f7270' : '#273335'}
+          emissive={lensMode === 'segmentation' ? '#263837' : '#11191a'}
+          emissiveIntensity={0.34}
+          roughness={0.9}
+        />
       </mesh>
       <mesh position={[0, 0.07, -15]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[0.08, 50]} />
@@ -144,9 +150,9 @@ function SyntheticField({ lensMode }: Pick<MacroFlowSceneProps, 'lensMode'>) {
           <mesh key={index} position={block.position}>
             <boxGeometry args={block.scale} />
             <meshStandardMaterial
-              color={lensMode === 'segmentation' ? segmentationColors[block.segment] : '#303b3d'}
-              emissive={lensMode === 'segmentation' ? segmentationColors[block.segment] : '#101516'}
-              emissiveIntensity={lensMode === 'segmentation' ? 0.12 : 0.05}
+              color={lensMode === 'segmentation' ? segmentationColors[block.segment] : '#465456'}
+              emissive={lensMode === 'segmentation' ? segmentationColors[block.segment] : '#172223'}
+              emissiveIntensity={lensMode === 'segmentation' ? 0.12 : 0.28}
               roughness={0.82}
             />
           </mesh>
@@ -290,9 +296,10 @@ function World({ progressRef, lensMode, reducedMotion }: MacroFlowSceneProps) {
   return (
     <>
       <color attach="background" args={['#070a0b']} />
-      <fog attach="fog" args={['#070a0b', 12, 42]} />
-      <ambientLight intensity={0.72} color="#9fb7b4" />
-      <directionalLight position={[8, 14, 10]} intensity={2.2} color="#efe5cf" />
+      <fog attach="fog" args={['#070a0b', 14, 58]} />
+      <ambientLight intensity={1.08} color="#a9bfbc" />
+      <directionalLight position={[8, 14, 10]} intensity={3.1} color="#efe5cf" />
+      <pointLight position={[0, 4.6, 12]} intensity={32} distance={17} color="#c4ad74" />
       <pointLight position={[0, 5, -30]} intensity={22} distance={16} color="#6fd8d6" />
       <pointLight position={[0, 5, -54]} intensity={18} distance={18} color="#c0a66b" />
 
