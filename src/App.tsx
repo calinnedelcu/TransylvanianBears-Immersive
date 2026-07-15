@@ -4,6 +4,7 @@ import { getLenis } from './hooks/useLenis';
 
 const GreenfieldRoutes = lazy(() => import('./greenfield/GreenfieldRoutes'));
 const LegacyRoutes = lazy(() => import('./legacy/LegacyRoutes'));
+const MacroFlowPrototype = lazy(() => import('./greenfield/lab/macro-flow/MacroFlowPrototype'));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -25,6 +26,14 @@ function AppRoutes() {
     <>
       <ScrollToTop />
       <Routes>
+        <Route
+          path="/"
+          element={
+            <Suspense fallback={<div className="greenfield-route-loading" aria-label="Se încarcă" />}>
+              <MacroFlowPrototype />
+            </Suspense>
+          }
+        />
         <Route
           path="/next/*"
           element={

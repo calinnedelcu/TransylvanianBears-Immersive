@@ -279,7 +279,7 @@ export default function MacroFlowPrototype() {
       </div>
 
       <header className="mf-header">
-        <Link className="mf-brand" to="/next" aria-label="Transylvanian Bears, start">
+        <Link className="mf-brand" to="/" aria-label="Transylvanian Bears, start">
           <span className="mf-brand__mark" aria-hidden="true"><i /></span>
           <span>Transylvanian Bears</span>
         </Link>
