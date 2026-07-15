@@ -354,7 +354,8 @@ body.mf-lab-mode {
 .mf-lab[data-active-chapter='schoolmate'] .mf-lens-knot,
 .mf-lab[data-active-chapter='descent'] .mf-lens-knot,
 .mf-lab[data-active-chapter='lamp'] .mf-lens-knot,
-.mf-lab[data-active-chapter='build'] .mf-lens-knot {
+.mf-lab[data-active-chapter='build'] .mf-lens-knot,
+.mf-lab[data-active-chapter='infect'] .mf-lens-knot {
   opacity: 0;
   pointer-events: none;
 }
@@ -641,7 +642,8 @@ body.mf-lab-mode {
 .mf-lab[data-active-chapter='schoolmate'] .mf-trace-knot,
 .mf-lab[data-active-chapter='descent'] .mf-trace-knot,
 .mf-lab[data-active-chapter='lamp'] .mf-trace-knot,
-.mf-lab[data-active-chapter='build'] .mf-trace-knot {
+.mf-lab[data-active-chapter='build'] .mf-trace-knot,
+.mf-lab[data-active-chapter='infect'] .mf-trace-knot {
   opacity: 0;
   pointer-events: none;
 }

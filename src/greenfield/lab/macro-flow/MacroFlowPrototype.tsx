@@ -23,6 +23,7 @@ import {
   type MacroLensMode,
   type MacroTraceOutcome,
 } from './MacroFlowScene';
+import InfectInterlude from './InfectInterlude';
 import './macro-flow.css';
 
 type MacroChapter =
@@ -35,7 +36,8 @@ type MacroChapter =
   | 'schoolmate'
   | 'descent'
   | 'lamp'
-  | 'build';
+  | 'build'
+  | 'infect';
 type TraceScenario = 'valid' | 'expired' | 'used';
 type BuriedRule = 'oil' | 'mechanism' | 'mercury';
 
@@ -50,6 +52,7 @@ const CHAPTERS: Array<{ id: MacroChapter; index: string; label: string }> = [
   { id: 'descent', index: '08', label: 'Rule descent' },
   { id: 'lamp', index: '09', label: 'Lamp chamber' },
   { id: 'build', index: '10', label: 'Build proof' },
+  { id: 'infect', index: '11', label: '1-bit breach' },
 ];
 
 const BURIED_RULES: Array<{
@@ -184,7 +187,8 @@ export default function MacroFlowPrototype() {
     const root = rootRef.current;
     if (!root) return;
     const rootTop = root.offsetTop;
-    const max = Math.max(1, root.scrollHeight - window.innerHeight);
+    const worldEnd = root.querySelector<HTMLElement>('#mf-infect')?.offsetTop ?? root.scrollHeight;
+    const max = Math.max(1, worldEnd - window.innerHeight);
     const progress = Math.max(0, Math.min(1, (window.scrollY - rootTop) / max));
     progressRef.current = progress;
     root.style.setProperty('--mf-progress', progress.toFixed(4));
@@ -672,6 +676,8 @@ export default function MacroFlowPrototype() {
           </div>
         </div>
       </section>
+
+      <InfectInterlude />
     </main>
   );
 }
