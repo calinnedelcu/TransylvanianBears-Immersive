@@ -25,6 +25,7 @@ import {
 } from './MacroFlowScene';
 import InfectInterlude from './InfectInterlude';
 import ResearchCrossing from './ResearchCrossing';
+import EvidenceWeave from './EvidenceWeave';
 import './macro-flow.css';
 
 type MacroChapter =
@@ -39,7 +40,8 @@ type MacroChapter =
   | 'lamp'
   | 'build'
   | 'infect'
-  | 'research';
+  | 'research'
+  | 'evidence-weave';
 type TraceScenario = 'valid' | 'expired' | 'used';
 type BuriedRule = 'oil' | 'mechanism' | 'mercury';
 
@@ -56,6 +58,7 @@ const CHAPTERS: Array<{ id: MacroChapter; index: string; label: string }> = [
   { id: 'build', index: '10', label: 'Build proof' },
   { id: 'infect', index: '11', label: '1-bit breach' },
   { id: 'research', index: '12', label: 'Research crossing' },
+  { id: 'evidence-weave', index: '13', label: 'Evidence weave' },
 ];
 
 const BURIED_RULES: Array<{
@@ -229,6 +232,9 @@ export default function MacroFlowPrototype() {
 
   const traceFinished = traceOutcome !== 'idle' && traceOutcome !== 'running';
   const traceAllowed = traceOutcome === 'allowed';
+  const macroWorldActive = activeChapter !== 'infect'
+    && activeChapter !== 'research'
+    && activeChapter !== 'evidence-weave';
   const traceResult = traceAllowed
     ? 'ALLOW / token redeemed once'
     : traceOutcome === 'expired'
@@ -248,14 +254,16 @@ export default function MacroFlowPrototype() {
       <a className="mf-skip" href="#mf-proof">Sari la dovada proiectului</a>
 
       <div className="mf-world" aria-hidden="true">
-        <MacroFlowScene
-          progressRef={progressRef}
-          lensMode={lensMode}
-          traceStep={traceStep}
-          traceOutcome={traceOutcome}
-          buriedDiscoveries={buriedRules.size}
-          reducedMotion={reducedMotion}
-        />
+        {macroWorldActive ? (
+          <MacroFlowScene
+            progressRef={progressRef}
+            lensMode={lensMode}
+            traceStep={traceStep}
+            traceOutcome={traceOutcome}
+            buriedDiscoveries={buriedRules.size}
+            reducedMotion={reducedMotion}
+          />
+        ) : null}
         <div className="mf-world__grade" />
       </div>
 
@@ -682,6 +690,7 @@ export default function MacroFlowPrototype() {
 
       <InfectInterlude />
       <ResearchCrossing />
+      <EvidenceWeave />
     </main>
   );
 }
