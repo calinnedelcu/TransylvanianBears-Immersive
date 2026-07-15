@@ -1,0 +1,111 @@
+{
+  "nav": {
+    "about": "About",
+    "members": "Team",
+    "achievements": "Awards",
+    "projects": "Projects",
+    "join": "Join"
+  },
+  "hero": {
+    "eyebrow": "Tudor Vianu National College",
+    "title": "TransylvanianBears",
+    "tagline": "We code. We compete. We win.",
+    "cta": "Meet the team",
+    "ctaSecondary": "Join the bears",
+    "scrollHint": "Scroll"
+  },
+  "about": {
+    "eyebrow": "About",
+    "title": "Who we are",
+    "body": "We are TransylvanianBears — the CS team of Tudor Vianu National College. We crack CTFs, ship websites and apps, model 3D worlds, and write code that works. We code at night, compete on weekends, and win medals.",
+    "body2": "We build with Unity, Unreal Engine, Flutter, and whatever else the brief calls for. An indie game today, a drone-based AI model tomorrow, a school platform the day after. Every bear has their lane — security, web, game dev, AI, design — but we ship together.",
+    "stats": {
+      "members": "Members",
+      "years": "Years strong",
+      "medals": "National medals"
+    }
+  },
+  "members": {
+    "eyebrow": "The pack",
+    "title": "Members",
+    "subtitle": "Hover a card to see what each bear does.",
+    "bioPending": "Profile coming soon.",
+    "vacant": {
+      "eyebrow": "Open seat",
+      "title": "Join the pack",
+      "cta": "→ Apply here"
+    }
+  },
+  "achievements": {
+    "eyebrow": "Awards & contests",
+    "title": "What we've won",
+    "constellation": "Medal atlas",
+    "timeline": "Timeline",
+    "stats": {
+      "national": "National Medals",
+      "international": "International Medals",
+      "competitions": "Competitions",
+      "founded": "Founded"
+    },
+    "filters": {
+      "all": "All",
+      "national": "National",
+      "international": "International",
+      "hackathon": "Hackathons"
+    },
+    "viewAll": "View all awards"
+  },
+  "projects": {
+    "eyebrow": "Projects",
+    "title": "What we build",
+    "subtitle": "Tools, visualizers, and platforms built by the team — some for us, some for the competitors coming up after us.",
+    "viewDemo": "Demo",
+    "viewCode": "Code",
+    "viewAll": "View all projects"
+  },
+  "join": {
+    "eyebrow": "Join",
+    "title": "Join the bears",
+    "body": "Looking for a serious team that doesn't take itself too seriously? Drop us a line and you're in the pack.",
+    "body2": "We don't ask for a CV. Show us what you've built, what you've solved, what you want to learn. We figure the rest out together.",
+    "perk1": "Jams, hackathons, CTFs",
+    "perk2": "Your lane: web, AI, sec, game",
+    "perk3": "Shipped projects, not theory",
+    "cta": "Apply now",
+    "ctaSecondary": "See who we are",
+    "mailSubject": "I want in the pack — TransylvanianBears",
+    "form": {
+      "title": "Join the pack",
+      "subtitle": "4 fields. Fill them in, hit send, we'll be in touch.",
+      "nameLabel": "Name",
+      "namePlaceholder": "Jane Doe",
+      "schoolLabel": "School + grade",
+      "schoolPlaceholder": "e.g. Tudor Vianu HS, 11th",
+      "emailLabel": "Contact email",
+      "emailPlaceholder": "you@example.com",
+      "motivationLabel": "Why are you a good fit for the pack?",
+      "motivationPlaceholder": "What you've built, what you want to learn, why you'd vibe with the team…",
+      "submit": "Send application",
+      "cancel": "Cancel",
+      "close": "Close form",
+      "required": "Required field",
+      "mailNameRow": "Name",
+      "mailSchoolRow": "School + grade",
+      "mailEmailRow": "Email",
+      "mailMotivationRow": "Why I'd be a good fit for the pack"
+    }
+  },
+  "footer": {
+    "tagline": "The CS team of Tudor Vianu National College. We code. We compete. We win.",
+    "sitemap": "Sitemap",
+    "findUs": "Find us",
+    "motto": "HUNTERS OF THE CARPATHIANS · TRANSYLVANIA",
+    "credit": "© {{year}} TransylvanianBears • Tudor Vianu National College • Made with 🦇 by the team"
+  },
+  "common": {
+    "menu": "Menu",
+    "menuOpen": "Open menu",
+    "menuClose": "Close menu",
+    "languageGroup": "Change language"
+  }
+}

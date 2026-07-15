@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <defs>
+    <style>
+      .label { font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 2px; }
+      .meta { font-family: Arial, Helvetica, sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 1px; }
+      .title { font-family: Arial, Helvetica, sans-serif; font-size: 30px; font-weight: 800; letter-spacing: 1px; }
+    </style>
+    <g id="bear-mark">
+      <path fill-rule="evenodd" d="
+        M 0 -110
+        L 44 -104
+        L 62 -124
+        L 96 -120
+        L 120 -96
+        L 124 -62
+        L 102 -44
+        L 114 -8
+        L 108 48
+        L 78 88
+        L 30 112
+        L 22 116
+        L -22 116
+        L -30 112
+        L -78 88
+        L -108 48
+        L -114 -8
+        L -102 -44
+        L -124 -62
+        L -120 -96
+        L -96 -120
+        L -62 -124
+        L -44 -104
+        L 0 -110 Z
+
+        M -91 -82
+        L -82 -100
+        L -61 -105
+        L -45 -91
+        L -49 -68
+        L -70 -58
+        L -89 -67 Z
+
+        M 91 -82
+        L 82 -100
+        L 61 -105
+        L 45 -91
+        L 49 -68
+        L 70 -58
+        L 89 -67 Z
+
+        M 0 -70
+        L 42 -61
+        L 69 -34
+        L 78 8
+        L 65 50
+        L 31 78
+        L 22 86
+        L 22 116
+        L -22 116
+        L -22 86
+        L -31 78
+        L -65 50
+        L -78 8
+        L -69 -34
+        L -42 -61
+        L 0 -70 Z"/>
+      <path d="M -14 2 L 0 -8 L 14 2 L 0 14 Z"/>
+    </g>
+    <g id="gate-state">
+      <path d="M 0 -94 L 38 -88 L 52 -104 L 78 -100 L 98 -80 L 102 -52 L 84 -36 L 94 0 L 88 44 L 62 74 L 25 92 L 18 94 M -18 94 L -25 92 L -62 74 L -88 44 L -94 0 L -84 -36 L -102 -52 L -98 -80 L -78 -100 L -52 -104 L -38 -88 L 0 -94" fill="none" stroke-width="12"/>
+      <path d="M -22 94 V 30 L 0 8 L 22 30 V 94" fill="none" stroke-width="12"/>
+    </g>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#D7D0C3"/>
+  <path d="M 80 120 H 1520 M 80 840 H 1520" stroke="#090B0C" stroke-opacity="0.22"/>
+  <path d="M 800 120 V 840" stroke="#090B0C" stroke-opacity="0.1"/>
+
+  <text x="80" y="70" class="title" fill="#090B0C">TRANSYLVANIAN BEARS</text>
+  <text x="1518" y="70" class="label" fill="#090B0C" text-anchor="end">IDENTITY CONSTRUCTION / V2</text>
+
+  <text x="80" y="160" class="label" fill="#090B0C">01 / PRIMARY MARK</text>
+  <text x="840" y="160" class="label" fill="#090B0C">02 / ONE OBJECT, FOUR FUNCTIONS</text>
+
+  <g transform="translate(398 460)">
+    <circle r="184" fill="none" stroke="#69CED0" stroke-width="1.5" stroke-dasharray="5 8"/>
+    <circle r="126" fill="none" stroke="#69CED0" stroke-width="1.5" stroke-dasharray="5 8"/>
+    <circle r="82" fill="none" stroke="#69CED0" stroke-width="1.5" stroke-dasharray="5 8"/>
+    <path d="M -205 0 H 205 M 0 -205 V 205" stroke="#69CED0" stroke-width="1" stroke-opacity="0.75"/>
+    <path d="M -145 -145 L 145 145 M 145 -145 L -145 145" stroke="#69CED0" stroke-width="1" stroke-opacity="0.35"/>
+    <g transform="scale(1.45)" fill="#090B0C">
+      <use href="#bear-mark"/>
+    </g>
+    <circle r="8" fill="#E04B36"/>
+  </g>
+
+  <g fill="#090B0C">
+    <text x="80" y="728" class="meta">BEAR / OUTER SILHOUETTE + BASTION EARS</text>
+    <text x="80" y="754" class="meta">FORTIFICATION / OCCUPIED RING + OPEN GATE</text>
+    <text x="80" y="780" class="meta">INSTRUMENT / CENTRAL PIVOT + ROTATING ARCS</text>
+  </g>
+
+  <g transform="translate(930 300)" stroke="#090B0C" stroke-linecap="round" stroke-linejoin="round">
+    <use href="#gate-state"/>
+  </g>
+  <text x="930" y="430" class="meta" fill="#090B0C" text-anchor="middle">GATE</text>
+
+  <g transform="translate(1280 300)" fill="none" stroke="#090B0C" stroke-linecap="round" stroke-linejoin="round">
+    <circle r="84" stroke-width="12"/>
+    <circle r="34" stroke-width="12"/>
+    <g fill="#090B0C" stroke="none">
+      <circle cx="0" cy="-108" r="11"/>
+      <circle cx="94" cy="-54" r="11"/>
+      <circle cx="94" cy="54" r="11"/>
+      <circle cx="0" cy="108" r="11"/>
+      <circle cx="-94" cy="54" r="11"/>
+      <circle cx="-94" cy="-54" r="11"/>
+      <circle cx="0" cy="0" r="8" fill="#E04B36"/>
+    </g>
+  </g>
+  <text x="1280" y="430" class="meta" fill="#090B0C" text-anchor="middle">WORKSHOP / 6 NODES</text>
+
+  <g transform="translate(930 610)" fill="none" stroke="#090B0C" stroke-linecap="round" stroke-linejoin="round">
+    <circle r="104" stroke-width="10"/>
+    <path d="M 0 -70 L 50 -48 L 70 0 L 48 50 L 0 70 L -50 48 L -70 0 L -48 -50 Z" stroke-width="10"/>
+    <path d="M 0 -70 L 24 -20 L 70 0 M 70 0 L 20 24 L 0 70 M 0 70 L -24 20 L -70 0 M -70 0 L -20 -24 L 0 -70" stroke-width="9"/>
+    <circle r="8" fill="#E04B36" stroke="none"/>
+  </g>
+  <text x="930" y="744" class="meta" fill="#090B0C" text-anchor="middle">APERTURE / PROJECT ENTRY</text>
+
+  <g transform="translate(1280 610)" fill="none" stroke="#090B0C" stroke-linecap="round">
+    <circle r="104" stroke-width="8"/>
+    <circle r="72" stroke-width="8" stroke-dasharray="54 21"/>
+    <circle r="34" stroke-width="8"/>
+    <path d="M 0 -124 V -92 M 107 -62 L 80 -46 M 107 62 L 80 46 M 0 124 V 92 M -107 62 L -80 46 M -107 -62 L -80 -46" stroke-width="8"/>
+    <circle r="8" fill="#E04B36" stroke="none"/>
+  </g>
+  <text x="1280" y="744" class="meta" fill="#090B0C" text-anchor="middle">ARCHIVE / ASTROLABE</text>
+
+  <text x="80" y="888" class="label" fill="#090B0C">03 / SCALE + MATERIAL TEST</text>
+  <g transform="translate(420 918)" fill="#090B0C">
+    <g transform="translate(-270 0) scale(.34)"><use href="#bear-mark"/></g>
+    <g transform="translate(-150 0) scale(.23)"><use href="#bear-mark"/></g>
+    <g transform="translate(-65 0) scale(.15)"><use href="#bear-mark"/></g>
+  </g>
+  <text x="496" y="923" class="meta" fill="#090B0C">64 / 44 / 28 PX</text>
+
+  <rect x="840" y="874" width="300" height="82" fill="#090B0C"/>
+  <g transform="translate(900 915) scale(.25)" fill="#D7D0C3"><use href="#bear-mark"/></g>
+  <text x="964" y="921" class="meta" fill="#D7D0C3">ONE-COLOR / REVERSED</text>
+
+  <rect x="1170" y="874" width="350" height="82" fill="#A98546"/>
+  <g transform="translate(1230 915) scale(.25)" fill="#090B0C"><use href="#bear-mark"/></g>
+  <text x="1294" y="921" class="meta" fill="#090B0C">EMBOSS / OBJECT STATE</text>
+</svg>

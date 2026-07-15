@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="ro">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function redirectKnownSpaRoute() {
+        var routes = ['/next', '/echipa', '/proiecte', '/premii', '/despre', '/aplica'];
+        var path = window.location.pathname.replace(/\/+$/, '') || '/';
+        var isKnownRoute = routes.some(function (route) {
+          return path === route || path.indexOf(route + '/') === 0;
+        });
+
+        if (!isKnownRoute) return;
+        window.sessionStorage.setItem('transylvanian-bears-spa-route', window.location.href);
+        window.location.replace('/');
+      })();
+    </script>
+    <meta name="theme-color" content="#1A0509" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="robots" content="noindex" />
+    <title>404 — Ursul doarme · TransylvanianBears</title>
+    <link rel="icon" type="image/png" href="/assets/logo.png" />
+    <style>
+      :root {
+        --bear-night: #1a0509;
+        --bear-wine: #2a0810;
+        --bear-burgundy: #4a0e1f;
+        --bear-gold: #e8b547;
+        --bear-cream: #f8e8d0;
+        --bear-bone: #e8d5b8;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        min-height: 100dvh;
+        font-family: 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        background: linear-gradient(180deg, var(--bear-night) 0%, var(--bear-wine) 100%);
+        color: var(--bear-bone);
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+
+      /* Faint grain over the whole page — matches the main site */
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 100;
+        opacity: 0.05;
+        mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+      }
+
+      .moon-glow {
+        position: fixed;
+        top: -10%;
+        left: 12%;
+        width: 480px;
+        height: 480px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(248,232,208,0.15) 0%, rgba(232,181,71,0.05) 50%, transparent 75%);
+        filter: blur(40px);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      main {
+        position: relative;
+        z-index: 1;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 4rem 1.5rem;
+      }
+
+      .container {
+        text-align: center;
+        max-width: 720px;
+      }
+
+      .eyebrow {
+        font-family: 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.4em;
+        color: var(--bear-gold);
+        opacity: 0.85;
+        margin-bottom: 1.5rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.85rem;
+      }
+      .eyebrow::before,
+      .eyebrow::after {
+        content: '';
+        height: 1px;
+        width: 36px;
+        background: var(--bear-gold);
+        opacity: 0.55;
+      }
+
+      .code {
+        font-family: 'Cinzel', serif;
+        font-weight: 700;
+        font-size: clamp(5rem, 18vw, 11rem);
+        line-height: 0.9;
+        letter-spacing: -0.04em;
+        background: linear-gradient(135deg, #e8b547 0%, #f5d78a 50%, #f8e8d0 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        margin: 0 0 0.5rem;
+        text-shadow: 0 4px 30px rgba(74, 14, 31, 0.7);
+      }
+
+      .title {
+        font-family: 'Cinzel', serif;
+        font-weight: 500;
+        font-size: clamp(1.4rem, 3.5vw, 2.4rem);
+        color: var(--bear-bone);
+        margin: 0 0 1rem;
+        letter-spacing: -0.01em;
+      }
+
+      .body {
+        font-size: clamp(0.95rem, 1.5vw, 1.1rem);
+        color: rgba(232, 213, 184, 0.7);
+        line-height: 1.55;
+        max-width: 36rem;
+        margin: 0 auto 2.5rem;
+      }
+
+      .bear-stage {
+        position: relative;
+        width: clamp(220px, 48vw, 380px);
+        margin: 0 auto 2rem;
+      }
+
+      .bear-stage img {
+        width: 100%;
+        height: auto;
+        display: block;
+        filter: drop-shadow(0 18px 30px rgba(0,0,0,0.55));
+        animation: bearBreath 5.5s ease-in-out infinite;
+      }
+
+      .z {
+        position: absolute;
+        font-family: 'Cinzel', serif;
+        font-weight: 600;
+        color: var(--bear-gold);
+        opacity: 0;
+        text-shadow: 0 0 12px rgba(232, 181, 71, 0.5);
+        animation: zRise 4.4s ease-out infinite;
+      }
+      .z.z1 { top: 18%; right: 14%; font-size: 1.3rem; animation-delay: 0s; }
+      .z.z2 { top: 8%;  right: 22%; font-size: 1.7rem; animation-delay: 1.4s; }
+      .z.z3 { top: -2%; right: 30%; font-size: 2.1rem; animation-delay: 2.8s; }
+
+      .home-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.95rem 1.8rem;
+        font-family: 'Manrope', system-ui, sans-serif;
+        font-weight: 500;
+        font-size: 0.95rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        text-decoration: none;
+        color: var(--bear-cream);
+        background: linear-gradient(135deg, #4a0e1f 0%, #8c152e 100%);
+        border: 1px solid rgba(232, 181, 71, 0.45);
+        border-radius: 4px;
+        box-shadow: 0 14px 28px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(232, 181, 71, 0.08);
+        transition: transform 220ms ease-out, box-shadow 220ms ease-out, border-color 220ms ease-out;
+      }
+      .home-button:hover {
+        transform: translateY(-2px);
+        border-color: rgba(232, 181, 71, 0.85);
+        box-shadow: 0 18px 36px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(232, 181, 71, 0.18);
+      }
+      .home-button:focus-visible {
+        outline: 2px solid var(--bear-gold);
+        outline-offset: 3px;
+      }
+
+      .stamp {
+        margin-top: 4rem;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 0.3em;
+        color: rgba(232, 181, 71, 0.45);
+      }
+
+      @keyframes bearBreath {
+        0%, 100% { transform: scale(1) translateY(0); }
+        50%      { transform: scale(1.015) translateY(-3px); }
+      }
+
+      @keyframes zRise {
+        0%   { opacity: 0; transform: translateY(8px) translateX(0) scale(0.8) rotate(-6deg); }
+        15%  { opacity: 1; }
+        70%  { opacity: 0.8; }
+        100% { opacity: 0; transform: translateY(-44px) translateX(14px) scale(1.1) rotate(8deg); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .bear-stage img,
+        .z {
+          animation: none;
+        }
+        .z { opacity: 0.55; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="moon-glow" aria-hidden="true"></div>
+
+    <main>
+      <div class="container">
+        <div class="eyebrow">404 · Pagină pierdută</div>
+
+        <div class="bear-stage">
+          <span class="z z1" aria-hidden="true">z</span>
+          <span class="z z2" aria-hidden="true">Z</span>
+          <span class="z z3" aria-hidden="true">Z</span>
+          <picture>
+            <source srcset="/assets/bear-sleeping.webp" type="image/webp" />
+            <img src="/assets/bear-sleeping.png" alt="Urs adormit cu pelerina ca pătură" />
+          </picture>
+        </div>
+
+        <h1 class="code">404</h1>
+        <h2 class="title">Ursul doarme. Pagina asta nu există.</h2>
+        <p class="body">
+          Ai ajuns într-un colț al peșterii unde nu mai e nimic — sau ai
+          tastat greșit un link. Întoarce-te în haită până nu se trezește.
+        </p>
+
+        <a href="/" class="home-button">← Înapoi acasă</a>
+
+        <p class="stamp">VANATORII DIN CARPATI · TRANSILVANIA</p>
+      </div>
+    </main>
+  </body>
+</html>

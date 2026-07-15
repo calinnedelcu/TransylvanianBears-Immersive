@@ -1,0 +1,186 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.greenfield-route-loading {
+  min-height: 100dvh;
+  background: #090b0c;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-bear-night text-bear-bone font-sans antialiased;
+    min-height: 100dvh;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    font-feature-settings: 'ss01', 'cv11';
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    @apply bg-bear-burgundy text-bear-cream;
+  }
+
+  *:focus-visible {
+    @apply outline-none ring-2 ring-bear-gold ring-offset-2 ring-offset-bear-night rounded;
+  }
+}
+
+@layer utilities {
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #E8B547 0%, #F5D78A 50%, #F8E8D0 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .container-tb {
+    @apply max-w-7xl mx-auto px-6;
+  }
+
+  .container-wide {
+    @apply max-w-[88rem] mx-auto px-6 md:px-10;
+  }
+
+  .section-y {
+    @apply py-24 md:py-32;
+  }
+
+  /* Tabular numerals — for stats, years, ranks. Avoids wobble on count-up. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Diagonal cuts / clip-path utilities for editorial section seams. */
+  .clip-slash-top {
+    clip-path: polygon(0 4%, 100% 0, 100% 100%, 0 100%);
+  }
+  .clip-slash-bottom {
+    clip-path: polygon(0 0, 100% 0, 100% 96%, 0 100%);
+  }
+
+  /* Underline accent that draws like ink, not a flat gold bar. */
+  .ink-underline {
+    background-image:
+      linear-gradient(90deg, transparent 0%, rgba(232,181,71,0.85) 12%, rgba(245,215,138,0.95) 50%, rgba(232,181,71,0.85) 88%, transparent 100%);
+    background-repeat: no-repeat;
+    background-size: 100% 1px;
+    background-position: 0 100%;
+  }
+
+  /* Editorial chapter numeral — large outline serif, used as section index. */
+  .chapter-numeral {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(232, 181, 71, 0.45);
+    letter-spacing: -0.04em;
+  }
+
+  /* Glassy card surface with tinted inner edge — replaces the flat dark gradient. */
+  .surface-card {
+    background:
+      radial-gradient(120% 100% at 0% 0%, rgba(232, 181, 71, 0.05) 0%, transparent 55%),
+      linear-gradient(168deg, rgba(74, 14, 31, 0.55) 0%, rgba(42, 8, 16, 0.85) 60%, rgba(26, 5, 9, 0.95) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(245, 215, 138, 0.08),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.45),
+      0 18px 42px -28px rgba(74, 14, 31, 0.85);
+  }
+
+  .surface-card-hover {
+    box-shadow:
+      inset 0 1px 0 rgba(245, 215, 138, 0.16),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+      0 28px 60px -24px rgba(74, 14, 31, 0.95),
+      0 0 0 1px rgba(232, 181, 71, 0.18);
+  }
+
+  /* Parchment vibe for tarot card front + members backdrop. */
+  .surface-parchment {
+    background:
+      radial-gradient(120% 100% at 50% 0%, rgba(245, 215, 138, 0.06) 0%, transparent 60%),
+      linear-gradient(180deg, #2A0810 0%, #1A0509 100%);
+  }
+}
+
+/* ===== Global grain overlay — applied via <body>::before so it covers the whole page. ===== */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+/* Bat sprite-sheet wing flap. Cycles through 4 frames laid out horizontally. */
+@keyframes batFlap {
+  0%, 24.99% { background-position: 0% center; }
+  25%, 49.99% { background-position: 33.333% center; }
+  50%, 74.99% { background-position: 66.667% center; }
+  75%, 100% { background-position: 100% center; }
+}
+
+.bat-flap {
+  animation: batFlap 0.45s linear infinite;
+}
+
+/* Constellation stars — gentle pulse so the field feels alive. */
+@keyframes tbStarTwinkle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+/* Ink draw — for hand-drawn squiggle accents. */
+@keyframes inkDraw {
+  0% { stroke-dashoffset: 1; }
+  100% { stroke-dashoffset: 0; }
+}
+
+/* Slow medallion rotation for brand stamps. */
+@keyframes medallionTurn {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Typewriter caret blink. Two-step animation gives a hard on/off feel. */
+@keyframes tbCaretBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  body::before { animation: none !important; }
+}

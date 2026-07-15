@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1600" viewBox="0 0 900 1600">
+  <defs>
+    <linearGradient id="top-shade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#090B0C" stop-opacity="0.96"/>
+      <stop offset="0.24" stop-color="#090B0C" stop-opacity="0.28"/>
+      <stop offset="0.72" stop-color="#090B0C" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#090B0C" stop-opacity="0.98"/>
+    </linearGradient>
+    <clipPath id="aperture">
+      <path d="M82 232 H690 L818 360 V1052 L690 1180 H82 L18 1116 V296 Z"/>
+    </clipPath>
+    <clipPath id="wipe">
+      <path d="M450 232 H690 L818 360 V1052 L690 1180 H450 Z"/>
+    </clipPath>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#000000" flood-opacity="0.62"/>
+    </filter>
+    <style>
+      .sans { font-family: Arial, Helvetica, sans-serif; letter-spacing: 0; }
+      .meta { font-size: 13px; font-weight: 700; }
+    </style>
+  </defs>
+
+  <rect width="900" height="1600" fill="#090B0C"/>
+  <image href="../research/nexus/source/ue5-industrial-aerial.png" x="0" y="180" width="900" height="1040" preserveAspectRatio="xMidYMid slice" opacity="0.24"/>
+
+  <g filter="url(#shadow)">
+    <path d="M82 232 H690 L818 360 V1052 L690 1180 H82 L18 1116 V296 Z" fill="#090B0C" stroke="#D7D0C3" stroke-width="3"/>
+    <image href="../research/nexus/source/synthetic-segmentation.png" x="0" y="228" width="836" height="956" preserveAspectRatio="xMidYMid slice" clip-path="url(#aperture)"/>
+    <image href="../research/nexus/source/synthetic-boxes.png" x="0" y="228" width="836" height="956" preserveAspectRatio="xMidYMid slice" clip-path="url(#wipe)"/>
+    <path d="M82 232 H690 L818 360 V1052 L690 1180 H82 L18 1116 V296 Z" fill="none" stroke="#D7D0C3" stroke-width="3"/>
+    <path d="M450 246 V1166" stroke="#E04B36" stroke-width="5"/>
+    <circle cx="450" cy="246" r="9" fill="#E04B36"/>
+  </g>
+
+  <rect width="900" height="1600" fill="url(#top-shade)" pointer-events="none"/>
+
+  <g class="sans" fill="#D7D0C3">
+    <text x="42" y="58" class="meta">01 / OBSERVE</text>
+    <text x="858" y="58" class="meta" text-anchor="end">TRANSYLVANIAN BEARS</text>
+    <text x="42" y="132" font-size="66" font-weight="700">PROJECT NEXUS</text>
+    <text x="44" y="174" font-size="18">A world becomes training data.</text>
+  </g>
+
+  <g class="sans" transform="translate(42 1242)">
+    <path d="M0 0 H816" stroke="#D7D0C3" stroke-opacity="0.36"/>
+    <g transform="translate(0 56)">
+      <text y="0" font-size="48" font-weight="700" fill="#D7D0C3">11</text>
+      <text x="0" y="29" class="meta" fill="#D7D0C3">SCENARIOS</text>
+    </g>
+    <g transform="translate(260 56)">
+      <text y="0" font-size="48" font-weight="700" fill="#D7D0C3">~9,500</text>
+      <text x="0" y="29" class="meta" fill="#D7D0C3">IMAGES</text>
+    </g>
+    <g transform="translate(545 56)">
+      <text y="0" font-size="39" font-weight="700" fill="#69CED0">&gt;140,000</text>
+      <text x="0" y="29" class="meta" fill="#D7D0C3">ANNOTATIONS</text>
+    </g>
+  </g>
+
+  <g class="sans" fill="#D7D0C3">
+    <text x="42" y="1470" class="meta">SEGMENTATION</text>
+    <text x="858" y="1470" class="meta" text-anchor="end">BOUNDING BOXES</text>
+    <path d="M42 1495 H858" stroke="#D7D0C3" stroke-opacity="0.36"/>
+    <text x="42" y="1544" font-size="12">Mobile transition test / paired authentic outputs / progress 0.42</text>
+  </g>
+</svg>

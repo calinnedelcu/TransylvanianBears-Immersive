@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <defs>
+    <linearGradient id="left-shade" x1="0" x2="1">
+      <stop offset="0" stop-color="#090B0C"/>
+      <stop offset="0.42" stop-color="#090B0C" stop-opacity="0.94"/>
+      <stop offset="0.72" stop-color="#090B0C" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#090B0C" stop-opacity="0.08"/>
+    </linearGradient>
+    <linearGradient id="bottom-shade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0.52" stop-color="#090B0C" stop-opacity="0"/>
+      <stop offset="1" stop-color="#090B0C" stop-opacity="0.92"/>
+    </linearGradient>
+    <clipPath id="segmentation-plane">
+      <path d="M690 84 H1118 L1248 214 V786 L1118 916 H690 L560 786 V214 Z"/>
+    </clipPath>
+    <clipPath id="boxes-plane">
+      <path d="M1010 132 H1380 L1492 244 V756 L1380 868 H1010 L898 756 V244 Z"/>
+    </clipPath>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#000000" flood-opacity="0.58"/>
+    </filter>
+    <style>
+      .sans { font-family: Arial, Helvetica, sans-serif; letter-spacing: 0; }
+      .meta { font-size: 13px; font-weight: 700; }
+      .metric { font-size: 54px; font-weight: 700; }
+      .unit { font-size: 14px; font-weight: 700; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#090B0C"/>
+  <image href="../research/nexus/source/ue5-industrial-aerial.png" x="410" y="0" width="1190" height="1000" preserveAspectRatio="xMidYMid slice" opacity="0.44"/>
+  <rect width="1600" height="1000" fill="url(#left-shade)"/>
+  <rect width="1600" height="1000" fill="url(#bottom-shade)"/>
+
+  <g filter="url(#shadow)">
+    <path d="M690 84 H1118 L1248 214 V786 L1118 916 H690 L560 786 V214 Z" fill="#090B0C" stroke="#D7D0C3" stroke-width="3"/>
+    <image href="../research/nexus/source/synthetic-segmentation.png" x="504" y="78" width="800" height="844" preserveAspectRatio="xMidYMid slice" clip-path="url(#segmentation-plane)"/>
+    <path d="M690 84 H1118 L1248 214 V786 L1118 916 H690 L560 786 V214 Z" fill="none" stroke="#D7D0C3" stroke-width="3"/>
+    <path d="M1010 132 H1380 L1492 244 V756 L1380 868 H1010 L898 756 V244 Z" fill="#090B0C" stroke="#69CED0" stroke-width="3"/>
+    <image href="../research/nexus/source/synthetic-boxes.png" x="860" y="126" width="680" height="748" preserveAspectRatio="xMidYMid slice" clip-path="url(#boxes-plane)"/>
+    <path d="M1010 132 H1380 L1492 244 V756 L1380 868 H1010 L898 756 V244 Z" fill="none" stroke="#69CED0" stroke-width="3"/>
+  </g>
+
+  <path d="M1164 112 V78 H1488" fill="none" stroke="#69CED0" stroke-width="2"/>
+  <circle cx="1488" cy="78" r="6" fill="#E04B36"/>
+  <text x="1472" y="62" class="sans meta" fill="#D7D0C3" text-anchor="end">BOUNDING-BOX OUTPUT</text>
+  <path d="M594 892 V936 H860" fill="none" stroke="#D7D0C3" stroke-width="2" opacity="0.72"/>
+  <text x="876" y="942" class="sans meta" fill="#D7D0C3">PIXEL-LEVEL SEGMENTATION</text>
+
+  <g class="sans" fill="#D7D0C3">
+    <text x="64" y="66" class="meta">01 / OBSERVE</text>
+    <text x="64" y="114" font-size="18" font-weight="700">TRANSYLVANIAN BEARS</text>
+    <text x="64" y="248" font-size="82" font-weight="700">PROJECT</text>
+    <text x="64" y="326" font-size="82" font-weight="700">NEXUS</text>
+    <text x="68" y="382" font-size="20" font-weight="400">A world becomes training data.</text>
+  </g>
+
+  <g class="sans" transform="translate(66 510)">
+    <path d="M0 0 H288" stroke="#D7D0C3" stroke-opacity="0.38"/>
+    <g transform="translate(0 52)">
+      <text class="metric" fill="#D7D0C3">11</text>
+      <text x="88" y="-5" class="unit" fill="#D7D0C3">SYNTHETIC</text>
+      <text x="88" y="14" class="unit" fill="#D7D0C3">SCENARIOS</text>
+    </g>
+    <g transform="translate(0 144)">
+      <text class="metric" fill="#D7D0C3">~9,500</text>
+      <text x="202" y="4" class="unit" fill="#D7D0C3">IMAGES</text>
+    </g>
+    <g transform="translate(0 236)">
+      <text class="metric" fill="#69CED0">&gt;140,000</text>
+      <text x="258" y="-5" class="unit" fill="#D7D0C3">AUTOMATIC</text>
+      <text x="258" y="14" class="unit" fill="#D7D0C3">ANNOTATIONS</text>
+    </g>
+  </g>
+
+  <g class="sans" fill="#D7D0C3">
+    <text x="64" y="932" class="meta">UE5 + AIRSIM</text>
+    <text x="64" y="958" font-size="12">Authentic project media / desktop transition test / progress 0.42</text>
+  </g>
+
+  <path d="M1540 304 V696" stroke="#D7D0C3" stroke-opacity="0.36" stroke-width="2"/>
+  <path d="M1540 416 V582" stroke="#E04B36" stroke-width="5"/>
+  <circle cx="1540" cy="416" r="8" fill="#E04B36"/>
+</svg>
