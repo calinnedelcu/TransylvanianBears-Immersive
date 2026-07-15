@@ -24,6 +24,7 @@ import {
   type MacroTraceOutcome,
 } from './MacroFlowScene';
 import InfectInterlude from './InfectInterlude';
+import ResearchCrossing from './ResearchCrossing';
 import './macro-flow.css';
 
 type MacroChapter =
@@ -37,7 +38,8 @@ type MacroChapter =
   | 'descent'
   | 'lamp'
   | 'build'
-  | 'infect';
+  | 'infect'
+  | 'research';
 type TraceScenario = 'valid' | 'expired' | 'used';
 type BuriedRule = 'oil' | 'mechanism' | 'mercury';
 
@@ -53,6 +55,7 @@ const CHAPTERS: Array<{ id: MacroChapter; index: string; label: string }> = [
   { id: 'lamp', index: '09', label: 'Lamp chamber' },
   { id: 'build', index: '10', label: 'Build proof' },
   { id: 'infect', index: '11', label: '1-bit breach' },
+  { id: 'research', index: '12', label: 'Research crossing' },
 ];
 
 const BURIED_RULES: Array<{
@@ -678,6 +681,7 @@ export default function MacroFlowPrototype() {
       </section>
 
       <InfectInterlude />
+      <ResearchCrossing />
     </main>
   );
 }
