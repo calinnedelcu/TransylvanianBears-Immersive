@@ -1,7 +1,7 @@
-import { PerformanceMonitor } from '@react-three/drei';
+import { PerformanceMonitor, useGLTF } from '@react-three/drei';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Bloom, EffectComposer, Noise, Vignette } from '@react-three/postprocessing';
-import { useMemo, useRef, type MutableRefObject } from 'react';
+import { Suspense, useMemo, useRef, type MutableRefObject } from 'react';
 import { BlendFunction } from 'postprocessing';
 import * as THREE from 'three';
 import type { QualityTier } from '../../experience/quality';
@@ -23,22 +23,63 @@ type MacroFlowSceneProps = {
 };
 
 const CAMERA_PATH = new THREE.CatmullRomCurve3([
-  new THREE.Vector3(0, 4.6, 24),
-  new THREE.Vector3(-2.4, 4.2, 13),
-  new THREE.Vector3(1.7, 5.1, -1),
-  new THREE.Vector3(-3.2, 5.5, -17),
-  new THREE.Vector3(0.8, 5.2, -31),
-  new THREE.Vector3(0.3, 5.8, -43),
-  new THREE.Vector3(0, 5.3, -60),
-  new THREE.Vector3(1.8, 4.6, -71),
+  new THREE.Vector3(18, 11.5, 38),
+  new THREE.Vector3(13, 10.2, 33),
+  new THREE.Vector3(7, 8.2, 27),
+  new THREE.Vector3(2.2, 6.4, 21),
+  new THREE.Vector3(0, 5.3, 16.5),
+  new THREE.Vector3(0, 4.8, 11.4),
+  new THREE.Vector3(0.5, 4.5, 3),
+  new THREE.Vector3(-2.4, 4.2, -6),
+  new THREE.Vector3(1.7, 5.1, -18),
+  new THREE.Vector3(-3.2, 5.5, -31),
+  new THREE.Vector3(0.8, 5.2, -43),
+  new THREE.Vector3(0.3, 5.8, -54),
+  new THREE.Vector3(0, 5.3, -64),
+  new THREE.Vector3(1.8, 4.6, -72),
   new THREE.Vector3(-1.5, 4.9, -84),
   new THREE.Vector3(0, 7.2, -99),
   new THREE.Vector3(1.4, 4.8, -112),
   new THREE.Vector3(0, 3.8, -128),
 ]);
 
+const MOBILE_CAMERA_PATH = new THREE.CatmullRomCurve3([
+  new THREE.Vector3(7.5, 9.2, 34),
+  new THREE.Vector3(5.4, 8.3, 30),
+  new THREE.Vector3(2.8, 7.1, 25.5),
+  new THREE.Vector3(1.2, 6.1, 20.5),
+  new THREE.Vector3(0, 5.3, 16.5),
+  new THREE.Vector3(0, 4.8, 11.4),
+  new THREE.Vector3(0.5, 4.5, 3),
+  new THREE.Vector3(-1.2, 4.2, -6),
+  new THREE.Vector3(0.8, 5.1, -18),
+  new THREE.Vector3(-1.4, 5.5, -31),
+  new THREE.Vector3(0.5, 5.2, -43),
+  new THREE.Vector3(0.2, 5.8, -54),
+  new THREE.Vector3(0, 5.3, -64),
+  new THREE.Vector3(0.8, 4.6, -72),
+  new THREE.Vector3(-0.7, 4.9, -84),
+  new THREE.Vector3(0, 7.2, -99),
+  new THREE.Vector3(0.7, 4.8, -112),
+  new THREE.Vector3(0, 3.8, -128),
+]);
+
+const FIRST_LIGHT_MODEL = '/assets/world/first-light-citadel.glb';
+
+const MATERIAL_COLORS: Record<string, string> = {
+  'Worn stone path': '#343a35',
+  'Mountain far': '#091416',
+  'Limestone light': '#817a6b',
+  'Oxidized brass': '#6d6042',
+  'Blackened timber': '#0e1110',
+  Limestone: '#625d52',
+  'Charcoal roof': '#171c1b',
+  'Mineral plaster': '#8f8979',
+  'Mountain near': '#14201f',
+  'Night earth': '#151a17',
+};
+
 const LEGACY_WORLD_END = 0.8;
-const LEGACY_CAMERA_END = 9 / 11;
 
 function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
@@ -53,21 +94,16 @@ function smooth(value: number) {
   return clamped * clamped * (3 - 2 * clamped);
 }
 
-function legacyCameraProgress(progress: number) {
-  if (progress < 0.36) return range(progress, 0, 0.36) * 0.64;
-  if (progress < 0.49) return 0.64 + range(progress, 0.36, 0.49) * 0.025;
-  if (progress < 0.62) return 0.665 + range(progress, 0.49, 0.62) * 0.12;
-  if (progress < 0.75) return 0.785 + range(progress, 0.62, 0.75) * 0.14;
-  if (progress < 0.9) return 0.925 + range(progress, 0.75, 0.9) * 0.02;
-  return 0.945 + range(progress, 0.9, 1) * 0.055;
-}
-
 function cameraProgress(progress: number) {
-  if (progress < LEGACY_WORLD_END) {
-    return legacyCameraProgress(progress / LEGACY_WORLD_END) * LEGACY_CAMERA_END;
-  }
-  return LEGACY_CAMERA_END
-    + smooth(range(progress, LEGACY_WORLD_END, 0.92)) * (1 - LEGACY_CAMERA_END);
+  if (progress < 0.08) return smooth(range(progress, 0, 0.08)) * 0.2;
+  if (progress < 0.15) return 0.2 + smooth(range(progress, 0.08, 0.15)) * 0.18;
+  if (progress < 0.23) return 0.38 + smooth(range(progress, 0.15, 0.23)) * 0.12;
+  if (progress < 0.35) return 0.5 + smooth(range(progress, 0.23, 0.35)) * 0.15;
+  if (progress < 0.43) return 0.65 + smooth(range(progress, 0.35, 0.43)) * 0.15;
+  if (progress < 0.7) return 0.8 + smooth(range(progress, 0.43, 0.7)) * 0.08;
+  if (progress < 0.77) return 0.88 + smooth(range(progress, 0.7, 0.77)) * 0.05;
+  if (progress < 0.9) return 0.93 + smooth(range(progress, 0.77, 0.9)) * 0.02;
+  return 0.95 + smooth(range(progress, 0.9, 1)) * 0.05;
 }
 
 function legacyProgress(progress: number) {
@@ -84,11 +120,12 @@ function CameraDirector({
   const lookTarget = useMemo(() => new THREE.Vector3(), []);
   const orientation = useMemo(() => new THREE.PerspectiveCamera(), []);
 
-  useFrame(({ camera, pointer }, delta) => {
+  useFrame(({ camera, pointer, size }, delta) => {
     const progress = cameraProgress(progressRef.current);
     const lookAhead = Math.min(1, progress + 0.11);
-    CAMERA_PATH.getPoint(progress, targetPosition);
-    CAMERA_PATH.getPoint(lookAhead, lookTarget);
+    const cameraPath = size.width <= 820 ? MOBILE_CAMERA_PATH : CAMERA_PATH;
+    cameraPath.getPoint(progress, targetPosition);
+    cameraPath.getPoint(lookAhead, lookTarget);
 
     const parallax = reducedMotion ? 0 : qualityTier === 'cinematic' ? 0.42 : 0.16;
     targetPosition.x += pointer.x * parallax;
@@ -107,7 +144,7 @@ function CameraDirector({
     if (camera instanceof THREE.PerspectiveCamera) {
       camera.fov = THREE.MathUtils.damp(
         camera.fov,
-        52 + Math.min(1, Math.abs(velocityRef.current)) * 1.4,
+        (size.width <= 820 ? 57 : 48) + Math.min(1, Math.abs(velocityRef.current)) * 1.4,
         4.5,
         delta,
       );
@@ -118,54 +155,299 @@ function CameraDirector({
   return null;
 }
 
-function Aperture({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>) {
-  const bladeRefs = useRef<Array<THREE.Mesh | null>>([]);
-  const haloRef = useRef<THREE.Group>(null);
+function createMineralTexture() {
+  const size = 128;
+  const data = new Uint8Array(size * size);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const broad = Math.sin(x * 0.31 + Math.sin(y * 0.17) * 1.8);
+      const grain = Math.sin(x * 1.37 + y * 1.91) * 0.42;
+      const vein = Math.sin((x + y) * 0.08) * 0.28;
+      data[y * size + x] = Math.round(128 + broad * 17 + grain * 14 + vein * 12);
+    }
+  }
+  const texture = new THREE.DataTexture(data, size, size, THREE.RedFormat, THREE.UnsignedByteType);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(3.5, 3.5);
+  texture.colorSpace = THREE.NoColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
 
-  useFrame((_, delta) => {
-    const opening = smooth(range(legacyProgress(progressRef.current), 0.055, 0.22));
-    bladeRefs.current.forEach((blade, index) => {
-      if (!blade) return;
-      const angle = (index / 6) * Math.PI * 2;
-      const radius = 2.25 + opening * 3.25;
-      blade.position.set(Math.cos(angle) * radius, 4.2 + Math.sin(angle) * radius, 7.8);
-      blade.rotation.z = angle + Math.PI / 2 + opening * 0.62;
-    });
-    if (haloRef.current) haloRef.current.rotation.z += delta * (0.025 + opening * 0.08);
+function WorldAtmosphere({ qualityTier }: Pick<MacroFlowSceneProps, 'qualityTier'>) {
+  const skyRef = useRef<THREE.Mesh>(null);
+  const skyMaterialRef = useRef<THREE.ShaderMaterial>(null);
+  const dustRef = useRef<THREE.Points>(null);
+  const dustGeometry = useMemo(() => {
+    const count = qualityTier === 'cinematic' ? 560 : 220;
+    const positions = new Float32Array(count * 3);
+    for (let index = 0; index < count; index += 1) {
+      const seed = index * 12.9898;
+      const unitA = Math.abs(Math.sin(seed) * 43758.5453) % 1;
+      const unitB = Math.abs(Math.sin(seed + 17.17) * 24634.6345) % 1;
+      const unitC = Math.abs(Math.sin(seed + 41.73) * 12414.1545) % 1;
+      positions[index * 3] = (unitA - 0.5) * 34;
+      positions[index * 3 + 1] = 0.4 + unitB * 13;
+      positions[index * 3 + 2] = 38 - unitC * 175;
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    return geometry;
+  }, [qualityTier]);
+
+  useFrame(({ camera, clock }, delta) => {
+    if (skyRef.current) skyRef.current.position.copy(camera.position);
+    if (skyMaterialRef.current) skyMaterialRef.current.uniforms.uTime.value = clock.elapsedTime;
+    if (dustRef.current) dustRef.current.rotation.y += delta * 0.0015;
   });
 
   return (
-    <group>
-      <mesh position={[-6.8, 4.1, 8.15]}>
-        <boxGeometry args={[7.8, 9.6, 2.5]} />
-        <meshStandardMaterial color="#202526" roughness={0.92} />
+    <>
+      <mesh ref={skyRef} renderOrder={-100}>
+        <sphereGeometry args={[145, 36, 20]} />
+        <shaderMaterial
+          ref={skyMaterialRef}
+          side={THREE.BackSide}
+          depthWrite={false}
+          fog={false}
+          toneMapped={false}
+          uniforms={{ uTime: { value: 0 } }}
+          vertexShader={`
+            varying vec3 vDirection;
+            void main() {
+              vDirection = normalize(position);
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `}
+          fragmentShader={`
+            uniform float uTime;
+            varying vec3 vDirection;
+            void main() {
+              float horizon = pow(1.0 - abs(vDirection.y), 3.2);
+              float upper = smoothstep(-0.18, 0.72, vDirection.y);
+              vec3 low = vec3(0.035, 0.075, 0.078);
+              vec3 high = vec3(0.012, 0.024, 0.027);
+              vec3 color = mix(low, high, upper);
+              color += vec3(0.025, 0.045, 0.042) * horizon;
+              float shimmer = sin(vDirection.x * 38.0 + vDirection.z * 31.0 + uTime * 0.02) * 0.002;
+              gl_FragColor = vec4(color + shimmer, 1.0);
+            }
+          `}
+        />
       </mesh>
-      <mesh position={[6.8, 4.1, 8.15]}>
-        <boxGeometry args={[7.8, 9.6, 2.5]} />
-        <meshStandardMaterial color="#202526" roughness={0.92} />
+      <points ref={dustRef} geometry={dustGeometry} frustumCulled={false}>
+        <pointsMaterial color="#a8cfca" size={0.028} transparent opacity={0.22} depthWrite={false} sizeAttenuation />
+      </points>
+    </>
+  );
+}
+
+function FirstLightCitadel({
+  progressRef,
+  qualityTier,
+}: Pick<MacroFlowSceneProps, 'progressRef' | 'qualityTier'>) {
+  const rootRef = useRef<THREE.Group>(null);
+  const { scene } = useGLTF(FIRST_LIGHT_MODEL, false, true);
+  const mineralTexture = useMemo(createMineralTexture, []);
+  const model = useMemo(() => {
+    const clone = scene.clone(true);
+    clone.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return;
+      child.castShadow = qualityTier === 'cinematic';
+      child.receiveShadow = qualityTier === 'cinematic';
+      child.frustumCulled = true;
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      const tuned = materials.map((source) => {
+        const material = source.clone() as THREE.MeshStandardMaterial;
+        const color = MATERIAL_COLORS[material.name];
+        if (color) material.color.set(color);
+        material.envMapIntensity = 0.32;
+        if (/Limestone|plaster|stone|earth/.test(material.name)) {
+          material.bumpMap = mineralTexture;
+          material.bumpScale = material.name === 'Mineral plaster' ? 0.035 : 0.07;
+          material.roughness = Math.max(material.roughness, 0.82);
+        }
+        if (material.name === 'Occupied light') {
+          material.color.set('#d7b871');
+          material.emissive.set('#e1b96d');
+          material.emissiveIntensity = 3.8;
+        }
+        if (material.name === 'Signal anchor') {
+          material.color.set('#72d9d6');
+          material.emissive.set('#72d9d6');
+          material.emissiveIntensity = 5.2;
+        }
+        material.needsUpdate = true;
+        return material;
+      });
+      child.material = Array.isArray(child.material) ? tuned : tuned[0];
+    });
+    return clone;
+  }, [mineralTexture, qualityTier, scene]);
+
+  useFrame((_, delta) => {
+    if (!rootRef.current) return;
+    const departure = smooth(range(progressRef.current, 0.105, 0.18));
+    rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, -18 * departure, 5.2, delta);
+    rootRef.current.rotation.y = THREE.MathUtils.damp(rootRef.current.rotation.y, departure * -0.018, 4.2, delta);
+  });
+
+  return <primitive ref={rootRef} object={model} />;
+}
+
+function gateBladeShape() {
+  const shape = new THREE.Shape();
+  shape.moveTo(0.12, -0.42);
+  shape.lineTo(2.62, -0.96);
+  shape.lineTo(2.18, 0.62);
+  shape.lineTo(0.12, 0.48);
+  shape.closePath();
+  return shape;
+}
+
+function GateApparatus({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>) {
+  const rootRef = useRef<THREE.Group>(null);
+  const bladeRefs = useRef<Array<THREE.Mesh | null>>([]);
+  const anchorMaterials = useRef<Array<THREE.MeshStandardMaterial | null>>([]);
+  const glassRef = useRef<THREE.MeshStandardMaterial>(null);
+  const shape = useMemo(gateBladeShape, []);
+
+  useFrame((_, delta) => {
+    const localProgress = legacyProgress(progressRef.current);
+    const opening = smooth(range(localProgress, 0.085, 0.205));
+    const response = range(localProgress, 0.045, 0.115);
+    const departure = smooth(range(progressRef.current, 0.11, 0.18));
+
+    bladeRefs.current.forEach((blade, index) => {
+      if (!blade) return;
+      const angle = (index / 6) * Math.PI * 2;
+      const radius = opening * 3.65;
+      blade.position.x = Math.cos(angle) * radius;
+      blade.position.y = Math.sin(angle) * radius;
+      blade.rotation.z = angle + opening * 0.44;
+      const material = blade.material as THREE.MeshStandardMaterial;
+      material.emissiveIntensity = 0.18 + Math.max(0, response * 6 - index) * 0.18;
+    });
+
+    anchorMaterials.current.forEach((material, index) => {
+      if (!material) return;
+      const lit = smooth(range(response, index / 7, (index + 1.5) / 7));
+      material.emissiveIntensity = 0.25 + lit * 4.2;
+    });
+
+    if (glassRef.current) {
+      glassRef.current.opacity = 0.09 + opening * 0.2;
+      glassRef.current.emissiveIntensity = 0.1 + opening * 0.8;
+    }
+    if (rootRef.current) {
+      rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, 4.82 - departure * 18, 5.2, delta);
+      rootRef.current.rotation.z += delta * opening * 0.015;
+    }
+  });
+
+  return (
+    <group ref={rootRef} position={[0, 4.82, 14.72]}>
+      <mesh position={[0, 0, 0.13]}>
+        <circleGeometry args={[2.46, 48]} />
+        <meshStandardMaterial
+          ref={glassRef}
+          color="#31595a"
+          emissive="#3b9f9d"
+          emissiveIntensity={0.1}
+          roughness={0.18}
+          metalness={0.1}
+          transparent
+          opacity={0.09}
+          depthWrite={false}
+        />
       </mesh>
-      <group ref={haloRef} position={[0, 0, 0]}>
-        <mesh position={[0, 4.2, 8.05]}>
-          <torusGeometry args={[4.7, 0.12, 8, 64]} />
-          <meshStandardMaterial color="#928568" emissive="#493f2c" emissiveIntensity={0.75} />
-        </mesh>
-      </group>
-      {Array.from({ length: 6 }, (_, index) => (
-        <mesh
-          key={index}
-          ref={(node) => { bladeRefs.current[index] = node; }}
-          position={[0, 4.2, 7.8]}
-        >
-          <boxGeometry args={[3.7, 1.38, 0.5]} />
-          <meshStandardMaterial
-            color={index % 2 === 0 ? '#b8b1a1' : '#8d877b'}
-            emissive={index % 2 === 0 ? '#353127' : '#282723'}
-            emissiveIntensity={0.42}
-            roughness={0.58}
-            metalness={0.24}
-          />
-        </mesh>
-      ))}
+      <mesh position={[0, 0, 0.02]}>
+        <torusGeometry args={[3.02, 0.1, 10, 64]} />
+        <meshStandardMaterial color="#887955" emissive="#3e3727" emissiveIntensity={0.52} roughness={0.38} metalness={0.72} />
+      </mesh>
+      {Array.from({ length: 6 }, (_, index) => {
+        const angle = (index / 6) * Math.PI * 2;
+        return (
+          <group key={index}>
+            <mesh
+              ref={(node) => { bladeRefs.current[index] = node; }}
+              rotation={[0, 0, angle]}
+            >
+              <extrudeGeometry args={[shape, { depth: 0.2, bevelEnabled: true, bevelSize: 0.045, bevelThickness: 0.04, bevelSegments: 2 }]} />
+              <meshStandardMaterial
+                color={index % 2 === 0 ? '#aaa28f' : '#777166'}
+                emissive="#756b51"
+                emissiveIntensity={0.18}
+                roughness={0.5}
+                metalness={0.28}
+              />
+            </mesh>
+            <mesh position={[Math.cos(angle) * 3.03, Math.sin(angle) * 3.03, 0.24]}>
+              <sphereGeometry args={[0.11, 12, 8]} />
+              <meshStandardMaterial
+                ref={(material) => { anchorMaterials.current[index] = material; }}
+                color="#6edbd7"
+                emissive="#6edbd7"
+                emissiveIntensity={0.25}
+                roughness={0.24}
+              />
+            </mesh>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+const APPROACH_SIGNAL = new THREE.CatmullRomCurve3([
+  new THREE.Vector3(-5.8, 0.32, 28),
+  new THREE.Vector3(-3.4, 0.38, 24),
+  new THREE.Vector3(1.7, 0.42, 21),
+  new THREE.Vector3(-1.1, 0.48, 18.2),
+  new THREE.Vector3(0, 0.72, 15.7),
+]);
+
+function ApproachSignal({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>) {
+  const rootRef = useRef<THREE.Group>(null);
+  const beadRefs = useRef<Array<THREE.Mesh | null>>([]);
+  const pulseRef = useRef<THREE.Mesh>(null);
+  const pulsePosition = useMemo(() => new THREE.Vector3(), []);
+
+  useFrame((_, delta) => {
+    const reveal = smooth(range(legacyProgress(progressRef.current), 0.018, 0.09));
+    beadRefs.current.forEach((bead, index) => {
+      if (!bead) return;
+      const active = index / Math.max(1, beadRefs.current.length - 1) <= reveal;
+      const material = bead.material as THREE.MeshStandardMaterial;
+      material.emissiveIntensity = THREE.MathUtils.damp(material.emissiveIntensity, active ? 3.8 : 0.16, 8, delta);
+      bead.scale.setScalar(THREE.MathUtils.damp(bead.scale.x, active ? 1 : 0.55, 8, delta));
+    });
+    if (!pulseRef.current) return;
+    APPROACH_SIGNAL.getPoint(reveal, pulsePosition);
+    pulseRef.current.position.copy(pulsePosition);
+    pulseRef.current.visible = reveal > 0.01 && reveal < 0.995;
+    if (rootRef.current) {
+      const departure = smooth(range(progressRef.current, 0.105, 0.18));
+      rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, -18 * departure, 5.2, delta);
+    }
+  });
+
+  return (
+    <group ref={rootRef}>
+      {Array.from({ length: 34 }, (_, index) => {
+        const position = APPROACH_SIGNAL.getPoint(index / 33);
+        return (
+          <mesh key={index} ref={(node) => { beadRefs.current[index] = node; }} position={position}>
+            <octahedronGeometry args={[0.085, 0]} />
+            <meshStandardMaterial color="#72d9d6" emissive="#72d9d6" emissiveIntensity={0.16} roughness={0.2} />
+          </mesh>
+        );
+      })}
+      <mesh ref={pulseRef} visible={false}>
+        <sphereGeometry args={[0.21, 18, 12]} />
+        <meshStandardMaterial color="#d6ffff" emissive="#72d9d6" emissiveIntensity={6.5} roughness={0.1} />
+      </mesh>
     </group>
   );
 }
@@ -584,11 +866,29 @@ function World({
 }: MacroFlowSceneProps) {
   return (
     <>
-      <color attach="background" args={['#070a0b']} />
-      <fog attach="fog" args={['#070a0b', 14, 58]} />
-      <ambientLight intensity={1.08} color="#a9bfbc" />
-      <directionalLight position={[8, 14, 10]} intensity={3.1} color="#efe5cf" />
-      <pointLight position={[0, 4.6, 12]} intensity={32} distance={17} color="#c4ad74" />
+      <color attach="background" args={['#071011']} />
+      <fog attach="fog" args={['#071011', 24, 92]} />
+      <WorldAtmosphere qualityTier={qualityTier} />
+      <hemisphereLight intensity={0.38} color="#b9cfcd" groundColor="#191b17" />
+      <directionalLight
+        castShadow={qualityTier === 'cinematic'}
+        position={[10, 18, 18]}
+        intensity={1.75}
+        color="#dae3d9"
+        shadow-mapSize-width={qualityTier === 'cinematic' ? 1536 : 512}
+        shadow-mapSize-height={qualityTier === 'cinematic' ? 1536 : 512}
+        shadow-camera-near={2}
+        shadow-camera-far={70}
+        shadow-camera-left={-28}
+        shadow-camera-right={28}
+        shadow-camera-top={24}
+        shadow-camera-bottom={-12}
+        shadow-bias={-0.00035}
+        shadow-normalBias={0.055}
+      />
+      <pointLight position={[-7, 8, 24]} intensity={38} distance={34} color="#c9ad72" />
+      <pointLight position={[0, 5.2, 14]} intensity={26} distance={20} color="#64cfcb" />
+      <pointLight position={[0, 4.6, 1]} intensity={30} distance={21} color="#d0ad68" />
       <pointLight position={[0, 5, -30]} intensity={22} distance={16} color="#6fd8d6" />
       <pointLight position={[0, 5, -54]} intensity={18} distance={18} color="#c0a66b" />
       <pointLight position={[0, 5, -79]} intensity={24} distance={22} color="#75dcda" />
@@ -600,7 +900,9 @@ function World({
         qualityTier={qualityTier}
         velocityRef={velocityRef}
       />
-      <Aperture progressRef={progressRef} />
+      <FirstLightCitadel progressRef={progressRef} qualityTier={qualityTier} />
+      <ApproachSignal progressRef={progressRef} />
+      <GateApparatus progressRef={progressRef} />
       <SyntheticField lensMode={lensMode} />
       <NexusTargets lensMode={lensMode} />
       <SignalBeads progressRef={progressRef} />
@@ -629,11 +931,12 @@ export function MacroFlowScene(props: MacroFlowSceneProps) {
     <Canvas
       className="mf-canvas"
       dpr={dpr}
-      camera={{ fov: 52, near: 0.1, far: 140, position: [0, 4.6, 24] }}
+      shadows={props.qualityTier === 'cinematic'}
+      camera={{ fov: 48, near: 0.1, far: 190, position: [18, 11.5, 38] }}
       gl={{ antialias: props.qualityTier !== 'cinematic', alpha: false, powerPreference: 'high-performance' }}
       onCreated={({ gl }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping;
-        gl.toneMappingExposure = 0.92;
+        gl.toneMappingExposure = 0.78;
         gl.outputColorSpace = THREE.SRGBColorSpace;
       }}
       fallback={<div className="mf-canvas-fallback">3D scene unavailable</div>}
@@ -643,8 +946,12 @@ export function MacroFlowScene(props: MacroFlowSceneProps) {
         onChange={({ factor }) => props.onPerformanceFactor(factor)}
         onFallback={props.onPerformanceFallback}
       >
-        <World {...props} />
+        <Suspense fallback={null}>
+          <World {...props} />
+        </Suspense>
       </PerformanceMonitor>
     </Canvas>
   );
 }
+
+useGLTF.preload(FIRST_LIGHT_MODEL, false, true);

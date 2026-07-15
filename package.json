@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "build:first-light": "blender --background --python-exit-code 1 --python scripts/blender/build_first_light.py && gltf-transform optimize public/assets/world/first-light-citadel.raw.glb public/assets/world/first-light-citadel.glb --compress meshopt --palette false --texture-compress false && node scripts/convert-first-light-poster.mjs",
     "optimize:images": "node scripts/optimize-images.mjs",
     "generate:og": "node scripts/generate-og.mjs",
     "generate:favicons": "node scripts/generate-favicons.mjs"
@@ -33,6 +34,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
+    "@gltf-transform/cli": "^4.4.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@types/three": "0.182.0",

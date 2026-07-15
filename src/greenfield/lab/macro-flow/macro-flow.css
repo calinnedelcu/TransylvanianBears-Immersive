@@ -63,7 +63,10 @@ body.mf-lab-mode {
   position: fixed;
   z-index: 0;
   inset: 0;
-  background: var(--mf-bg);
+  background:
+    linear-gradient(90deg, rgb(7 10 11 / 0.28), rgb(7 10 11 / 0.04)),
+    url('/assets/world/first-light-poster.webp') center / cover no-repeat,
+    var(--mf-bg);
 }
 
 .mf-canvas,
@@ -309,7 +312,7 @@ body.mf-lab-mode {
 }
 
 .mf-copy--hero {
-  max-width: 760px;
+  max-width: 880px;
 }
 
 .mf-copy--side {
@@ -351,6 +354,45 @@ body.mf-lab-mode {
   font-family: 'Cinzel', serif;
   font-size: clamp(52px, 7.2vw, 108px);
   line-height: 0.92;
+}
+
+.mf-copy--hero h1 {
+  display: grid;
+  width: min-content;
+  font-size: clamp(54px, 7vw, 106px);
+  line-height: 0.86;
+  text-transform: uppercase;
+}
+
+.mf-copy--hero h1 span:last-child {
+  color: transparent;
+  -webkit-text-stroke: 1px rgb(228 225 217 / 0.76);
+}
+
+.mf-hero-statement {
+  display: grid;
+  width: min(520px, 76vw);
+  grid-template-columns: 0.72fr 1.28fr;
+  gap: 20px;
+  align-items: start;
+  margin-top: 30px;
+  padding-top: 17px;
+  border-top: 1px solid rgb(228 225 217 / 0.28);
+}
+
+.mf-hero-statement strong {
+  color: var(--mf-ink);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  line-height: 1.55;
+  text-transform: uppercase;
+}
+
+.mf-hero-statement p {
+  margin: 0;
+  color: var(--mf-muted);
+  font-size: 12px;
+  line-height: 1.65;
 }
 
 .mf-copy h2 {
@@ -1698,6 +1740,22 @@ body.mf-lab-mode {
     font-size: 49px;
   }
 
+  .mf-copy--hero h1 {
+    max-width: calc(100vw - 78px);
+    font-size: 35px;
+  }
+
+  .mf-hero-statement {
+    width: calc(100% - 24px);
+    grid-template-columns: 1fr;
+    gap: 9px;
+    margin-top: 22px;
+  }
+
+  .mf-hero-statement p {
+    font-size: 11px;
+  }
+
   .mf-copy h2 {
     font-size: 37px;
   }
@@ -2150,6 +2208,12 @@ body.mf-lab-mode {
 
   .mf-pixel-handoff strong {
     font-size: 42px;
+  }
+}
+
+@media (max-width: 360px) {
+  .mf-copy--hero h1 {
+    font-size: 30px;
   }
 }
 

@@ -301,12 +301,12 @@ function MacroFlowExperience() {
 
       <section id="mf-threshold" className="mf-beat mf-beat--threshold" data-chapter="threshold">
         <div className="mf-copy mf-copy--hero">
-          <p className="mf-kicker">Braided expedition / 01</p>
-          <h1>Un sistem.<br />Nu șapte insule.</h1>
-          <p>
-            Atelierul nu devine meniu. Se deschide o singură dată, apoi contribuțiile lui se
-            transformă în drumul către primul proiect.
-          </p>
+          <p className="mf-kicker">Independent build team / Transylvania</p>
+          <h1><span>Transylvanian</span><span>Bears</span></h1>
+          <div className="mf-hero-statement">
+            <strong>Un sistem. Nu șapte insule.</strong>
+            <p>Software, jocuri, machine learning și cercetare aplicată, construite de aceeași echipă.</p>
+          </div>
           <ChevronDown className="mf-scroll-cue" aria-hidden="true" />
         </div>
       </section>
