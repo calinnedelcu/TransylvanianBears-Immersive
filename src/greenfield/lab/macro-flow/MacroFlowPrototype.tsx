@@ -7,16 +7,25 @@ import {
   Cog,
   Eye,
   Flame,
+  Gauge,
   Play,
   RefreshCcw,
   ScanLine,
   ShieldCheck,
+  Volume2,
+  VolumeX,
   Waypoints,
   Wind,
 } from 'lucide-react';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { usePrefersReducedMotion } from '../../../hooks/usePrefersReducedMotion';
+import { JOURNEY_CHAPTERS, chapterTone, type JourneyChapter } from '../../experience/chapters';
+import { ExperienceProvider } from '../../experience/ExperienceProvider';
+import { useAmbientAudio } from '../../experience/audio/useAmbientAudio';
+import { effectiveQuality } from '../../experience/experienceMachine';
+import { useExperienceActorRef, useExperienceSelector } from '../../experience/useExperience';
+import { useJourneyDirector } from '../../experience/useJourneyDirector';
 import { useGreenfieldMode } from '../../hooks/useGreenfieldMode';
 import type { MacroLensMode, MacroTraceOutcome } from './MacroFlowScene';
 import InfectInterlude from './InfectInterlude';
@@ -26,44 +35,8 @@ import './macro-flow.css';
 
 const MacroFlowScene = lazy(() => import('./MacroFlowScene').then((module) => ({ default: module.MacroFlowScene })));
 
-type MacroChapter =
-  | 'threshold'
-  | 'field'
-  | 'lens'
-  | 'proof'
-  | 'passage'
-  | 'access'
-  | 'schoolmate'
-  | 'descent'
-  | 'lamp'
-  | 'build'
-  | 'infect'
-  | 'research'
-  | 'evidence-weave'
-  | 'final-return'
-  | 'open-paths'
-  | 'dawn';
 type TraceScenario = 'valid' | 'expired' | 'used';
 type BuriedRule = 'oil' | 'mechanism' | 'mercury';
-
-const CHAPTERS: Array<{ id: MacroChapter; index: string; label: string }> = [
-  { id: 'threshold', index: '01', label: 'Threshold' },
-  { id: 'field', index: '02', label: 'Synthetic field' },
-  { id: 'lens', index: '03', label: 'Lens knot' },
-  { id: 'proof', index: '04', label: 'Evidence' },
-  { id: 'passage', index: '05', label: 'Aegis passage' },
-  { id: 'access', index: '06', label: 'Access trace' },
-  { id: 'schoolmate', index: '07', label: 'School products' },
-  { id: 'descent', index: '08', label: 'Rule descent' },
-  { id: 'lamp', index: '09', label: 'Lamp chamber' },
-  { id: 'build', index: '10', label: 'Build proof' },
-  { id: 'infect', index: '11', label: '1-bit breach' },
-  { id: 'research', index: '12', label: 'Research crossing' },
-  { id: 'evidence-weave', index: '13', label: 'Evidence weave' },
-  { id: 'final-return', index: '14', label: 'Final return' },
-  { id: 'open-paths', index: '15', label: 'Open paths' },
-  { id: 'dawn', index: '16', label: 'Dawn' },
-];
 
 const BURIED_RULES: Array<{
   id: BuriedRule;
@@ -118,18 +91,41 @@ const LENS_OPTIONS: Array<{
   { id: 'detection', label: 'Detection', description: 'Semnalele devin limite', icon: ScanLine },
 ];
 
-export default function MacroFlowPrototype() {
+function MacroFlowExperience() {
   const rootRef = useRef<HTMLElement>(null);
-  const progressRef = useRef(0);
   const traceTimersRef = useRef<number[]>([]);
   const reducedMotion = usePrefersReducedMotion();
-  const [activeChapter, setActiveChapter] = useState<MacroChapter>('threshold');
-  const [lensMode, setLensMode] = useState<MacroLensMode>('raw');
+  const experienceActor = useExperienceActorRef();
+  const activeChapter = useExperienceSelector((state) => state.context.activeChapter);
+  const lensMode = useExperienceSelector((state) => state.context.lensMode);
+  const qualityTier = useExperienceSelector((state) => effectiveQuality(state.context));
+  const qualityMode = useExperienceSelector((state) => state.context.qualityMode);
+  const audioEnabled = useExperienceSelector((state) => state.context.audioEnabled);
   const [traceScenario, setTraceScenario] = useState<TraceScenario>('valid');
   const [traceStep, setTraceStep] = useState(0);
   const [traceOutcome, setTraceOutcome] = useState<MacroTraceOutcome>('idle');
   const [buriedRules, setBuriedRules] = useState<Set<BuriedRule>>(() => new Set());
   const [activeBuriedRule, setActiveBuriedRule] = useState<BuriedRule>('oil');
+
+  const enableAudio = useCallback(() => experienceActor.send({ type: 'AUDIO_ENABLED' }), [experienceActor]);
+  const muteAudio = useCallback(() => experienceActor.send({ type: 'AUDIO_MUTED' }), [experienceActor]);
+  const {
+    toggle: toggleAudio,
+    update: updateAudio,
+    enterChapter: enterAudioChapter,
+  } = useAmbientAudio({ enabled: audioEnabled, onEnabled: enableAudio, onMuted: muteAudio });
+  const enterChapter = useCallback((chapter: JourneyChapter) => {
+    experienceActor.send({ type: 'CHAPTER_ENTERED', chapter });
+  }, [experienceActor]);
+  const onJourneyProgress = useCallback((progress: number, velocity: number) => {
+    updateAudio(progress, velocity);
+  }, [updateAudio]);
+  const { worldProgressRef: progressRef, velocityRef } = useJourneyDirector({
+    rootRef,
+    reducedMotion,
+    onChapterChange: enterChapter,
+    onProgress: onJourneyProgress,
+  });
 
   useGreenfieldMode({
     title: 'Transylvanian Bears — Produse, jocuri și cercetare aplicată',
@@ -197,52 +193,21 @@ export default function MacroFlowPrototype() {
     event.currentTarget.style.setProperty('--mf-lamp-y', `${y.toFixed(2)}%`);
   }, []);
 
-  const updateProgress = useCallback(() => {
-    const root = rootRef.current;
-    if (!root) return;
-    const rootTop = root.offsetTop;
-    const worldEnd = root.querySelector<HTMLElement>('#mf-infect')?.offsetTop ?? root.scrollHeight;
-    const max = Math.max(1, worldEnd - window.innerHeight);
-    const progress = Math.max(0, Math.min(1, (window.scrollY - rootTop) / max));
-    progressRef.current = progress;
-    root.style.setProperty('--mf-progress', progress.toFixed(4));
-    const chapters = Array.from(root.querySelectorAll<HTMLElement>('[data-chapter]'));
-    const focusLine = window.innerHeight * 0.46;
-    const chapterRects = chapters.map((chapter) => ({
-      chapter,
-      rect: chapter.getBoundingClientRect(),
-    }));
-    const focused = chapterRects.find(({ rect }) => rect.top <= focusLine && rect.bottom > focusLine)
-      ?? [...chapterRects].reverse().find(({ rect }) => rect.top <= focusLine);
-    const nextChapter = (focused?.chapter.dataset.chapter as MacroChapter | undefined) ?? 'threshold';
-    setActiveChapter((current) => (current === nextChapter ? current : nextChapter));
+  useEffect(() => {
+    document.body.classList.add('mf-lab-mode');
+    return () => document.body.classList.remove('mf-lab-mode');
   }, []);
 
   useEffect(() => {
-    document.body.classList.add('mf-lab-mode');
-    let frame = 0;
-    const requestUpdate = () => {
-      window.cancelAnimationFrame(frame);
-      frame = window.requestAnimationFrame(updateProgress);
-    };
-
-    updateProgress();
-    window.addEventListener('scroll', requestUpdate, { passive: true });
-    window.addEventListener('resize', requestUpdate);
-
-    return () => {
-      document.body.classList.remove('mf-lab-mode');
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener('scroll', requestUpdate);
-      window.removeEventListener('resize', requestUpdate);
-    };
-  }, [updateProgress]);
+    enterAudioChapter(activeChapter, chapterTone(activeChapter));
+  }, [activeChapter, enterAudioChapter]);
 
   useEffect(() => clearTraceTimers, [clearTraceTimers]);
 
   const traceFinished = traceOutcome !== 'idle' && traceOutcome !== 'running';
   const traceAllowed = traceOutcome === 'allowed';
-  const macroWorldActive = activeChapter !== 'infect'
+  const macroWorldActive = qualityTier !== 'editorial'
+    && activeChapter !== 'infect'
     && activeChapter !== 'research'
     && activeChapter !== 'evidence-weave'
     && activeChapter !== 'final-return'
@@ -276,6 +241,10 @@ export default function MacroFlowPrototype() {
               traceOutcome={traceOutcome}
               buriedDiscoveries={buriedRules.size}
               reducedMotion={reducedMotion}
+              qualityTier={qualityTier}
+              velocityRef={velocityRef}
+              onPerformanceFactor={(factor) => experienceActor.send({ type: 'QUALITY_SAMPLE', factor })}
+              onPerformanceFallback={() => experienceActor.send({ type: 'QUALITY_FALLBACK' })}
             />
           </Suspense>
         ) : null}
@@ -288,13 +257,36 @@ export default function MacroFlowPrototype() {
           <span>Transylvanian Bears</span>
         </Link>
         <p>Interactive expedition / 16 chapters</p>
-        <Link className="mf-index-link" to="/work">
-          Open work index <Waypoints aria-hidden="true" />
-        </Link>
+        <div className="mf-header__actions">
+          <button
+            className="mf-system-control"
+            type="button"
+            aria-label={`Calitate ${qualityMode === 'auto' ? `automată, ${qualityTier}` : qualityTier}. Schimbă nivelul.`}
+            title={`Calitate: ${qualityMode === 'auto' ? `auto / ${qualityTier}` : qualityTier}`}
+            data-tier={qualityTier}
+            onClick={() => experienceActor.send({ type: 'CYCLE_QUALITY' })}
+          >
+            <Gauge aria-hidden="true" />
+            <span>{qualityMode === 'auto' ? 'A' : qualityTier === 'composed' ? 'B' : 'C'}</span>
+          </button>
+          <button
+            className="mf-system-control"
+            type="button"
+            aria-label={audioEnabled ? 'Oprește sunetul ambiental' : 'Pornește sunetul ambiental'}
+            title={audioEnabled ? 'Sunet pornit' : 'Sunet oprit'}
+            data-active={audioEnabled || undefined}
+            onClick={() => void toggleAudio()}
+          >
+            {audioEnabled ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
+          </button>
+          <Link className="mf-index-link" to="/work">
+            Open work index <Waypoints aria-hidden="true" />
+          </Link>
+        </div>
       </header>
 
       <nav className="mf-rail" aria-label="Macro flow chapters">
-        {CHAPTERS.map((chapter) => (
+        {JOURNEY_CHAPTERS.map((chapter) => (
           <a
             key={chapter.id}
             href={`#mf-${chapter.id}`}
@@ -345,7 +337,7 @@ export default function MacroFlowPrototype() {
                   type="button"
                   data-active={lensMode === option.id || undefined}
                   aria-pressed={lensMode === option.id}
-                  onClick={() => setLensMode(option.id)}
+                  onClick={() => experienceActor.send({ type: 'LENS_SELECTED', mode: option.id })}
                 >
                   <Icon aria-hidden="true" />
                   <span><strong>{option.label}</strong><small>{option.description}</small></span>
@@ -711,5 +703,13 @@ export default function MacroFlowPrototype() {
       <ResearchCrossing />
       <EvidenceWeave />
     </main>
+  );
+}
+
+export default function MacroFlowPrototype() {
+  return (
+    <ExperienceProvider>
+      <MacroFlowExperience />
+    </ExperienceProvider>
   );
 }

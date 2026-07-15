@@ -1,6 +1,10 @@
+import { PerformanceMonitor } from '@react-three/drei';
 import { Canvas, useFrame } from '@react-three/fiber';
+import { Bloom, EffectComposer, Noise, Vignette } from '@react-three/postprocessing';
 import { useMemo, useRef, type MutableRefObject } from 'react';
+import { BlendFunction } from 'postprocessing';
 import * as THREE from 'three';
+import type { QualityTier } from '../../experience/quality';
 
 export type MacroLensMode = 'raw' | 'segmentation' | 'detection';
 export type MacroTraceOutcome = 'idle' | 'running' | 'allowed' | 'expired' | 'used';
@@ -12,6 +16,10 @@ type MacroFlowSceneProps = {
   traceOutcome: MacroTraceOutcome;
   buriedDiscoveries: number;
   reducedMotion: boolean;
+  qualityTier: QualityTier;
+  velocityRef: MutableRefObject<number>;
+  onPerformanceFactor: (factor: number) => void;
+  onPerformanceFallback: () => void;
 };
 
 const CAMERA_PATH = new THREE.CatmullRomCurve3([
@@ -69,23 +77,42 @@ function legacyProgress(progress: number) {
 function CameraDirector({
   progressRef,
   reducedMotion,
-}: Pick<MacroFlowSceneProps, 'progressRef' | 'reducedMotion'>) {
+  qualityTier,
+  velocityRef,
+}: Pick<MacroFlowSceneProps, 'progressRef' | 'reducedMotion' | 'qualityTier' | 'velocityRef'>) {
   const targetPosition = useMemo(() => new THREE.Vector3(), []);
   const lookTarget = useMemo(() => new THREE.Vector3(), []);
   const orientation = useMemo(() => new THREE.PerspectiveCamera(), []);
 
-  useFrame(({ camera }, delta) => {
+  useFrame(({ camera, pointer }, delta) => {
     const progress = cameraProgress(progressRef.current);
     const lookAhead = Math.min(1, progress + 0.11);
     CAMERA_PATH.getPoint(progress, targetPosition);
     CAMERA_PATH.getPoint(lookAhead, lookTarget);
+
+    const parallax = reducedMotion ? 0 : qualityTier === 'cinematic' ? 0.42 : 0.16;
+    targetPosition.x += pointer.x * parallax;
+    targetPosition.y += pointer.y * parallax * 0.35;
+    lookTarget.x += pointer.x * parallax * 0.55;
+    lookTarget.y += pointer.y * parallax * 0.24;
 
     const damping = reducedMotion ? 1 : 1 - Math.exp(-delta * 5.4);
     camera.position.lerp(targetPosition, damping);
 
     orientation.position.copy(camera.position);
     orientation.lookAt(lookTarget);
+    orientation.rotateZ(THREE.MathUtils.clamp(-velocityRef.current * 0.012, -0.018, 0.018));
     camera.quaternion.slerp(orientation.quaternion, damping);
+
+    if (camera instanceof THREE.PerspectiveCamera) {
+      camera.fov = THREE.MathUtils.damp(
+        camera.fov,
+        52 + Math.min(1, Math.abs(velocityRef.current)) * 1.4,
+        4.5,
+        delta,
+      );
+      camera.updateProjectionMatrix();
+    }
   });
 
   return null;
@@ -533,7 +560,28 @@ function BuriedChamber({
   );
 }
 
-function World({ progressRef, lensMode, traceStep, traceOutcome, buriedDiscoveries, reducedMotion }: MacroFlowSceneProps) {
+function PostEffects({ qualityTier }: Pick<MacroFlowSceneProps, 'qualityTier'>) {
+  if (qualityTier !== 'cinematic') return null;
+
+  return (
+    <EffectComposer multisampling={0} enableNormalPass={false}>
+      <Bloom intensity={0.42} luminanceThreshold={0.82} luminanceSmoothing={0.24} mipmapBlur />
+      <Noise opacity={0.027} premultiply blendFunction={BlendFunction.SOFT_LIGHT} />
+      <Vignette offset={0.18} darkness={0.72} eskil={false} />
+    </EffectComposer>
+  );
+}
+
+function World({
+  progressRef,
+  lensMode,
+  traceStep,
+  traceOutcome,
+  buriedDiscoveries,
+  reducedMotion,
+  qualityTier,
+  velocityRef,
+}: MacroFlowSceneProps) {
   return (
     <>
       <color attach="background" args={['#070a0b']} />
@@ -546,7 +594,12 @@ function World({ progressRef, lensMode, traceStep, traceOutcome, buriedDiscoveri
       <pointLight position={[0, 5, -79]} intensity={24} distance={22} color="#75dcda" />
       <pointLight position={[0, 4, -120]} intensity={30} distance={28} color="#d88538" />
 
-      <CameraDirector progressRef={progressRef} reducedMotion={reducedMotion} />
+      <CameraDirector
+        progressRef={progressRef}
+        reducedMotion={reducedMotion}
+        qualityTier={qualityTier}
+        velocityRef={velocityRef}
+      />
       <Aperture progressRef={progressRef} />
       <SyntheticField lensMode={lensMode} />
       <NexusTargets lensMode={lensMode} />
@@ -564,20 +617,34 @@ function World({ progressRef, lensMode, traceStep, traceOutcome, buriedDiscoveri
         <planeGeometry args={[36, 190]} />
         <meshStandardMaterial color="#101516" roughness={0.98} />
       </mesh>
+      <PostEffects qualityTier={qualityTier} />
     </>
   );
 }
 
 export function MacroFlowScene(props: MacroFlowSceneProps) {
+  const dpr: [number, number] | number = props.qualityTier === 'cinematic' ? [1, 1.5] : 1;
+
   return (
     <Canvas
       className="mf-canvas"
-      dpr={[1, 1.5]}
+      dpr={dpr}
       camera={{ fov: 52, near: 0.1, far: 140, position: [0, 4.6, 24] }}
-      gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
+      gl={{ antialias: props.qualityTier !== 'cinematic', alpha: false, powerPreference: 'high-performance' }}
+      onCreated={({ gl }) => {
+        gl.toneMapping = THREE.ACESFilmicToneMapping;
+        gl.toneMappingExposure = 0.92;
+        gl.outputColorSpace = THREE.SRGBColorSpace;
+      }}
       fallback={<div className="mf-canvas-fallback">3D scene unavailable</div>}
     >
-      <World {...props} />
+      <PerformanceMonitor
+        flipflops={3}
+        onChange={({ factor }) => props.onPerformanceFactor(factor)}
+        onFallback={props.onPerformanceFallback}
+      >
+        <World {...props} />
+      </PerformanceMonitor>
     </Canvas>
   );
 }

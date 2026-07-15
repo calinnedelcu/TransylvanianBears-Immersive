@@ -151,7 +151,6 @@ body.mf-lab-mode {
 }
 
 .mf-index-link {
-  justify-self: end;
   color: var(--mf-cyan) !important;
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
@@ -161,6 +160,49 @@ body.mf-lab-mode {
 .mf-index-link svg {
   width: 17px;
   height: 17px;
+}
+
+.mf-header__actions {
+  display: flex;
+  justify-self: end;
+  align-items: center;
+  gap: 8px;
+}
+
+.mf-system-control {
+  position: relative;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgb(228 225 217 / 0.18);
+  background: rgb(7 10 11 / 0.34);
+  color: rgb(228 225 217 / 0.62);
+  cursor: pointer;
+  place-items: center;
+  transition: border-color 180ms ease, color 180ms ease, background-color 180ms ease;
+}
+
+.mf-system-control:hover,
+.mf-system-control[data-active] {
+  border-color: rgb(114 217 214 / 0.58);
+  background: rgb(114 217 214 / 0.08);
+  color: var(--mf-cyan);
+}
+
+.mf-system-control svg {
+  width: 15px;
+  height: 15px;
+}
+
+.mf-system-control > span {
+  position: absolute;
+  right: 2px;
+  bottom: 1px;
+  color: currentColor;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 6px;
+  line-height: 1;
 }
 
 .mf-rail {
@@ -1613,6 +1655,24 @@ body.mf-lab-mode {
 
   .mf-index-link {
     font-size: 9px;
+  }
+
+  .mf-header__actions {
+    gap: 5px;
+  }
+
+  .mf-system-control {
+    width: 32px;
+    height: 32px;
+  }
+
+  .mf-index-link > svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .mf-index-link {
+    font-size: 0;
   }
 
   .mf-rail {
