@@ -1,12 +1,36 @@
-import { Boxes, ChevronDown, Eye, ScanLine, Waypoints } from 'lucide-react';
+import {
+  Boxes,
+  Check,
+  ChevronDown,
+  CircleX,
+  Eye,
+  Play,
+  RefreshCcw,
+  ScanLine,
+  ShieldCheck,
+  Waypoints,
+} from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePrefersReducedMotion } from '../../../hooks/usePrefersReducedMotion';
 import { useGreenfieldMode } from '../../hooks/useGreenfieldMode';
-import { MacroFlowScene, type MacroLensMode } from './MacroFlowScene';
+import {
+  MacroFlowScene,
+  type MacroLensMode,
+  type MacroTraceOutcome,
+} from './MacroFlowScene';
 import './macro-flow.css';
 
-type MacroChapter = 'threshold' | 'field' | 'lens' | 'proof' | 'passage';
+type MacroChapter =
+  | 'threshold'
+  | 'field'
+  | 'lens'
+  | 'proof'
+  | 'passage'
+  | 'access'
+  | 'schoolmate'
+  | 'descent';
+type TraceScenario = 'valid' | 'expired' | 'used';
 
 const CHAPTERS: Array<{ id: MacroChapter; index: string; label: string }> = [
   { id: 'threshold', index: '01', label: 'Threshold' },
@@ -14,7 +38,18 @@ const CHAPTERS: Array<{ id: MacroChapter; index: string; label: string }> = [
   { id: 'lens', index: '03', label: 'Lens knot' },
   { id: 'proof', index: '04', label: 'Evidence' },
   { id: 'passage', index: '05', label: 'Aegis passage' },
+  { id: 'access', index: '06', label: 'Access trace' },
+  { id: 'schoolmate', index: '07', label: 'School products' },
+  { id: 'descent', index: '08', label: 'Rule descent' },
 ];
+
+const TRACE_SCENARIOS: Array<{ id: TraceScenario; label: string; detail: string }> = [
+  { id: 'valid', label: 'Valid', detail: 'În fereastra de 20s' },
+  { id: 'expired', label: 'Expired', detail: 'TTL depășit' },
+  { id: 'used', label: 'Already used', detail: 'Redeem repetat' },
+];
+
+const TRACE_STEPS = ['Issued', 'Presented', 'Gate role', 'Atomic redeem', 'Audit log'];
 
 const LENS_OPTIONS: Array<{
   id: MacroLensMode;
@@ -28,21 +63,70 @@ const LENS_OPTIONS: Array<{
 ];
 
 function chapterForProgress(progress: number): MacroChapter {
-  if (progress < 0.2) return 'threshold';
-  if (progress < 0.39) return 'field';
-  if (progress < 0.57) return 'lens';
-  if (progress < 0.76) return 'proof';
-  return 'passage';
+  if (progress < 0.125) return 'threshold';
+  if (progress < 0.24) return 'field';
+  if (progress < 0.365) return 'lens';
+  if (progress < 0.495) return 'proof';
+  if (progress < 0.62) return 'passage';
+  if (progress < 0.75) return 'access';
+  if (progress < 0.9) return 'schoolmate';
+  return 'descent';
 }
 
 export default function MacroFlowPrototype() {
   const rootRef = useRef<HTMLElement>(null);
   const progressRef = useRef(0);
+  const traceTimersRef = useRef<number[]>([]);
   const reducedMotion = usePrefersReducedMotion();
   const [activeChapter, setActiveChapter] = useState<MacroChapter>('threshold');
   const [lensMode, setLensMode] = useState<MacroLensMode>('raw');
+  const [traceScenario, setTraceScenario] = useState<TraceScenario>('valid');
+  const [traceStep, setTraceStep] = useState(0);
+  const [traceOutcome, setTraceOutcome] = useState<MacroTraceOutcome>('idle');
 
   useGreenfieldMode('Macro Flow Lab');
+
+  const clearTraceTimers = useCallback(() => {
+    traceTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    traceTimersRef.current = [];
+  }, []);
+
+  const resetTrace = useCallback(() => {
+    clearTraceTimers();
+    setTraceStep(0);
+    setTraceOutcome('idle');
+  }, [clearTraceTimers]);
+
+  const selectTraceScenario = useCallback((scenario: TraceScenario) => {
+    clearTraceTimers();
+    setTraceScenario(scenario);
+    setTraceStep(0);
+    setTraceOutcome('idle');
+  }, [clearTraceTimers]);
+
+  const runTrace = useCallback(() => {
+    clearTraceTimers();
+    setTraceStep(0);
+    setTraceOutcome('running');
+
+    const finalOutcome: MacroTraceOutcome =
+      traceScenario === 'valid' ? 'allowed' : traceScenario;
+
+    if (reducedMotion) {
+      setTraceStep(TRACE_STEPS.length - 1);
+      setTraceOutcome(finalOutcome);
+      return;
+    }
+
+    TRACE_STEPS.slice(1).forEach((_, index) => {
+      const timer = window.setTimeout(() => {
+        const nextStep = index + 1;
+        setTraceStep(nextStep);
+        if (nextStep === TRACE_STEPS.length - 1) setTraceOutcome(finalOutcome);
+      }, 430 * (index + 1));
+      traceTimersRef.current.push(timer);
+    });
+  }, [clearTraceTimers, reducedMotion, traceScenario]);
 
   const updateProgress = useCallback(() => {
     const root = rootRef.current;
@@ -76,12 +160,36 @@ export default function MacroFlowPrototype() {
     };
   }, [updateProgress]);
 
+  useEffect(() => clearTraceTimers, [clearTraceTimers]);
+
+  const traceFinished = traceOutcome !== 'idle' && traceOutcome !== 'running';
+  const traceAllowed = traceOutcome === 'allowed';
+  const traceResult = traceAllowed
+    ? 'ALLOW / token redeemed once'
+    : traceOutcome === 'expired'
+      ? 'DENY / EXPIRED'
+      : traceOutcome === 'used'
+        ? 'DENY / ALREADY_USED'
+        : 'Awaiting trace';
+
   return (
-    <main ref={rootRef} className="mf-lab" data-active-chapter={activeChapter} data-lens={lensMode}>
+    <main
+      ref={rootRef}
+      className="mf-lab"
+      data-active-chapter={activeChapter}
+      data-lens={lensMode}
+      data-trace-outcome={traceOutcome}
+    >
       <a className="mf-skip" href="#mf-proof">Sari la dovada proiectului</a>
 
       <div className="mf-world" aria-hidden="true">
-        <MacroFlowScene progressRef={progressRef} lensMode={lensMode} reducedMotion={reducedMotion} />
+        <MacroFlowScene
+          progressRef={progressRef}
+          lensMode={lensMode}
+          traceStep={traceStep}
+          traceOutcome={traceOutcome}
+          reducedMotion={reducedMotion}
+        />
         <div className="mf-world__grade" />
       </div>
 
@@ -90,7 +198,7 @@ export default function MacroFlowPrototype() {
           <span className="mf-brand__mark" aria-hidden="true"><i /></span>
           <span>Transylvanian Bears</span>
         </Link>
-        <p>Macro flow / spatial draft 01</p>
+        <p>Macro flow / spatial draft 02</p>
         <Link className="mf-index-link" to="/next/work">
           Open index <Waypoints aria-hidden="true" />
         </Link>
@@ -213,8 +321,178 @@ export default function MacroFlowPrototype() {
             devine traseul prin sistemul Aegis.
           </p>
           <div className="mf-next-beat">
-            <span>Următorul prototip</span>
-            <strong>Trust passage / Aegis</strong>
+            <span>Urmează</span>
+            <strong>Un eveniment prin sistem</strong>
+          </div>
+        </div>
+      </section>
+
+      <section id="mf-access" className="mf-beat mf-beat--access" data-chapter="access">
+        <div className="mf-trace-knot">
+          <div className="mf-trace-knot__heading">
+            <p className="mf-kicker">Protect / Aegis transaction</p>
+            <h2>Un cod scurt. Un singur drum prin sistem.</h2>
+            <p>
+              Tokenul este emis în backend, prezentat la poartă și consumat într-o tranzacție
+              atomică. Condiția se schimbă; regula rămâne inspectabilă.
+            </p>
+          </div>
+
+          <div className="mf-scenario-control" aria-label="Condiția tokenului">
+            {TRACE_SCENARIOS.map((scenario) => (
+              <button
+                key={scenario.id}
+                type="button"
+                data-active={traceScenario === scenario.id || undefined}
+                aria-pressed={traceScenario === scenario.id}
+                onClick={() => selectTraceScenario(scenario.id)}
+              >
+                <strong>{scenario.label}</strong>
+                <small>{scenario.detail}</small>
+              </button>
+            ))}
+          </div>
+
+          <ol className="mf-trace-flow" aria-label="Fluxul de validare Aegis">
+            {TRACE_STEPS.map((step, index) => (
+              <li
+                key={step}
+                data-current={traceOutcome === 'running' && traceStep === index || undefined}
+                data-complete={traceStep >= index && traceOutcome !== 'idle' || undefined}
+              >
+                <span>0{index + 1}</span>
+                <strong>{step}</strong>
+                {traceStep > index || traceFinished && traceStep === index
+                  ? <Check aria-hidden="true" />
+                  : <i aria-hidden="true" />}
+              </li>
+            ))}
+          </ol>
+
+          <div className="mf-trace-command">
+            <div className="mf-trace-result" role="status" aria-live="polite" data-finished={traceFinished || undefined}>
+              {traceFinished
+                ? traceAllowed ? <ShieldCheck aria-hidden="true" /> : <CircleX aria-hidden="true" />
+                : <ScanLine aria-hidden="true" />}
+              <span><small>Transaction result</small><strong>{traceResult}</strong></span>
+            </div>
+            <div className="mf-trace-actions">
+              <button
+                className="mf-reset-trace"
+                type="button"
+                aria-label="Resetează trace-ul"
+                title="Resetează trace-ul"
+                onClick={resetTrace}
+              >
+                <RefreshCcw aria-hidden="true" />
+              </button>
+              <button
+                className="mf-run-trace"
+                type="button"
+                disabled={traceOutcome === 'running'}
+                onClick={runTrace}
+              >
+                <Play aria-hidden="true" />
+                {traceOutcome === 'running' ? 'Tracing' : 'Rulează trace-ul'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="mf-schoolmate" className="mf-trust-clearing" data-chapter="schoolmate">
+        <div className="mf-trust-clearing__inner">
+          <header className="mf-trust-head">
+            <p className="mf-kicker">Editorial clearing / school software</p>
+            <p>Connected context / separate builds</p>
+          </header>
+
+          <div className="mf-trust-intro">
+            <span>02 produse</span>
+            <h2>Același context.<br />Două sisteme distincte.</h2>
+            <p>
+              Aegis tratează accesul și auditul de la poartă. SchoolMate tratează comunicarea,
+              cererile, orarul și operațiunile dintre rolurile școlii.
+            </p>
+          </div>
+
+          <article className="mf-product mf-product--aegis">
+            <header>
+              <p className="mf-kicker">Aegis / safe access</p>
+              <h3>Aegis</h3>
+              <p>Control de acces cu token QR opac, scurt, single-use și validare server-side.</p>
+            </header>
+            <figure>
+              <img src="/assets/projects/aegis.webp" alt="Ecranul QR de acces din Aegis și marca proiectului" />
+              <figcaption>Build capture / student access surface</figcaption>
+            </figure>
+            <dl>
+              <div><dt>Token TTL</dt><dd>20s</dd></div>
+              <div><dt>Entropie</dt><dd>256-bit</dd></div>
+              <div><dt>Roluri</dt><dd>5</dd></div>
+            </dl>
+            <div className="mf-product__links">
+              <a href="https://github.com/BosRegele/Aegis" target="_blank" rel="noreferrer">Repository <span aria-hidden="true">↗</span></a>
+              <a href="https://www.jaromania.org/noutati/articole/news/o-noua-editie-a-programului-skills-for-the-future-se-deruleaza-in-bucuresti" target="_blank" rel="noreferrer">Skills for the Future <span aria-hidden="true">↗</span></a>
+            </div>
+          </article>
+
+          <div className="mf-product-relation">
+            <span>Aegis</span>
+            <i aria-hidden="true" />
+            <strong>Context comun, nu același produs</strong>
+            <i aria-hidden="true" />
+            <span>SchoolMate</span>
+          </div>
+
+          <article className="mf-product mf-product--schoolmate">
+            <header>
+              <p className="mf-kicker">SchoolMate / school operations</p>
+              <h3>SchoolMate</h3>
+              <p>
+                Anunțuri, cereri, orare și administrare într-un build Flutter + Firebase pentru
+                elevi, profesori, părinți, secretariat și poartă.
+              </p>
+            </header>
+            <figure>
+              <img src="/assets/projects/schoolmate.webp" alt="Portalul de secretariat SchoolMate cu lista de anunțuri" />
+              <figcaption>Live portal capture / secretariat surface</figcaption>
+            </figure>
+            <ul className="mf-product-flows">
+              <li><span>01</span> Anunțuri și oportunități</li>
+              <li><span>02</span> Cereri și aprobări</li>
+              <li><span>03</span> Orare și roluri</li>
+              <li><span>04</span> Audit la poartă</li>
+            </ul>
+            <div className="mf-product__links">
+              <a href="https://schoolmate-portal.web.app/" target="_blank" rel="noreferrer">Portal live <span aria-hidden="true">↗</span></a>
+              <a href="https://www.youtube.com/watch?v=wNU1WhSMBKU" target="_blank" rel="noreferrer">Demo video <span aria-hidden="true">↗</span></a>
+              <a href="https://github.com/calinnedelcu/SchoolMate-final" target="_blank" rel="noreferrer">Repository <span aria-hidden="true">↗</span></a>
+            </div>
+          </article>
+
+          <figure className="mf-award-evidence">
+            <img src="/assets/achievements/aegis-skills-future-2026.webp" alt="Participanți la finala Skills for the Future 2026" />
+            <figcaption>
+              <span>Result / Aegis</span>
+              <strong>Locul 2 național</strong>
+              <small>Skills for the Future 2026 / DB Global Technology × Junior Achievement România</small>
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section id="mf-descent" className="mf-beat mf-beat--descent" data-chapter="descent">
+        <div className="mf-copy mf-copy--descent">
+          <p className="mf-kicker">Continuity rule / Aegis → The Buried Hands</p>
+          <h2>Regula devine lume.</h2>
+          <p>
+            Planul validat se pliază în straturi minerale. În următorul capitol, protecția nu mai
+            este o permisiune de acces; devine regula spațiului prin care trebuie să supraviețuiești.
+          </p>
+          <div className="mf-next-beat">
+            <span>Următorul milestone</span>
+            <strong>Rule Descent / The Buried Hands</strong>
           </div>
         </div>
       </section>
