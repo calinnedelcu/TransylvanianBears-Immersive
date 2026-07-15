@@ -10,6 +10,7 @@ type MacroFlowSceneProps = {
   lensMode: MacroLensMode;
   traceStep: number;
   traceOutcome: MacroTraceOutcome;
+  buriedDiscoveries: number;
   reducedMotion: boolean;
 };
 
@@ -24,7 +25,12 @@ const CAMERA_PATH = new THREE.CatmullRomCurve3([
   new THREE.Vector3(1.8, 4.6, -71),
   new THREE.Vector3(-1.5, 4.9, -84),
   new THREE.Vector3(0, 7.2, -99),
+  new THREE.Vector3(1.4, 4.8, -112),
+  new THREE.Vector3(0, 3.8, -128),
 ]);
+
+const LEGACY_WORLD_END = 0.8;
+const LEGACY_CAMERA_END = 9 / 11;
 
 function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
@@ -39,13 +45,25 @@ function smooth(value: number) {
   return clamped * clamped * (3 - 2 * clamped);
 }
 
-function cameraProgress(progress: number) {
+function legacyCameraProgress(progress: number) {
   if (progress < 0.36) return range(progress, 0, 0.36) * 0.64;
   if (progress < 0.49) return 0.64 + range(progress, 0.36, 0.49) * 0.025;
   if (progress < 0.62) return 0.665 + range(progress, 0.49, 0.62) * 0.12;
   if (progress < 0.75) return 0.785 + range(progress, 0.62, 0.75) * 0.14;
   if (progress < 0.9) return 0.925 + range(progress, 0.75, 0.9) * 0.02;
   return 0.945 + range(progress, 0.9, 1) * 0.055;
+}
+
+function cameraProgress(progress: number) {
+  if (progress < LEGACY_WORLD_END) {
+    return legacyCameraProgress(progress / LEGACY_WORLD_END) * LEGACY_CAMERA_END;
+  }
+  return LEGACY_CAMERA_END
+    + smooth(range(progress, LEGACY_WORLD_END, 0.92)) * (1 - LEGACY_CAMERA_END);
+}
+
+function legacyProgress(progress: number) {
+  return clamp01(progress / LEGACY_WORLD_END);
 }
 
 function CameraDirector({
@@ -78,7 +96,7 @@ function Aperture({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>) {
   const haloRef = useRef<THREE.Group>(null);
 
   useFrame((_, delta) => {
-    const opening = smooth(range(progressRef.current, 0.055, 0.22));
+    const opening = smooth(range(legacyProgress(progressRef.current), 0.055, 0.22));
     bladeRefs.current.forEach((blade, index) => {
       if (!blade) return;
       const angle = (index / 6) * Math.PI * 2;
@@ -229,7 +247,7 @@ function SignalBeads({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>) 
   const refs = useRef<Array<THREE.Mesh | null>>([]);
 
   useFrame(() => {
-    const reveal = range(progressRef.current, 0.72, 0.96);
+    const reveal = range(legacyProgress(progressRef.current), 0.72, 0.96);
     refs.current.forEach((mesh, index) => {
       if (!mesh) return;
       const material = mesh.material as THREE.MeshStandardMaterial;
@@ -284,7 +302,7 @@ function AegisPassage({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>)
 
   useFrame(() => {
     if (!rootRef.current) return;
-    const reveal = smooth(range(progressRef.current, 0.7, 0.9));
+    const reveal = smooth(range(legacyProgress(progressRef.current), 0.7, 0.9));
     rootRef.current.position.y = -3.8 + reveal * 3.8;
   });
 
@@ -358,7 +376,7 @@ function AccessTrace({
   const target = useMemo(() => new THREE.Vector3(), []);
 
   useFrame((_, delta) => {
-    const reveal = smooth(range(progressRef.current, 0.58, 0.68));
+    const reveal = smooth(range(legacyProgress(progressRef.current), 0.58, 0.68));
     if (rootRef.current) rootRef.current.position.y = -4 + reveal * 4;
     if (!tokenRef.current) return;
 
@@ -422,11 +440,11 @@ function DescentLayers({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>
   const refs = useRef<Array<THREE.Mesh | null>>([]);
 
   useFrame(() => {
-    const fold = smooth(range(progressRef.current, 0.88, 1));
+    const fold = smooth(range(legacyProgress(progressRef.current), 0.88, 1));
     refs.current.forEach((layer, index) => {
       if (!layer) return;
       layer.rotation.x = -Math.PI / 2 + fold * (0.2 + index * 0.075);
-      layer.position.y = -0.2 - index * 0.16 + fold * index * 0.18;
+      layer.position.y = -7 - index * 0.16 + fold * (6.8 + index * 0.18);
       layer.position.z = -96 - index * 1.35;
     });
   });
@@ -449,7 +467,73 @@ function DescentLayers({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>
   );
 }
 
-function World({ progressRef, lensMode, traceStep, traceOutcome, reducedMotion }: MacroFlowSceneProps) {
+const CHAMBER_DEPTHS = [-108, -114, -120, -126];
+
+function BuriedChamber({
+  progressRef,
+  buriedDiscoveries,
+}: Pick<MacroFlowSceneProps, 'progressRef' | 'buriedDiscoveries'>) {
+  const rootRef = useRef<THREE.Group>(null);
+  const lampRefs = useRef<Array<THREE.MeshStandardMaterial | null>>([]);
+
+  useFrame((_, delta) => {
+    const reveal = smooth(range(progressRef.current, 0.77, 0.88));
+    if (rootRef.current) {
+      rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, -9 + reveal * 9, 5, delta);
+    }
+    lampRefs.current.forEach((material, index) => {
+      if (!material) return;
+      material.emissiveIntensity = 1.2 + reveal * 2.4 + (index < buriedDiscoveries ? 1.8 : 0);
+    });
+  });
+
+  return (
+    <group ref={rootRef}>
+      {CHAMBER_DEPTHS.map((z, index) => {
+        const width = 8.8 + index * 0.55;
+        return (
+          <group key={z} position={[Math.sin(index * 0.8) * 0.35, 0, z]}>
+            <mesh position={[-width / 2, 2.8, 0]}>
+              <boxGeometry args={[0.82, 5.6, 0.82]} />
+              <meshStandardMaterial color="#33251f" roughness={0.92} />
+            </mesh>
+            <mesh position={[width / 2, 2.8, 0]}>
+              <boxGeometry args={[0.82, 5.6, 0.82]} />
+              <meshStandardMaterial color="#33251f" roughness={0.92} />
+            </mesh>
+            <mesh position={[0, 5.7, 0]}>
+              <boxGeometry args={[width + 0.8, 0.62, 0.9]} />
+              <meshStandardMaterial color="#403027" roughness={0.88} />
+            </mesh>
+            <mesh position={[index % 2 === 0 ? -2.15 : 2.15, 2.35, 0.26]}>
+              <octahedronGeometry args={[0.22, 0]} />
+              <meshStandardMaterial
+                ref={(material) => { lampRefs.current[index] = material; }}
+                color="#e7a54d"
+                emissive="#ff9b38"
+                emissiveIntensity={1.2}
+              />
+            </mesh>
+          </group>
+        );
+      })}
+      <mesh position={[0, 0.02, -120]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[12, 34]} />
+        <meshStandardMaterial color="#1b1412" roughness={0.98} />
+      </mesh>
+      <mesh position={[0, 0.46, -128]}>
+        <cylinderGeometry args={[2.6, 3.1, 0.9, 18]} />
+        <meshStandardMaterial color="#29201c" roughness={0.86} />
+      </mesh>
+      <mesh position={[0, 0.94, -128]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[2.3, 32]} />
+        <meshStandardMaterial color="#66733c" emissive="#778641" emissiveIntensity={0.7 + buriedDiscoveries * 0.3} />
+      </mesh>
+    </group>
+  );
+}
+
+function World({ progressRef, lensMode, traceStep, traceOutcome, buriedDiscoveries, reducedMotion }: MacroFlowSceneProps) {
   return (
     <>
       <color attach="background" args={['#070a0b']} />
@@ -460,6 +544,7 @@ function World({ progressRef, lensMode, traceStep, traceOutcome, reducedMotion }
       <pointLight position={[0, 5, -30]} intensity={22} distance={16} color="#6fd8d6" />
       <pointLight position={[0, 5, -54]} intensity={18} distance={18} color="#c0a66b" />
       <pointLight position={[0, 5, -79]} intensity={24} distance={22} color="#75dcda" />
+      <pointLight position={[0, 4, -120]} intensity={30} distance={28} color="#d88538" />
 
       <CameraDirector progressRef={progressRef} reducedMotion={reducedMotion} />
       <Aperture progressRef={progressRef} />
@@ -473,9 +558,10 @@ function World({ progressRef, lensMode, traceStep, traceOutcome, reducedMotion }
         traceOutcome={traceOutcome}
       />
       <DescentLayers progressRef={progressRef} />
+      <BuriedChamber progressRef={progressRef} buriedDiscoveries={buriedDiscoveries} />
 
-      <mesh position={[0, -0.08, -42]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[36, 140]} />
+      <mesh position={[0, -0.08, -56]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[36, 190]} />
         <meshStandardMaterial color="#101516" roughness={0.98} />
       </mesh>
     </>
