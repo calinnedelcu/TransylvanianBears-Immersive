@@ -14,19 +14,17 @@ import {
   Waypoints,
   Wind,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { usePrefersReducedMotion } from '../../../hooks/usePrefersReducedMotion';
 import { useGreenfieldMode } from '../../hooks/useGreenfieldMode';
-import {
-  MacroFlowScene,
-  type MacroLensMode,
-  type MacroTraceOutcome,
-} from './MacroFlowScene';
+import type { MacroLensMode, MacroTraceOutcome } from './MacroFlowScene';
 import InfectInterlude from './InfectInterlude';
 import ResearchCrossing from './ResearchCrossing';
 import EvidenceWeave from './EvidenceWeave';
 import './macro-flow.css';
+
+const MacroFlowScene = lazy(() => import('./MacroFlowScene').then((module) => ({ default: module.MacroFlowScene })));
 
 type MacroChapter =
   | 'threshold'
@@ -133,7 +131,11 @@ export default function MacroFlowPrototype() {
   const [buriedRules, setBuriedRules] = useState<Set<BuriedRule>>(() => new Set());
   const [activeBuriedRule, setActiveBuriedRule] = useState<BuriedRule>('oil');
 
-  useGreenfieldMode('Macro Flow Lab');
+  useGreenfieldMode({
+    title: 'Transylvanian Bears — Produse, jocuri și cercetare aplicată',
+    description: 'O experiență interactivă despre cele șapte proiecte construite de Transylvanian Bears: software școlar, jocuri, machine learning și cercetare.',
+    absoluteTitle: true,
+  });
 
   const clearTraceTimers = useCallback(() => {
     traceTimersRef.current.forEach((timer) => window.clearTimeout(timer));
@@ -266,14 +268,16 @@ export default function MacroFlowPrototype() {
 
       <div className="mf-world" aria-hidden="true">
         {macroWorldActive ? (
-          <MacroFlowScene
-            progressRef={progressRef}
-            lensMode={lensMode}
-            traceStep={traceStep}
-            traceOutcome={traceOutcome}
-            buriedDiscoveries={buriedRules.size}
-            reducedMotion={reducedMotion}
-          />
+          <Suspense fallback={<div className="mf-canvas-fallback" aria-hidden="true" />}>
+            <MacroFlowScene
+              progressRef={progressRef}
+              lensMode={lensMode}
+              traceStep={traceStep}
+              traceOutcome={traceOutcome}
+              buriedDiscoveries={buriedRules.size}
+              reducedMotion={reducedMotion}
+            />
+          </Suspense>
         ) : null}
         <div className="mf-world__grade" />
       </div>
@@ -283,9 +287,9 @@ export default function MacroFlowPrototype() {
           <span className="mf-brand__mark" aria-hidden="true"><i /></span>
           <span>Transylvanian Bears</span>
         </Link>
-        <p>Macro flow / spatial draft 02</p>
-        <Link className="mf-index-link" to="/next/work">
-          Open index <Waypoints aria-hidden="true" />
+        <p>Interactive expedition / 16 chapters</p>
+        <Link className="mf-index-link" to="/work">
+          Open work index <Waypoints aria-hidden="true" />
         </Link>
       </header>
 
@@ -369,7 +373,7 @@ export default function MacroFlowPrototype() {
           </div>
 
           <figure className="mf-proof-media">
-            <img src="/assets/projects/project-nexus.webp" alt="Detecții aeriene Project Nexus într-o intersecție reală" />
+            <img src="/assets/projects/project-nexus.webp" alt="Detecții aeriene Project Nexus într-o intersecție reală" width="589" height="504" loading="lazy" decoding="async" />
             <figcaption>Real-world validation frame / source material</figcaption>
           </figure>
 
@@ -508,7 +512,7 @@ export default function MacroFlowPrototype() {
               <p>Control de acces cu token QR opac, scurt, single-use și validare server-side.</p>
             </header>
             <figure>
-              <img src="/assets/projects/aegis.webp" alt="Ecranul QR de acces din Aegis și marca proiectului" />
+              <img src="/assets/projects/aegis.webp" alt="Ecranul QR de acces din Aegis și marca proiectului" width="851" height="656" loading="lazy" decoding="async" />
               <figcaption>Build capture / student access surface</figcaption>
             </figure>
             <dl>
@@ -540,7 +544,7 @@ export default function MacroFlowPrototype() {
               </p>
             </header>
             <figure>
-              <img src="/assets/projects/schoolmate.webp" alt="Portalul de secretariat SchoolMate cu lista de anunțuri" />
+              <img src="/assets/projects/schoolmate.webp" alt="Portalul de secretariat SchoolMate cu lista de anunțuri" width="1519" height="890" loading="lazy" decoding="async" />
               <figcaption>Live portal capture / secretariat surface</figcaption>
             </figure>
             <ul className="mf-product-flows">
@@ -557,7 +561,7 @@ export default function MacroFlowPrototype() {
           </article>
 
           <figure className="mf-award-evidence">
-            <img src="/assets/achievements/aegis-skills-future-2026.webp" alt="Participanți la finala Skills for the Future 2026" />
+            <img src="/assets/achievements/aegis-skills-future-2026.webp" alt="Participanți la finala Skills for the Future 2026" width="1600" height="1200" loading="lazy" decoding="async" />
             <figcaption>
               <span>Result / Aegis</span>
               <strong>Locul 2 național</strong>
@@ -590,11 +594,15 @@ export default function MacroFlowPrototype() {
         >
           <img
             className="mf-lamp-chamber__base"
-            src="/assets/projects/buried-hands/mechanism.png"
+            src="/assets/projects/buried-hands/mechanism.webp"
             alt="Mecanism cu scripeți, lampă și vas pentru mercur în The Buried Hands"
+            width="1916"
+            height="1004"
+            loading="lazy"
+            decoding="async"
           />
           <div className="mf-lamp-chamber__reveal" aria-hidden="true">
-            <img src="/assets/projects/buried-hands/mechanism.png" alt="" />
+            <img src="/assets/projects/buried-hands/mechanism.webp" alt="" width="1916" height="1004" loading="lazy" decoding="async" />
           </div>
           <div className="mf-lamp-chamber__shade" aria-hidden="true" />
 
@@ -659,15 +667,15 @@ export default function MacroFlowPrototype() {
 
           <div className="mf-gameplay-strip">
             <figure>
-              <img src="/assets/projects/buried-hands/guards.png" alt="Gardieni într-o sală slab luminată din The Buried Hands" />
+              <img src="/assets/projects/buried-hands/guards.webp" alt="Gardieni într-o sală slab luminată din The Buried Hands" width="1914" height="995" loading="lazy" decoding="async" />
               <figcaption><span>01 / Sound</span><strong>Gardienii aud pașii.</strong></figcaption>
             </figure>
             <figure>
-              <img src="/assets/projects/buried-hands/mercury.png" alt="Sala cu mercur și mecanisme din The Buried Hands" />
+              <img src="/assets/projects/buried-hands/mercury.webp" alt="Sala cu mercur și mecanisme din The Buried Hands" width="1911" height="1006" loading="lazy" decoding="async" />
               <figcaption><span>02 / Toxicity</span><strong>Mercurul schimbă traseul.</strong></figcaption>
             </figure>
             <figure>
-              <img src="/assets/projects/buried-hands/royal-hall.png" alt="Sala Regală din mausoleu, cu statui și mecanism central" />
+              <img src="/assets/projects/buried-hands/royal-hall.webp" alt="Sala Regală din mausoleu, cu statui și mecanism central" width="1913" height="1001" loading="lazy" decoding="async" />
               <figcaption><span>03 / Scale</span><strong>Regula devine arhitectură.</strong></figcaption>
             </figure>
           </div>

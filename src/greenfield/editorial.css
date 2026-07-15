@@ -1701,6 +1701,118 @@
   }
 }
 
+.gf-not-found {
+  display: grid;
+  min-height: calc(100dvh - 72px);
+  grid-template-columns: minmax(260px, 0.75fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(48px, 8vw, 144px);
+  padding: 112px max(24px, 6vw) 72px;
+}
+
+.gf-not-found__signal {
+  position: relative;
+  display: grid;
+  min-height: min(58vw, 620px);
+  grid-template-columns: 1fr 2px 1fr;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgb(215 208 195 / 0.18);
+  background:
+    linear-gradient(90deg, transparent 49.8%, rgb(105 206 208 / 0.12) 50%, transparent 50.2%),
+    #0d1112;
+}
+
+.gf-not-found__signal::before,
+.gf-not-found__signal::after {
+  content: '';
+  position: absolute;
+  width: 58%;
+  aspect-ratio: 1;
+  border: 1px solid rgb(105 206 208 / 0.22);
+  transform: rotate(45deg);
+}
+
+.gf-not-found__signal::after {
+  width: 34%;
+  border-color: rgb(224 75 54 / 0.42);
+}
+
+.gf-not-found__signal span {
+  position: relative;
+  z-index: 1;
+  font-family: 'Manrope', sans-serif;
+  font-size: clamp(80px, 12vw, 180px);
+  font-weight: 300;
+  line-height: 1;
+}
+
+.gf-not-found__signal i {
+  width: 2px;
+  height: 68%;
+  background: linear-gradient(#69ced0, #e04b36);
+}
+
+.gf-not-found > div:last-child {
+  max-width: 690px;
+}
+
+.gf-not-found h1 {
+  margin: 18px 0 24px;
+  font-size: clamp(48px, 6vw, 96px);
+  font-weight: 650;
+  line-height: 0.94;
+}
+
+.gf-not-found > div:last-child > p:not(.gf-page-kicker) {
+  max-width: 580px;
+  margin: 0;
+  color: rgb(215 208 195 / 0.68);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.gf-not-found nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 42px;
+}
+
+.gf-not-found nav a {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  border: 1px solid rgb(215 208 195 / 0.32);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.gf-not-found nav a:first-child {
+  background: #d7d0c3;
+  color: #090b0c;
+}
+
+.gf-not-found nav svg {
+  width: 17px;
+  height: 17px;
+}
+
+@media (max-width: 800px) {
+  .gf-not-found {
+    grid-template-columns: 1fr;
+    align-content: center;
+    padding-top: 96px;
+  }
+
+  .gf-not-found__signal {
+    min-height: 280px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .gf-page__main {
     animation: none;

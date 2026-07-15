@@ -5,7 +5,10 @@ import { PROJECTS, TEAM } from '../data';
 
 export function TeamIndexPage() {
   return (
-    <GreenfieldPageShell title="Echipa">
+    <GreenfieldPageShell
+      title="Echipa"
+      description="Cei șase membri Transylvanian Bears și contribuțiile lor confirmate în proiectele echipei."
+    >
       <header className="gf-page-hero gf-page-hero--team" data-gf-motion>
         <p className="gf-page-kicker">Team / Six disciplines</p>
         <h1>O echipă se explică prin contribuții, nu prin adjective.</h1>
@@ -33,14 +36,14 @@ export function TeamIndexPage() {
                   <span>Verified team credits</span>
                   {credits.length > 0 ? (
                     credits.map((project) => (
-                      <Link key={project.id} to={`/next/work/${project.slug}`}>{project.shortTitle}</Link>
+                      <Link key={project.id} to={`/work/${project.slug}`}>{project.shortTitle}</Link>
                     ))
                   ) : (
                     <small>Credite în validare</small>
                   )}
                 </div>
               </div>
-              <Link className="gf-team-row__open" to={`/next/team/${member.id}`} aria-label={`Deschide profilul lui ${member.name}`}>
+              <Link className="gf-team-row__open" to={`/team/${member.id}`} aria-label={`Deschide profilul lui ${member.name}`}>
                 <ArrowUpRight aria-hidden="true" />
               </Link>
             </article>

@@ -54,9 +54,9 @@ export default function InfectInterlude() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const pointerRef = useRef({ x: 0.5, y: 0.5, active: false });
-  const visibleRef = useRef(false);
   const [activeStage, setActiveStage] = useState<InfectStage>('gpu');
   const [visited, setVisited] = useState<Set<InfectStage>>(() => new Set(['gpu']));
+  const [nearViewport, setNearViewport] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
 
   const stage = STAGES.find((item) => item.id === activeStage) ?? STAGES[0];
@@ -88,15 +88,15 @@ export default function InfectInterlude() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const observer = new IntersectionObserver(([entry]) => {
-      visibleRef.current = entry.isIntersecting;
-    }, { threshold: 0.05 });
+      setNearViewport(entry.isIntersecting);
+    }, { rootMargin: '100% 0px', threshold: 0 });
     observer.observe(canvas);
     return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !nearViewport) return;
     const context = canvas.getContext('2d', { alpha: false });
     if (!context) return;
 
@@ -155,7 +155,7 @@ export default function InfectInterlude() {
     const handleLoad = () => drawFrame();
     const loop = (time: number) => {
       if (disposed) return;
-      if (visibleRef.current) drawFrame(time);
+      drawFrame(time);
       animationFrame = requestAnimationFrame(loop);
     };
 
@@ -168,7 +168,7 @@ export default function InfectInterlude() {
       image.removeEventListener('load', handleLoad);
       cancelAnimationFrame(animationFrame);
     };
-  }, [reducedMotion, stage.image]);
+  }, [nearViewport, reducedMotion, stage.image]);
 
   return (
     <section id="mf-infect" className="ix-section" data-chapter="infect">

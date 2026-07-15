@@ -147,9 +147,9 @@ export default function EvidenceWeave() {
           <i><b /></i>
         </div>
 
-        <a className="ew-archive-link" href="/next/archive">
+        <Link className="ew-archive-link" to="/archive">
           <ScanSearch aria-hidden="true" /> Open full archive <ExternalLink aria-hidden="true" />
-        </a>
+        </Link>
 
         <div className="ew-map-interface">
           <div>
@@ -202,9 +202,9 @@ export default function EvidenceWeave() {
         <div className="ew-dawn-interface">
           <p>Expedition complete / the website stays open</p>
           <nav aria-label="Continuă explorarea">
-            <Link to="/next/work">Work</Link>
-            <Link to="/next/team">Team</Link>
-            <Link to="/next/archive">Archive</Link>
+            <Link to="/work">Work</Link>
+            <Link to="/team">Team</Link>
+            <Link to="/archive">Archive</Link>
             <a href="mailto:calin.nedelcu08@gmail.com">Contact</a>
           </nav>
         </div>
@@ -225,9 +225,9 @@ export default function EvidenceWeave() {
       <footer className="ew-footer">
         <div><span>Transylvanian Bears</span><strong>Build together.</strong></div>
         <nav aria-label="Footer">
-          <Link to="/next/work">Work</Link>
-          <Link to="/next/team">Team</Link>
-          <Link to="/next/archive">Archive</Link>
+          <Link to="/work">Work</Link>
+          <Link to="/team">Team</Link>
+          <Link to="/archive">Archive</Link>
           <a href="mailto:calin.nedelcu08@gmail.com">calin.nedelcu08@gmail.com</a>
         </nav>
         <p>Romania / 2026</p>

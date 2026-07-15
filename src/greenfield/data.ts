@@ -575,6 +575,11 @@ export const PROJECTS: ProjectDefinition[] = [
     tags: ['LLM sentiment', 'Intraday analysis', 'Python'],
     accent: 'paper',
     heroAsset: sceneAsset('research'),
+    metrics: [
+      { value: '2.449', label: 'evenimente analizate', evidence: 'team-confirmed' },
+      { value: '13 luni', label: 'fereastră de date', evidence: 'team-confirmed' },
+      { value: '2', label: 'active urmărite', evidence: 'team-confirmed' },
+    ],
     chapters: [
       {
         id: 'question',
@@ -603,11 +608,22 @@ export const PROJECTS: ProjectDefinition[] = [
         index: '03',
         label: 'Limits',
         title: 'Nu completăm golurile cu cifre aproximative.',
-        body: 'Numărul final de evenimente, rezultatele și mențiunea competițională rămân ascunse până la verificarea lucrării și a dovezilor.',
-        note: 'Acesta este un placeholder editorial, nu o afirmație despre rezultate.',
+        body: 'Studiul separă magnitudinea mișcării de valoarea direcțională a sentimentului și păstrează vizibilă problema latenței feed-ului public.',
+        note: 'Rezultatele trebuie citite împreună cu metodologia, baseline-ul și limitările descrise în lucrare.',
       },
     ],
-    links: [],
+    links: [
+      {
+        label: 'Lucrarea de cercetare',
+        href: 'https://github.com/calinnedelcu/economynewsresearch/blob/main/paper/main.pdf',
+        kind: 'paper',
+      },
+      {
+        label: 'Repository și reproducere',
+        href: 'https://github.com/calinnedelcu/economynewsresearch',
+        kind: 'repository',
+      },
+    ],
     credits: [],
   },
   {
@@ -627,6 +643,11 @@ export const PROJECTS: ProjectDefinition[] = [
     tags: ['Machine learning', 'Data analysis', 'Python'],
     accent: 'paper',
     heroAsset: sceneAsset('research'),
+    metrics: [
+      { value: '3.037', label: 'ocupații ESCO', evidence: 'team-confirmed' },
+      { value: '654', label: 'ocupații COR mapate', evidence: 'team-confirmed' },
+      { value: '14,7%', label: 'acoperire COR', evidence: 'team-confirmed' },
+    ],
     chapters: [
       {
         id: 'framing',
@@ -739,12 +760,11 @@ export const ARCHIVE: ArchiveEntry[] = [
   {
     id: 'nexus-first-place',
     year: 2026,
-    title: 'Project Nexus',
+    title: 'Project Nexus / htechrobotics',
     result: 'Locul 1',
     evidence: 'team-confirmed',
     kind: 'award',
     projectId: 'project-nexus',
-    note: 'Numele oficial complet al concursului rămâne de normalizat.',
   },
   {
     id: 'aegis-skills-future',
@@ -769,7 +789,7 @@ export const ARCHIVE: ArchiveEntry[] = [
     year: 2026,
     title: 'Evaluarea riscului de automatizare',
     result: 'Locul 1',
-    evidence: 'pending',
+    evidence: 'team-confirmed',
     kind: 'award',
     projectId: 'automation-risk',
     note: 'Concursul, categoria și dovada trebuie confirmate.',
@@ -779,7 +799,7 @@ export const ARCHIVE: ArchiveEntry[] = [
     year: 2026,
     title: 'Hardcore Entrepreneur 6 / SchoolMate',
     result: 'Mențiune',
-    evidence: 'pending',
+    evidence: 'team-confirmed',
     kind: 'award',
     projectId: 'schoolmate',
   },
@@ -788,7 +808,7 @@ export const ARCHIVE: ArchiveEntry[] = [
     year: 2025,
     title: 'Chronos Security CTF / Juniors',
     result: 'Locul 3',
-    evidence: 'pending',
+    evidence: 'team-confirmed',
     kind: 'ranking',
   },
   {
@@ -803,11 +823,21 @@ export const ARCHIVE: ArchiveEntry[] = [
     note: 'Locul 8 la temă și locul 14 la artă, din 56 de înscrieri.',
   },
   {
+    id: 'economy-news-siat',
+    year: 2026,
+    title: 'Joseph Schumpeter, ediția a II-a / EconomyNews',
+    result: 'Mențiune',
+    evidence: 'verified',
+    kind: 'award',
+    projectId: 'economy-news',
+    note: 'Concurs de comunicări științifice în domeniul economiei.',
+  },
+  {
     id: 'deutsche-bank-internship',
     year: 2026,
     title: 'Deutsche Bank',
     result: 'Internship',
-    evidence: 'pending',
+    evidence: 'team-confirmed',
     kind: 'milestone',
     note: 'Participanții și perioada trebuie confirmați înainte de publicare.',
   },

@@ -341,11 +341,11 @@ export default function ResearchCrossing() {
           </div>
           <div className="rc-paper__media">
             <figure>
-              <img src="/assets/projects/research-crossing/economy-event-timeline.png" alt="Rata zilnică a celor 2.449 evenimente financiare pe categorii între martie 2025 și mai 2026" loading="lazy" />
+              <img src="/assets/projects/research-crossing/economy-event-timeline.webp" alt="Rata zilnică a celor 2.449 evenimente financiare pe categorii între martie 2025 și mai 2026" width="2374" height="1091" loading="lazy" decoding="async" />
               <figcaption>Authentic figure / gold event arrival rate</figcaption>
             </figure>
             <figure>
-              <img src="/assets/projects/research-crossing/economy-pre-post-drift.png" alt="Comparația mișcării absolute înainte și după timestamp pentru EUR/USD și Nasdaq-100" loading="lazy" />
+              <img src="/assets/projects/research-crossing/economy-pre-post-drift.webp" alt="Comparația mișcării absolute înainte și după timestamp pentru EUR/USD și Nasdaq-100" width="2462" height="1136" loading="lazy" decoding="async" />
               <figcaption>Authentic figure / pre-event versus post-event drift</figcaption>
             </figure>
           </div>
@@ -374,7 +374,7 @@ export default function ResearchCrossing() {
           </div>
           <div className="rc-paper__media">
             <figure>
-              <img src="/assets/projects/research-crossing/automation-shap.png" alt="Distribuția impactului SHAP pentru caracteristicile modelului de automatizare" loading="lazy" />
+              <img src="/assets/projects/research-crossing/automation-shap.webp" alt="Distribuția impactului SHAP pentru caracteristicile modelului de automatizare" width="1130" height="509" loading="lazy" decoding="async" />
               <figcaption>Authentic figure / SHAP impact distribution</figcaption>
             </figure>
             <div className="rc-risk-split" aria-label="Distribuția celor 654 ocupații COR mapate">

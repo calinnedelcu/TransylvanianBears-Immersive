@@ -21,7 +21,7 @@ export function ProjectCaseStudyPage() {
   const { slug } = useParams();
   const project = slug ? projectBySlug[slug] : undefined;
 
-  if (!project) return <Navigate to="/next/work" replace />;
+  if (!project) return <Navigate to="/work" replace />;
 
   const related = PROJECTS
     .filter((candidate) => candidate.id !== project.id && candidate.facets.some((facet) => project.facets.includes(facet)))
@@ -36,11 +36,15 @@ export function ProjectCaseStudyPage() {
     .filter((item) => item.member);
 
   return (
-    <GreenfieldPageShell title={project.title} tone={project.accent === 'paper' ? 'paper' : 'dark'}>
+    <GreenfieldPageShell
+      title={project.title}
+      description={`${project.summary} Studiu de caz Transylvanian Bears.`}
+      tone={project.accent === 'paper' ? 'paper' : 'dark'}
+    >
       <article className="gf-case" data-tone={project.accent}>
         <header className="gf-case-hero" data-gf-motion>
           <div className="gf-case-hero__copy">
-            <Link className="gf-back-link" to="/next/work">
+            <Link className="gf-back-link" to="/work">
               <ArrowLeft aria-hidden="true" />
               Toate proiectele
             </Link>
@@ -100,7 +104,7 @@ export function ProjectCaseStudyPage() {
               <ol>
                 {credits.map(({ credit, member }) => (
                   <li key={credit.memberId}>
-                    <Link to={`/next/team/${member?.id}`}>{member?.name}</Link>
+                    <Link to={`/team/${member?.id}`}>{member?.name}</Link>
                     <span>{credit.role ?? 'Rol detaliat în validare'}</span>
                   </li>
                 ))}
@@ -127,7 +131,7 @@ export function ProjectCaseStudyPage() {
           <nav className="gf-related" aria-label="Proiecte conexe">
             <p>Proiecte conexe</p>
             {related.map((candidate) => (
-              <Link key={candidate.id} to={`/next/work/${candidate.slug}`}>
+              <Link key={candidate.id} to={`/work/${candidate.slug}`}>
                 <span>{candidate.index}</span>
                 <strong>{candidate.title}</strong>
                 <ArrowUpRight aria-hidden="true" />

@@ -30,7 +30,10 @@ export function WorkIndexPage() {
   const activeProject = visibleProjects.find((project) => project.id === activeId) ?? visibleProjects[0];
 
   return (
-    <GreenfieldPageShell title="Work">
+    <GreenfieldPageShell
+      title="Work"
+      description="Șapte proiecte Transylvanian Bears grupate în jocuri, software școlar, machine learning și cercetare aplicată."
+    >
       <header className="gf-page-hero gf-page-hero--work" data-gf-motion>
         <p className="gf-page-kicker">Work / 2025—2026</p>
         <h1>Sisteme, lumi și cercetare care pot fi inspectate.</h1>
@@ -69,7 +72,7 @@ export function WorkIndexPage() {
             {visibleProjects.map((project) => (
               <li key={project.id} data-gf-motion>
                 <Link
-                  to={`/next/work/${project.slug}`}
+                  to={`/work/${project.slug}`}
                   data-active={activeProject.id === project.id || undefined}
                   onMouseEnter={() => setActiveId(project.id)}
                   onFocus={() => setActiveId(project.id)}

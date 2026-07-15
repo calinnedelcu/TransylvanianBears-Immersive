@@ -1,21 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 
 const FAST_LINKS = [
-  { index: '00', label: 'Story', detail: 'Immersive home', to: '/next' },
-  { index: '01', label: 'Work', detail: '6 case studies', to: '/next/work' },
-  { index: '02', label: 'Echipa', detail: '6 disciplines', to: '/next/team' },
-  { index: '03', label: 'Arhivă', detail: 'Results & evidence', to: '/next/archive' },
-  { index: '04', label: 'Contact', detail: 'Open signal', to: '/next#join' },
+  { index: '00', label: 'Poveste', detail: 'Experiența imersivă', to: '/' },
+  { index: '01', label: 'Work', detail: '7 proiecte / 4 domenii', to: '/work' },
+  { index: '02', label: 'Echipa', detail: '6 contribuții distincte', to: '/team' },
+  { index: '03', label: 'Arhivă', detail: 'Rezultate și surse', to: '/archive' },
+  { index: '04', label: 'Contact', detail: 'Deschide canalul', to: 'mailto:calin.nedelcu08@gmail.com?subject=Transylvanian%20Bears' },
 ] as const;
 
 export function GreenfieldHeader() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const restoreFocusRef = useRef(false);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      if (restoreFocusRef.current) toggleRef.current?.focus();
+      restoreFocusRef.current = false;
+      return;
+    }
+
+    restoreFocusRef.current = true;
 
     const previousOverflow = document.documentElement.style.overflow;
     const inertTargets = Array.from(
@@ -25,7 +34,26 @@ export function GreenfieldHeader() {
     inertTargets.forEach((target) => { target.inert = true; });
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setOpen(false);
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+      const links = Array.from(overlayRef.current?.querySelectorAll<HTMLElement>('a[href]') ?? []);
+      const focusable = [toggleRef.current, ...links].filter((item): item is HTMLElement => Boolean(item));
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!first || !last) return;
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
 
     window.addEventListener('keydown', onKeyDown);
@@ -39,7 +67,7 @@ export function GreenfieldHeader() {
   return (
     <>
       <header className="gf-header" data-menu-open={open || undefined}>
-        <Link className="gf-brand" to="/next" aria-label="Transylvanian Bears, pagina principală" tabIndex={open ? -1 : undefined}>
+        <Link className="gf-brand" to="/" aria-label="Transylvanian Bears, pagina principală" tabIndex={open ? -1 : undefined}>
           <span className="gf-mark" aria-hidden="true">
             <span />
           </span>
@@ -47,12 +75,13 @@ export function GreenfieldHeader() {
         </Link>
 
         <nav className="gf-header__links" aria-label="Navigație principală">
-          <NavLink to="/next/work" tabIndex={open ? -1 : undefined}>Work</NavLink>
-          <NavLink to="/next/team" tabIndex={open ? -1 : undefined}>Echipa</NavLink>
-          <NavLink to="/next/archive" tabIndex={open ? -1 : undefined}>Arhivă</NavLink>
+          <NavLink to="/work" tabIndex={open ? -1 : undefined}>Work</NavLink>
+          <NavLink to="/team" tabIndex={open ? -1 : undefined}>Echipa</NavLink>
+          <NavLink to="/archive" tabIndex={open ? -1 : undefined}>Arhivă</NavLink>
         </nav>
 
         <button
+          ref={toggleRef}
           className="gf-icon-button"
           type="button"
           aria-label={open ? 'Închide navigația rapidă' : 'Deschide navigația rapidă'}
@@ -65,29 +94,43 @@ export function GreenfieldHeader() {
         </button>
       </header>
 
-      <div id="gf-fast-access" className="gf-fast-access" data-open={open || undefined} aria-hidden={!open}>
+      <div
+        ref={overlayRef}
+        id="gf-fast-access"
+        className="gf-fast-access"
+        data-open={open || undefined}
+        aria-hidden={!open}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigație rapidă"
+      >
         <div className="gf-fast-access__head">
-          <p>Fast access</p>
-          <p>{String(FAST_LINKS.length).padStart(2, '0')} destinations</p>
+          <p>Acces rapid</p>
+          <p>{String(FAST_LINKS.length).padStart(2, '0')} destinații</p>
         </div>
         <nav aria-label="Toate destinațiile">
-          {FAST_LINKS.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              data-current={
-                item.to === '/next'
-                  ? location.pathname === '/next' || undefined
-                  : location.pathname.startsWith(item.to.split('#')[0]) || undefined
-              }
-              onClick={() => setOpen(false)}
-              tabIndex={open ? 0 : -1}
-            >
+          {FAST_LINKS.map((item) => {
+            const content = (
+              <>
               <span>{item.index}</span>
               <strong>{item.label}</strong>
               <small>{item.detail}</small>
-            </Link>
-          ))}
+              </>
+            );
+            const sharedProps = {
+              'data-current': item.to === '/'
+                ? location.pathname === '/' || undefined
+                : (!item.to.startsWith('mailto:') && location.pathname.startsWith(item.to)) || undefined,
+              onClick: () => setOpen(false),
+              tabIndex: open ? 0 : -1,
+            };
+
+            return item.to.startsWith('mailto:') ? (
+              <a key={item.to} href={item.to} {...sharedProps}>{content}</a>
+            ) : (
+              <Link key={item.to} to={item.to} {...sharedProps}>{content}</Link>
+            );
+          })}
         </nav>
       </div>
     </>

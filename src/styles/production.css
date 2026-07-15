@@ -1,0 +1,61 @@
+:root {
+  color-scheme: dark;
+  font-family: 'Manrope', system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+html {
+  min-width: 320px;
+  min-height: 100%;
+  scroll-behavior: smooth;
+  scroll-padding-top: 72px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100dvh;
+  margin: 0;
+  overflow-x: hidden;
+  background: #070a0b;
+  color: #e4e1d9;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+img,
+svg,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+::selection {
+  background: #72d9d6;
+  color: #070a0b;
+}
+
+.greenfield-route-loading {
+  min-height: 100dvh;
+  background:
+    linear-gradient(90deg, transparent 49.9%, rgb(114 217 214 / 0.13) 50%, transparent 50.1%),
+    #070a0b;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

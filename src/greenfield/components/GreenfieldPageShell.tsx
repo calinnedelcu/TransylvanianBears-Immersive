@@ -9,13 +9,15 @@ import '../editorial.css';
 type GreenfieldPageShellProps = {
   children: ReactNode;
   title: string;
+  description?: string;
+  noIndex?: boolean;
   tone?: 'dark' | 'paper';
 };
 
-export function GreenfieldPageShell({ children, title, tone = 'dark' }: GreenfieldPageShellProps) {
+export function GreenfieldPageShell({ children, title, description, noIndex, tone = 'dark' }: GreenfieldPageShellProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const reducedMotion = usePrefersReducedMotion();
-  useGreenfieldMode(title);
+  useGreenfieldMode({ title, description, noIndex });
   useEditorialDirector({ rootRef, reducedMotion });
 
   return (

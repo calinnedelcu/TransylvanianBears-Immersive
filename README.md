@@ -1,36 +1,39 @@
 # Transylvanian Bears Experience
 
-Greenfield rebuild of the Transylvanian Bears team website as an immersive,
-browser-native portfolio. The product combines a continuous 3D journey with semantic
-case studies, direct URLs and an editorial project index.
+Immersive portfolio for the Transylvanian Bears team. The public experience combines
+a continuous, scroll-directed 3D expedition with fast editorial routes for projects,
+people and verified results.
 
-## Current stage
+## Public routes
 
-The project is in interaction and architecture prototyping. The current vertical
-slice validates directed camera travel, local free-look, the Lens interaction,
-recovery controls and a factual Project Nexus proof surface.
+- `/` - 16-chapter immersive story
+- `/work` - seven projects grouped across four overlapping domains
+- `/work/:slug` - semantic project case studies
+- `/team` and `/team/:memberId` - team index and member profiles
+- `/archive` - awards, internships and source-backed results
 
-- `/next` - greenfield editorial prototype
-- `/next/work` - multi-facet project index
-- `/next/lab/control-loop` - interaction graybox
-- `/` - legacy website retained during the rebuild
+Old `/next/*` prototype URLs redirect to their final public equivalents.
 
-The seven team projects are organized through overlapping facets:
+## Content model
 
-- Video Games: The Buried Hands, Infect.exe
-- School Software: Aegis, SchoolMate
-- Machine Learning: Project Nexus, EconomyNews, Automation Risk
-- Research Papers: EconomyNews, Automation Risk
+The seven projects use overlapping facets:
+
+- Video games: The Buried Hands, Infect.exe
+- School software: Aegis, SchoolMate
+- Machine learning: Project Nexus, EconomyNews, Automation Risk
+- Research papers: EconomyNews, Automation Risk
 
 Project Nexus is applied machine learning and computer vision, not a research paper.
-EconomyNews and Automation Risk are both ML projects and research papers.
+EconomyNews and Automation Risk are both machine-learning projects and research papers.
 
 ## Architecture
 
-The macro experience uses a continuous braided route, not a permanent hub with
-separate project worlds. Editorial clearings let visitors read, verify sources and
-open full case studies while a persistent index provides direct access to every
-project.
+The home page is a continuous braided route, not a hub of disconnected project worlds.
+Editorial clearings keep text, media, proof and 3D space in the same scene. Direct routes
+remain available for accessibility, search engines and visitors who want to browse.
+
+Three.js is deferred until the immersive scene is requested. Project media is lazy-loaded,
+and the editorial shell ships independently from the 3D runtime.
 
 Key documents:
 
@@ -50,7 +53,8 @@ Production checks:
 ```bash
 npm run lint
 npm run build
+npm audit --omit=dev
 ```
 
-The production build is emitted to `dist/`. Three.js is loaded only for the isolated
-interaction laboratory at this stage.
+The production build is emitted to `dist/` and deployed on Vercel at
+`https://www.transylvanianbears.com`.

@@ -1,206 +1,111 @@
 #!/usr/bin/env node
-/**
- * Compose the Open Graph share image at 1200×630 (Facebook / LinkedIn /
- * Twitter / Slack).
- *
- *   npm run generate:og
- *
- * Layers (bottom → top):
- *   1. Wine gradient base + grain
- *   2. Mountains/forest silhouettes pulled from public/assets/ (faded)
- *   3. Bear mascot, anchored bottom-right
- *   4. Title block, anchored bottom-left, with eyebrow + tagline + brand line
- *   5. Gold corner ornaments + thin border for that tarot-card seal feel
- *
- * Output: public/og-image.jpg (JPEG for smallest size + universal share
- * compatibility — many older crawlers don't accept WebP for OG).
- */
-import { readFile } from 'node:fs/promises';
-import { join, dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(__dirname, '..');
-const ASSETS = join(ROOT, 'public', 'assets');
-const OUT = join(ROOT, 'public', 'og-image.jpg');
-
+const OUT = join(__dirname, '..', 'public', 'og-image.jpg');
 const WIDTH = 1200;
 const HEIGHT = 630;
 
-/** Wine→deep gradient base with grain texture. */
-function backgroundSvg() {
+function node(x, y, color, label, index) {
+  const alignRight = x > 1050;
+  const textX = alignRight ? -29 : 29;
+  const anchor = alignRight ? 'end' : 'start';
   return `
-<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}">
+    <g transform="translate(${x} ${y})">
+      <circle r="18" fill="#0b1012" stroke="${color}" stroke-width="2"/>
+      <circle r="4" fill="${color}"/>
+      <text x="${textX}" y="-3" text-anchor="${anchor}" fill="#e4e1d9" font-family="Arial, sans-serif" font-size="13" font-weight="700">${label}</text>
+      <text x="${textX}" y="13" text-anchor="${anchor}" fill="#77817f" font-family="monospace" font-size="9">${index}</text>
+    </g>`;
+}
+
+function socialCard() {
+  return `
+<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1A0509" />
-      <stop offset="50%" stop-color="#2A0810" />
-      <stop offset="100%" stop-color="#4A0E1F" />
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#070a0b"/>
+      <stop offset="0.58" stop-color="#0b1012"/>
+      <stop offset="1" stop-color="#111719"/>
     </linearGradient>
-    <radialGradient id="moon" cx="22%" cy="32%" r="40%">
-      <stop offset="0%" stop-color="rgba(248,232,208,0.18)" />
-      <stop offset="60%" stop-color="rgba(232,181,71,0.06)" />
-      <stop offset="100%" stop-color="rgba(0,0,0,0)" />
-    </radialGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#72d9d6" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#72d9d6" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#72d9d6" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse">
+      <path d="M34 0H0V34" fill="none" stroke="#e4e1d9" stroke-opacity="0.045" stroke-width="1"/>
+    </pattern>
     <filter id="grain">
-      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/>
-      <feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.35 0"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .12 0"/>
     </filter>
   </defs>
-  <rect width="100%" height="100%" fill="url(#bg)" />
-  <rect width="100%" height="100%" fill="url(#moon)" />
-  <rect width="100%" height="100%" filter="url(#grain)" opacity="0.18" />
-</svg>`.trim();
-}
 
-/** Title block, eyebrow, tagline, and corner ornaments — composed as SVG. */
-function foregroundSvg() {
-  return `
-<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}">
-  <defs>
-    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#E8B547" />
-      <stop offset="50%" stop-color="#F5D78A" />
-      <stop offset="100%" stop-color="#F8E8D0" />
-    </linearGradient>
-  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="664" width="536" height="630" fill="url(#grid)"/>
+  <rect width="1200" height="630" opacity="0.09" filter="url(#grain)"/>
+  <path d="M0 523C226 444 342 548 558 455S918 352 1200 418" fill="none" stroke="#72d9d6" stroke-opacity="0.12"/>
+  <path d="M0 545C228 466 352 570 568 477S930 374 1200 440" fill="none" stroke="#df6553" stroke-opacity="0.1"/>
 
-  <!-- Outer frame: thin gold border with inset offset -->
-  <rect x="32" y="32" width="${WIDTH - 64}" height="${HEIGHT - 64}"
-        fill="none" stroke="url(#gold)" stroke-width="1.2" stroke-opacity="0.55" />
-  <rect x="42" y="42" width="${WIDTH - 84}" height="${HEIGHT - 84}"
-        fill="none" stroke="url(#gold)" stroke-width="0.6" stroke-opacity="0.3" />
+  <g transform="translate(64 54)">
+    <path d="M0 14 9 2l12 4 9-6 9 6 12-4 9 12-5 13 5 13-12 12-12 8H24l-12-8L0 40l5-13Z" fill="#e4e1d9"/>
+    <path d="M17 19 30 11l13 8 3 13-9 11-7-9-7 9-9-11Z" fill="#090d0f"/>
+    <rect x="27" y="27" width="6" height="6" transform="rotate(45 30 30)" fill="#df6553"/>
+  </g>
+  <text x="142" y="78" fill="#e4e1d9" font-family="Arial, sans-serif" font-size="16" font-weight="700">TRANSYLVANIAN BEARS</text>
+  <text x="142" y="99" fill="#77817f" font-family="monospace" font-size="10">C.N.I. TUDOR VIANU / BUCHAREST</text>
 
-  <!-- Corner ornaments (T-fleurons) -->
-  ${[
-    [50, 50, 0],
-    [WIDTH - 50, 50, 90],
-    [WIDTH - 50, HEIGHT - 50, 180],
-    [50, HEIGHT - 50, 270],
-  ]
-    .map(
-      ([cx, cy, rot]) => `
-    <g transform="translate(${cx} ${cy}) rotate(${rot})" stroke="url(#gold)" stroke-width="1.4" stroke-opacity="0.7" fill="none">
-      <line x1="0" y1="0" x2="32" y2="0" />
-      <line x1="0" y1="0" x2="0" y2="32" />
-      <circle cx="0" cy="0" r="3" fill="url(#gold)" stroke="none" />
-    </g>`,
-    )
-    .join('\n')}
-
-  <!-- Eyebrow rule + chip -->
-  <g transform="translate(86 200)">
-    <line x1="0" y1="0" x2="60" y2="0" stroke="url(#gold)" stroke-width="1.5" stroke-opacity="0.85" />
-    <text x="76" y="5" font-family="'JetBrains Mono', 'Courier New', monospace"
-          font-size="20" letter-spacing="6" fill="#E8B547" fill-opacity="0.95">
-      COLEGIUL NAȚIONAL TUDOR VIANU
-    </text>
+  <g transform="translate(64 200)">
+    <text fill="#72d9d6" font-family="monospace" font-size="11">ONE TEAM / SEVEN PROJECTS / FOUR DOMAINS</text>
+    <text y="82" fill="#e4e1d9" font-family="Arial, sans-serif" font-size="74" font-weight="700">WE BUILD</text>
+    <text y="151" fill="#e4e1d9" font-family="Arial, sans-serif" font-size="74" font-weight="700">THE SYSTEM.</text>
+    <text y="201" fill="#929b99" font-family="Arial, sans-serif" font-size="19">Products, games, machine learning and applied research.</text>
+    <g transform="translate(0 246)" font-family="monospace" font-size="10">
+      <rect width="132" height="34" fill="none" stroke="#72d9d6" stroke-opacity="0.58"/>
+      <text x="14" y="22" fill="#72d9d6">OBSERVE</text>
+      <rect x="142" width="132" height="34" fill="none" stroke="#d7b468" stroke-opacity="0.58"/>
+      <text x="156" y="22" fill="#d7b468">PROTECT</text>
+      <rect x="284" width="132" height="34" fill="none" stroke="#df6553" stroke-opacity="0.58"/>
+      <text x="298" y="22" fill="#df6553">IMAGINE</text>
+      <rect x="426" width="132" height="34" fill="none" stroke="#e4e1d9" stroke-opacity="0.4"/>
+      <text x="440" y="22" fill="#e4e1d9">MEASURE</text>
+    </g>
   </g>
 
-  <!-- Title -->
-  <text x="86" y="320" font-family="'Cinzel', serif"
-        font-size="98" font-weight="700" letter-spacing="-2" fill="url(#gold)">
-    TransylvanianBears
-  </text>
-
-  <!-- Tagline -->
-  <text x="86" y="395" font-family="'Manrope', system-ui, sans-serif"
-        font-size="32" font-weight="300" fill="#F8E8D0" fill-opacity="0.85" letter-spacing="0.5">
-    Codăm · Concurăm · Câștigăm
-  </text>
-
-  <!-- Brand stamp bottom-left -->
-  <g transform="translate(86 530)">
-    <line x1="0" y1="-20" x2="40" y2="-20" stroke="url(#gold)" stroke-width="1" stroke-opacity="0.6" />
-    <text x="0" y="0" font-family="'JetBrains Mono', monospace"
-          font-size="14" letter-spacing="3" fill="#E8B547" fill-opacity="0.7">
-      VANATORII DIN CARPATI · TRANSILVANIA
-    </text>
+  <g transform="translate(904 309)">
+    <ellipse rx="238" ry="238" fill="none" stroke="#e4e1d9" stroke-opacity="0.08"/>
+    <ellipse rx="175" ry="175" fill="none" stroke="#72d9d6" stroke-opacity="0.13"/>
+    <path d="M-180 42-72-76 56-118 174-32 115 112-25 157Z" fill="#0d1416" stroke="#e4e1d9" stroke-opacity="0.22"/>
+    <path d="m-72-76 98 36 30-78M26-40 115 112M26-40-25 157M26-40-180 42M26-40 174-32" fill="none" stroke="#72d9d6" stroke-opacity="0.38"/>
+    <path d="M-31-69 30-105 92-68 91 4 29 40-32 4Z" fill="#172124" stroke="#72d9d6" stroke-width="1.5"/>
+    <path d="m-31-69 61 37 62-36M30-32v72" fill="none" stroke="#72d9d6" stroke-opacity="0.5"/>
+    <circle cy="-32" r="12" fill="#72d9d6"/>
+    <circle cy="-32" r="4" fill="#070a0b"/>
+    <path d="M-222-148 215 161" stroke="url(#beam)" stroke-width="18"/>
   </g>
 
-  <!-- Bottom dimming so bear merges into card -->
-  <rect x="0" y="${HEIGHT - 140}" width="${WIDTH}" height="140"
-        fill="url(#fadeBottom)" />
-  <defs>
-    <linearGradient id="fadeBottom" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="rgba(26,5,9,0)" />
-      <stop offset="100%" stop-color="rgba(26,5,9,0.7)" />
-    </linearGradient>
-  </defs>
-</svg>`.trim();
+  <g>
+    <path d="M730 175 818 237M996 135 944 219M1087 232 986 270M1069 403 987 354M916 510 918 385M744 440 832 362M720 298 827 305" fill="none" stroke="#e4e1d9" stroke-opacity="0.15"/>
+    ${node(710, 158, '#72d9d6', 'NEXUS', 'ML / 01')}
+    ${node(1012, 118, '#d7b468', 'AEGIS', 'SCHOOL / 02')}
+    ${node(1103, 220, '#d7b468', 'SCHOOLMATE', 'SCHOOL / 03')}
+    ${node(1092, 422, '#8f8368', 'BURIED HANDS', 'GAME / 04')}
+    ${node(912, 532, '#df6553', 'INFECT.EXE', 'GAME / 05')}
+    ${node(710, 458, '#c4a65f', 'ECONOMYNEWS', 'RESEARCH / 06')}
+    ${node(688, 300, '#c4a65f', 'AUTOMATION RISK', 'RESEARCH / 07')}
+  </g>
+
+  <line x1="64" y1="582" x2="1136" y2="582" stroke="#e4e1d9" stroke-opacity="0.16"/>
+  <text x="64" y="608" fill="#77817f" font-family="monospace" font-size="10">TRANSYLVANIANBEARS.COM</text>
+  <text x="1136" y="608" text-anchor="end" fill="#77817f" font-family="monospace" font-size="10">ROMANIA / 2026</text>
+</svg>`;
 }
 
-async function loadOptional(filename, transform) {
-  try {
-    const buf = await readFile(join(ASSETS, filename));
-    return await transform(sharp(buf));
-  } catch (err) {
-    console.warn(`  ! ${filename} not available — skipping (${err.message})`);
-    return null;
-  }
-}
+await sharp(Buffer.from(socialCard()))
+  .jpeg({ quality: 88, mozjpeg: true })
+  .toFile(OUT);
 
-async function main() {
-  console.log(`Composing ${WIDTH}×${HEIGHT} OG image...`);
-
-  // 1. Base canvas (wine gradient + grain + soft moon)
-  const base = sharp(Buffer.from(backgroundSvg())).png();
-
-  const composites = [];
-
-  // 2. Mountains layer — silhouette behind everything, faded to ~25%
-  const mountains = await loadOptional('mountains-near.png', (img) =>
-    img
-      .resize({ width: WIDTH, height: HEIGHT, fit: 'cover', position: 'bottom' })
-      .modulate({ brightness: 0.7, saturation: 0.6 })
-      .ensureAlpha()
-      .composite([
-        {
-          input: Buffer.from(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}"><rect width="100%" height="100%" fill="rgba(0,0,0,0.65)"/></svg>`,
-          ),
-          blend: 'multiply',
-        },
-      ])
-      .toBuffer(),
-  );
-  if (mountains) composites.push({ input: mountains, top: 0, left: 0, blend: 'over' });
-
-  // 3. Forest silhouette — bottom strip
-  const forest = await loadOptional('forest.png', (img) =>
-    img
-      .resize({ width: WIDTH, height: 320, fit: 'cover', position: 'bottom' })
-      .modulate({ brightness: 0.5 })
-      .toBuffer(),
-  );
-  if (forest)
-    composites.push({ input: forest, top: HEIGHT - 320, left: 0, blend: 'over' });
-
-  // 4. Bear mascot — anchored bottom-right
-  const bear = await loadOptional('bear-mascot.png', (img) =>
-    img.resize({ width: 460, fit: 'inside' }).toBuffer(),
-  );
-  if (bear)
-    composites.push({ input: bear, top: HEIGHT - 470, left: WIDTH - 480, blend: 'over' });
-
-  // 5. Foreground SVG (title, frame, ornaments)
-  composites.push({
-    input: Buffer.from(foregroundSvg()),
-    top: 0,
-    left: 0,
-    blend: 'over',
-  });
-
-  await base
-    .composite(composites)
-    .jpeg({ quality: 86, mozjpeg: true })
-    .toFile(OUT);
-
-  console.log(`✓ Wrote ${OUT}`);
-}
-
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+console.log(`Wrote ${OUT}`);

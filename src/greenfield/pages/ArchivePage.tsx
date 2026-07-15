@@ -22,10 +22,19 @@ const EVIDENCE_LABEL = {
 
 export function ArchivePage() {
   const [filter, setFilter] = useState<ArchiveFilter>('all');
-  const entries = useMemo(() => ARCHIVE.filter((entry) => filter === 'all' || entry.kind === filter), [filter]);
+  const entries = useMemo(
+    () => ARCHIVE
+      .filter((entry) => filter === 'all' || entry.kind === filter)
+      .sort((a, b) => b.year - a.year),
+    [filter],
+  );
 
   return (
-    <GreenfieldPageShell title="Arhivă" tone="paper">
+    <GreenfieldPageShell
+      title="Arhivă"
+      description="Premii, clasări și milestone-uri Transylvanian Bears, legate de proiectele și dovezile care le susțin."
+      tone="paper"
+    >
       <header className="gf-page-hero gf-page-hero--archive" data-gf-motion>
         <p className="gf-page-kicker">Archive / Evidence ledger</p>
         <h1>Un rezultat fără context este doar o cifră.</h1>
@@ -77,7 +86,7 @@ export function ArchivePage() {
             return (
               <li key={entry.id} data-gf-motion>
                 {project ? (
-                  <Link to={`/next/work/${project.slug}`}>{content}</Link>
+                  <Link to={`/work/${project.slug}`}>{content}</Link>
                 ) : entry.href ? (
                   <a href={entry.href} target="_blank" rel="noreferrer">{content}</a>
                 ) : (

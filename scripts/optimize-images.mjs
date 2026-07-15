@@ -9,7 +9,7 @@
  * still resolve. Components reference the `.webp` directly when modern
  * browsers are the only target.
  */
-import { readdir, stat, mkdir } from 'node:fs/promises';
+import { readdir, stat, mkdir, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -52,6 +52,10 @@ async function convertOne(pngPath) {
     .webp({ quality: QUALITY, effort: 5, smartSubsample: true })
     .toFile(webpPath);
   const after = (await stat(webpPath)).size;
+  if (after >= before) {
+    await unlink(webpPath);
+    return { pngPath, status: 'larger', before, after };
+  }
   return { pngPath, webpPath, status: 'ok', before, after };
 }
 
@@ -81,6 +85,11 @@ async function main() {
     if (result.status === 'skip') {
       skipped += 1;
       console.log(`  · skip   ${rel}`);
+      continue;
+    }
+    if (result.status === 'larger') {
+      skipped += 1;
+      console.log(`  · keep   ${rel}  PNG is smaller (${fmtBytes(result.before)} vs ${fmtBytes(result.after)})`);
       continue;
     }
     converted += 1;

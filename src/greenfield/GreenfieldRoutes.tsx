@@ -1,41 +1,59 @@
-import { lazy, Suspense } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
-import { GreenfieldApp } from './GreenfieldApp';
-import { ArchivePage } from './pages/ArchivePage';
-import { MemberProfilePage } from './pages/MemberProfilePage';
-import { ProjectCaseStudyPage } from './pages/ProjectCaseStudyPage';
-import { TeamIndexPage } from './pages/TeamIndexPage';
-import { WorkIndexPage } from './pages/WorkIndexPage';
+import { lazy, Suspense, type ReactNode } from 'react';
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 
-const ControlLoopPrototype = lazy(() => import('./lab/control-loop/ControlLoopPrototype'));
-const MacroFlowPrototype = lazy(() => import('./lab/macro-flow/MacroFlowPrototype'));
+const ImmersiveStory = lazy(() => import('./lab/macro-flow/MacroFlowPrototype'));
+const ArchivePage = lazy(() => import('./pages/ArchivePage').then((module) => ({ default: module.ArchivePage })));
+const MemberProfilePage = lazy(() => import('./pages/MemberProfilePage').then((module) => ({ default: module.MemberProfilePage })));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })));
+const ProjectCaseStudyPage = lazy(() => import('./pages/ProjectCaseStudyPage').then((module) => ({ default: module.ProjectCaseStudyPage })));
+const TeamIndexPage = lazy(() => import('./pages/TeamIndexPage').then((module) => ({ default: module.TeamIndexPage })));
+const WorkIndexPage = lazy(() => import('./pages/WorkIndexPage').then((module) => ({ default: module.WorkIndexPage })));
+
+function PageFallback() {
+  return <div className="greenfield-route-loading" aria-label="Se încarcă" />;
+}
+
+function DeferredPage({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<PageFallback />}>{children}</Suspense>;
+}
+
+function NextRouteRedirect() {
+  const location = useLocation();
+  const suffix = location.pathname.replace(/^\/next/, '') || '/';
+  const target = suffix.startsWith('/lab/') ? '/' : suffix;
+  return <Navigate to={`${target}${location.search}${location.hash}`} replace />;
+}
+
+function LegacyMemberRedirect() {
+  const { memberId } = useParams();
+  return <Navigate to={memberId ? `/team/${memberId}` : '/team'} replace />;
+}
 
 export default function GreenfieldRoutes() {
   return (
     <Routes>
-      <Route index element={<GreenfieldApp />} />
-      <Route path="work" element={<WorkIndexPage />} />
-      <Route path="work/:slug" element={<ProjectCaseStudyPage />} />
-      <Route path="team" element={<TeamIndexPage />} />
-      <Route path="team/:memberId" element={<MemberProfilePage />} />
-      <Route path="archive" element={<ArchivePage />} />
       <Route
-        path="lab/control-loop"
+        index
         element={
-          <Suspense fallback={<div className="greenfield-route-loading" aria-label="Se incarca" />}>
-            <ControlLoopPrototype />
+          <Suspense fallback={<PageFallback />}>
+            <ImmersiveStory />
           </Suspense>
         }
       />
-      <Route
-        path="lab/macro-flow"
-        element={
-          <Suspense fallback={<div className="greenfield-route-loading" aria-label="Se incarca" />}>
-            <MacroFlowPrototype />
-          </Suspense>
-        }
-      />
-      <Route path="*" element={<Navigate to="/next" replace />} />
+      <Route path="work" element={<DeferredPage><WorkIndexPage /></DeferredPage>} />
+      <Route path="work/:slug" element={<DeferredPage><ProjectCaseStudyPage /></DeferredPage>} />
+      <Route path="team" element={<DeferredPage><TeamIndexPage /></DeferredPage>} />
+      <Route path="team/:memberId" element={<DeferredPage><MemberProfilePage /></DeferredPage>} />
+      <Route path="archive" element={<DeferredPage><ArchivePage /></DeferredPage>} />
+
+      <Route path="next/*" element={<NextRouteRedirect />} />
+      <Route path="proiecte" element={<Navigate to="/work" replace />} />
+      <Route path="premii" element={<Navigate to="/archive" replace />} />
+      <Route path="echipa" element={<Navigate to="/team" replace />} />
+      <Route path="echipa/:memberId" element={<LegacyMemberRedirect />} />
+      <Route path="despre" element={<Navigate to="/" replace />} />
+      <Route path="aplica" element={<Navigate to="/#mf-open-paths" replace />} />
+      <Route path="*" element={<DeferredPage><NotFoundPage /></DeferredPage>} />
     </Routes>
   );
 }
