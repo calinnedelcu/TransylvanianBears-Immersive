@@ -2,12 +2,15 @@ import { Line, PerformanceMonitor, useTexture } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import {
   CITADEL_PROJECTS,
   CITADEL_ROUTES,
   EVIDENCE_ARTIFACTS,
+  OPEN_PATHS,
   type CitadelRoute,
   type EvidenceArtifact,
+  type OpenPath,
 } from './evidenceData';
 
 type EvidenceWeaveSceneProps = {
@@ -16,6 +19,8 @@ type EvidenceWeaveSceneProps = {
   onSelect: (id: EvidenceArtifact['id']) => void;
   activeRoute: CitadelRoute['id'];
   onSelectRoute: (id: CitadelRoute['id']) => void;
+  activeOpenPath: OpenPath['id'];
+  onSelectOpenPath: (id: OpenPath['id']) => void;
   reducedMotion: boolean;
 };
 
@@ -95,6 +100,13 @@ function CameraDirector({ progressRef, reducedMotion }: Pick<EvidenceWeaveSceneP
     new THREE.Vector3(0, 3.2, 13.5),
     new THREE.Vector3(0, 12.4, 4.2),
   ], false, 'catmullrom', 0.32), []);
+  const returnPath = useMemo(() => new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 12.4, 4.2),
+    new THREE.Vector3(0, 10.5, 8.5),
+    new THREE.Vector3(0, 6.4, 15.5),
+    new THREE.Vector3(0, 4.6, 24),
+    new THREE.Vector3(0, 4.1, 31),
+  ], false, 'catmullrom', 0.26), []);
   const target = useMemo(() => new THREE.Vector3(), []);
   const desired = useMemo(() => new THREE.Vector3(), []);
   const look = useMemo(() => new THREE.Vector3(), []);
@@ -102,18 +114,24 @@ function CameraDirector({ progressRef, reducedMotion }: Pick<EvidenceWeaveSceneP
   useFrame((_, delta) => {
     const progress = reducedMotion ? 1 : progressRef.current;
     const mobile = size.width < 760;
-    cameraPath.getPointAt(THREE.MathUtils.clamp(progress, 0, 1), desired);
-    if (mobile) {
+    const returnProgress = THREE.MathUtils.smoothstep(progress, 0.78, 1);
+    if (progress <= 0.78) cameraPath.getPointAt(THREE.MathUtils.clamp(progress / 0.78, 0, 1), desired);
+    else returnPath.getPointAt(returnProgress, desired);
+    if (mobile && progress <= 0.78) {
       desired.x *= 0.42;
       desired.z += 3.2;
+    } else if (mobile) {
+      desired.y += 1.2;
+      desired.z += 2.8;
     }
     const damping = reducedMotion ? 1 : 1 - Math.exp(-delta * 4.8);
     camera.position.lerp(desired, damping);
 
-    if (progress < 0.37) target.set(mobile ? -1.6 : -2.2 * progress, 0.45, 0);
-    else if (progress < 0.64) target.set(mobile ? 3.55 : 2.1, 0.1, 0);
-    else if (progress < 0.82) target.set(-0.2, mobile ? -2.5 : -1.75, 0);
-    else target.set(0, 0, 0);
+    if (progress < 0.29) target.set(mobile ? -1.6 : -2.8 * progress, 0.45, 0);
+    else if (progress < 0.5) target.set(mobile ? 3.55 : 2.1, 0.1, 0);
+    else if (progress < 0.7) target.set(-0.2, mobile ? -2.5 : -1.75, 0);
+    else if (progress < 0.82) target.set(0, 0, 0);
+    else target.set(0, THREE.MathUtils.lerp(0, 1.1, returnProgress), THREE.MathUtils.lerp(0, -3.5, returnProgress));
     look.lerp(target, damping);
     camera.lookAt(look);
   });
@@ -121,7 +139,8 @@ function CameraDirector({ progressRef, reducedMotion }: Pick<EvidenceWeaveSceneP
   return null;
 }
 
-function StarDust() {
+function StarDust({ progressRef }: Pick<EvidenceWeaveSceneProps, 'progressRef'>) {
+  const materialRef = useRef<THREE.PointsMaterial>(null);
   const points = useMemo(() => {
     const values = new Float32Array(420 * 3);
     for (let index = 0; index < 420; index += 1) {
@@ -134,12 +153,18 @@ function StarDust() {
     return values;
   }, []);
 
+  useFrame((_, delta) => {
+    if (!materialRef.current) return;
+    const targetOpacity = 0.36 * (1 - THREE.MathUtils.smoothstep(progressRef.current, 0.88, 0.98));
+    materialRef.current.opacity = THREE.MathUtils.damp(materialRef.current.opacity, targetOpacity, 5, delta);
+  });
+
   return (
     <points>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[points, 3]} />
       </bufferGeometry>
-      <pointsMaterial color="#9cc7c3" size={0.028} transparent opacity={0.36} sizeAttenuation />
+      <pointsMaterial ref={materialRef} color="#9cc7c3" size={0.028} transparent opacity={0.36} sizeAttenuation />
     </points>
   );
 }
@@ -173,7 +198,7 @@ function ArtifactScreen({
     group.lookAt(camera.position);
     group.rotateZ(layout.tilt);
     const mobile = size.width < 760;
-    const mapVisibility = 1 - THREE.MathUtils.smoothstep(progressRef.current, 0.78, 0.91);
+    const mapVisibility = 1 - THREE.MathUtils.smoothstep(progressRef.current, 0.6, 0.72);
     const baseScale = active ? (mobile ? 0.88 : 1.12) : (mobile ? 0.68 : 0.88);
     const targetScale = Math.max(0.001, baseScale * mapVisibility);
     const next = THREE.MathUtils.damp(group.scale.x, targetScale, 6, delta);
@@ -225,7 +250,7 @@ function CitadelPlan({
 
   useFrame((_, delta) => {
     const progress = reducedMotion ? 1 : progressRef.current;
-    const reveal = THREE.MathUtils.smoothstep(progress, 0.81, 0.97);
+    const reveal = THREE.MathUtils.smoothstep(progress, 0.66, 0.79);
     if (groupRef.current) {
       const scale = THREE.MathUtils.damp(groupRef.current.scale.x, Math.max(0.001, reveal), 5, delta);
       groupRef.current.scale.setScalar(scale);
@@ -233,8 +258,8 @@ function CitadelPlan({
     }
     buildingRefs.current.forEach((building, index) => {
       if (!building) return;
-      const delay = index * 0.018;
-      const localReveal = THREE.MathUtils.smoothstep(progress, 0.84 + delay, 0.96 + delay);
+      const delay = index * 0.008;
+      const localReveal = THREE.MathUtils.smoothstep(progress, 0.68 + delay, 0.79 + delay);
       building.scale.z = THREE.MathUtils.damp(building.scale.z, Math.max(0.025, localReveal), 7, delta);
     });
   });
@@ -345,8 +370,8 @@ function Loom({
     const root = rootRef.current;
     if (!root) return;
     const open = THREE.MathUtils.smoothstep(progress, 0.02, 0.18);
-    const flatten = THREE.MathUtils.smoothstep(progress, 0.84, 0.98);
-    const mapAlignment = THREE.MathUtils.smoothstep(progress, 0.76, 0.96);
+    const flatten = THREE.MathUtils.smoothstep(progress, 0.65, 0.78);
+    const mapAlignment = THREE.MathUtils.smoothstep(progress, 0.61, 0.77);
     root.rotation.y = THREE.MathUtils.damp(root.rotation.y, (1 - open) * 1.5, 5, delta);
     root.rotation.x = THREE.MathUtils.damp(root.rotation.x, flatten * -Math.PI / 2, 4, delta);
     root.rotation.z = THREE.MathUtils.damp(root.rotation.z, progress * 0.24, 3, delta);
@@ -455,6 +480,136 @@ function Loom({
   );
 }
 
+function DawnWorld({
+  progressRef,
+  activeOpenPath,
+  onSelectOpenPath,
+  reducedMotion,
+}: Pick<EvidenceWeaveSceneProps, 'progressRef' | 'activeOpenPath' | 'onSelectOpenPath' | 'reducedMotion'>) {
+  const { size } = useThree();
+  const groupRef = useRef<THREE.Group>(null);
+  const warmLightRef = useRef<THREE.DirectionalLight>(null);
+  const terrainMaterialRef = useRef<THREE.MeshStandardMaterial>(null);
+  const sky = useMemo(() => {
+    const nextSky = new Sky();
+    nextSky.scale.setScalar(180);
+    nextSky.visible = false;
+    return nextSky;
+  }, []);
+  const sun = useMemo(() => new THREE.Vector3(), []);
+  const nightFog = useMemo(() => new THREE.Color('#030708'), []);
+  const dawnFog = useMemo(() => new THREE.Color('#9b745c'), []);
+  const terrainNight = useMemo(() => new THREE.Color('#0a1111'), []);
+  const terrainDawn = useMemo(() => new THREE.Color('#243027'), []);
+  const leftRoad = useMemo(() => new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.8, 0, 2.5),
+    new THREE.Vector3(-2.2, 0, 7),
+    new THREE.Vector3(-5.2, 0, 14),
+    new THREE.Vector3(-12, 0, 30),
+  ]), []);
+  const rightRoad = useMemo(() => new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0.8, 0, 2.5),
+    new THREE.Vector3(2.2, 0, 7),
+    new THREE.Vector3(5.2, 0, 14),
+    new THREE.Vector3(12, 0, 30),
+  ]), []);
+  const pathLabels = useMemo(() => OPEN_PATHS.map((path) => (
+    makeMapLabelTexture(path.label, path.detail.toUpperCase(), path.color)
+  )), []);
+  const compact = size.width < 760;
+
+  useEffect(() => () => {
+    pathLabels.forEach((texture) => texture.dispose());
+    sky.geometry.dispose();
+    sky.material.dispose();
+  }, [pathLabels, sky]);
+
+  useFrame(({ scene }, delta) => {
+    const progress = reducedMotion ? 1 : progressRef.current;
+    const reveal = THREE.MathUtils.smoothstep(progress, 0.79, 0.85);
+    const daylight = THREE.MathUtils.smoothstep(progress, 0.87, 1);
+    sky.visible = reveal > 0.01;
+    const uniforms = sky.material.uniforms;
+    uniforms.turbidity.value = THREE.MathUtils.lerp(13, 6.5, daylight);
+    uniforms.rayleigh.value = THREE.MathUtils.lerp(0.35, 2.2, daylight);
+    uniforms.mieCoefficient.value = THREE.MathUtils.lerp(0.014, 0.006, daylight);
+    uniforms.mieDirectionalG.value = 0.82;
+    const elevation = THREE.MathUtils.lerp(-3.5, 7.5, daylight);
+    sun.setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - elevation), THREE.MathUtils.degToRad(198));
+    uniforms.sunPosition.value.copy(sun);
+
+    if (scene.fog instanceof THREE.Fog) {
+      scene.fog.color.lerpColors(nightFog, dawnFog, daylight * 0.82);
+      scene.fog.near = THREE.MathUtils.lerp(15, 18, daylight);
+      scene.fog.far = THREE.MathUtils.lerp(34, 72, daylight);
+    }
+    if (groupRef.current) {
+      groupRef.current.visible = reveal > 0.01;
+      groupRef.current.position.y = THREE.MathUtils.damp(groupRef.current.position.y, THREE.MathUtils.lerp(-1.8, 0, reveal), 5, delta);
+    }
+    if (terrainMaterialRef.current) {
+      terrainMaterialRef.current.color.lerpColors(terrainNight, terrainDawn, daylight);
+    }
+    if (warmLightRef.current) {
+      warmLightRef.current.intensity = THREE.MathUtils.damp(warmLightRef.current.intensity, daylight * 4.8, 4, delta);
+    }
+  });
+
+  return (
+    <>
+      <primitive object={sky} />
+      <directionalLight ref={warmLightRef} position={[-14, 10, 18]} intensity={0} color="#ffd09a" />
+      <group ref={groupRef} visible={false} position={[0, -1.8, 0]}>
+        <mesh position={[0, -0.22, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[90, 90, 1, 1]} />
+          <meshStandardMaterial ref={terrainMaterialRef} color="#0a1111" roughness={1} metalness={0.02} />
+        </mesh>
+
+        <mesh position={[0, -0.04, 0]}>
+          <tubeGeometry args={[leftRoad, 72, 0.075, 8, false]} />
+          <meshStandardMaterial color="#72d9d6" emissive="#3b9b96" emissiveIntensity={0.8} roughness={0.42} />
+        </mesh>
+        <mesh position={[0, -0.04, 0]}>
+          <tubeGeometry args={[rightRoad, 72, 0.075, 8, false]} />
+          <meshStandardMaterial color="#d7b468" emissive="#9d762f" emissiveIntensity={0.72} roughness={0.42} />
+        </mesh>
+
+        {OPEN_PATHS.map((path, index) => {
+          const x = index === 0 ? (compact ? -2.1 : -4.3) : (compact ? 2.1 : 4.3);
+          const active = activeOpenPath === path.id;
+          return (
+            <group
+              key={path.id}
+              position={[x, 0.78, 12]}
+              onClick={(event) => { event.stopPropagation(); onSelectOpenPath(path.id); }}
+            >
+              <mesh position={[0, 0.72, 0]}>
+                <boxGeometry args={[0.12, 2.8, 0.12]} />
+                <meshStandardMaterial color={path.color} emissive={path.color} emissiveIntensity={active ? 1.4 : 0.42} />
+              </mesh>
+              <mesh position={[0, 0.4, 0.08]}>
+                <planeGeometry args={[compact ? 2.9 : 3.5, compact ? 0.76 : 0.88]} />
+                <meshBasicMaterial map={pathLabels[index]} transparent toneMapped={false} />
+              </mesh>
+              <pointLight position={[0, 1, 1.5]} color={path.color} intensity={active ? 8 : 2} distance={7} />
+            </group>
+          );
+        })}
+
+        {[
+          [-18, 3.6, -22, 8], [-10, 4.8, -27, 10], [0, 5.8, -32, 12],
+          [11, 4.2, -26, 9], [20, 3.8, -21, 8],
+        ].map(([x, y, z, radius], index) => (
+          <mesh key={index} position={[x, y - 0.5, z]} rotation={[0, index * 0.5, 0]}>
+            <coneGeometry args={[radius, y * 2.2, 7]} />
+            <meshStandardMaterial color={index % 2 ? '#202522' : '#18201f'} roughness={1} />
+          </mesh>
+        ))}
+      </group>
+    </>
+  );
+}
+
 function World(props: EvidenceWeaveSceneProps) {
   return (
     <>
@@ -466,7 +621,13 @@ function World(props: EvidenceWeaveSceneProps) {
       <pointLight position={[0, 5, -3]} intensity={11} distance={13} color="#c9a85e" />
       <CameraDirector progressRef={props.progressRef} reducedMotion={props.reducedMotion} />
       <Loom {...props} />
-      <StarDust />
+      <DawnWorld
+        progressRef={props.progressRef}
+        activeOpenPath={props.activeOpenPath}
+        onSelectOpenPath={props.onSelectOpenPath}
+        reducedMotion={props.reducedMotion}
+      />
+      <StarDust progressRef={props.progressRef} />
     </>
   );
 }
@@ -478,7 +639,7 @@ export default function EvidenceWeaveScene(props: EvidenceWeaveSceneProps) {
     <Canvas
       className="ew-canvas"
       dpr={dpr}
-      camera={{ fov: 47, near: 0.1, far: 60, position: [0, 0.4, 15.5] }}
+      camera={{ fov: 47, near: 0.1, far: 110, position: [0, 0.4, 15.5] }}
       gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
       fallback={<div className="ew-fallback">Evidence scene unavailable</div>}
     >

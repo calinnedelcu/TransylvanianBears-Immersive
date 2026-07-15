@@ -42,7 +42,9 @@ type MacroChapter =
   | 'infect'
   | 'research'
   | 'evidence-weave'
-  | 'final-return';
+  | 'final-return'
+  | 'open-paths'
+  | 'dawn';
 type TraceScenario = 'valid' | 'expired' | 'used';
 type BuriedRule = 'oil' | 'mechanism' | 'mercury';
 
@@ -61,6 +63,8 @@ const CHAPTERS: Array<{ id: MacroChapter; index: string; label: string }> = [
   { id: 'research', index: '12', label: 'Research crossing' },
   { id: 'evidence-weave', index: '13', label: 'Evidence weave' },
   { id: 'final-return', index: '14', label: 'Final return' },
+  { id: 'open-paths', index: '15', label: 'Open paths' },
+  { id: 'dawn', index: '16', label: 'Dawn' },
 ];
 
 const BURIED_RULES: Array<{
@@ -202,11 +206,13 @@ export default function MacroFlowPrototype() {
     root.style.setProperty('--mf-progress', progress.toFixed(4));
     const chapters = Array.from(root.querySelectorAll<HTMLElement>('[data-chapter]'));
     const focusLine = window.innerHeight * 0.46;
-    const focused = chapters.find((chapter) => {
-      const rect = chapter.getBoundingClientRect();
-      return rect.top <= focusLine && rect.bottom > focusLine;
-    });
-    const nextChapter = (focused?.dataset.chapter as MacroChapter | undefined) ?? 'threshold';
+    const chapterRects = chapters.map((chapter) => ({
+      chapter,
+      rect: chapter.getBoundingClientRect(),
+    }));
+    const focused = chapterRects.find(({ rect }) => rect.top <= focusLine && rect.bottom > focusLine)
+      ?? [...chapterRects].reverse().find(({ rect }) => rect.top <= focusLine);
+    const nextChapter = (focused?.chapter.dataset.chapter as MacroChapter | undefined) ?? 'threshold';
     setActiveChapter((current) => (current === nextChapter ? current : nextChapter));
   }, []);
 
@@ -237,7 +243,9 @@ export default function MacroFlowPrototype() {
   const macroWorldActive = activeChapter !== 'infect'
     && activeChapter !== 'research'
     && activeChapter !== 'evidence-weave'
-    && activeChapter !== 'final-return';
+    && activeChapter !== 'final-return'
+    && activeChapter !== 'open-paths'
+    && activeChapter !== 'dawn';
   const traceResult = traceAllowed
     ? 'ALLOW / token redeemed once'
     : traceOutcome === 'expired'

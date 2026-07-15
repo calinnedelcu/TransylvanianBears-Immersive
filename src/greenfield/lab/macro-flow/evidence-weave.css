@@ -1,8 +1,12 @@
 .ew-section {
   --ew-progress: 0;
+  --ew-final-start: 66%;
+  --ew-open-start: 82%;
+  --ew-dawn-start: 92%;
+  --ew-travel: 100%;
   position: relative;
   z-index: 24;
-  height: 760dvh;
+  height: 1100dvh;
   background: #030708;
   color: #e7e8e0;
 }
@@ -25,12 +29,22 @@
 
 .ew-chapter-sentinel--evidence {
   top: 0;
-  height: 84%;
+  height: var(--ew-final-start);
 }
 
 .ew-chapter-sentinel--return {
-  top: 84%;
-  bottom: 0;
+  top: var(--ew-final-start);
+  height: calc(var(--ew-open-start) - var(--ew-final-start));
+}
+
+.ew-chapter-sentinel--open {
+  top: var(--ew-open-start);
+  height: calc(var(--ew-dawn-start) - var(--ew-open-start));
+}
+
+.ew-chapter-sentinel--dawn {
+  top: var(--ew-dawn-start);
+  height: calc(var(--ew-travel) - var(--ew-dawn-start) + 100dvh);
 }
 
 .ew-stage__canvas,
@@ -373,9 +387,218 @@
   transform: translateY(0);
 }
 
+.ew-open-interface,
+.ew-dawn-interface {
+  position: absolute;
+  z-index: 10;
+  right: 74px;
+  bottom: 28px;
+  left: 32px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(24px);
+  transition: opacity 420ms ease, transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.ew-open-interface {
+  display: grid;
+  min-height: 76px;
+  grid-template-columns: minmax(250px, 1fr) minmax(360px, 1.3fr) auto;
+  align-items: end;
+  gap: 28px;
+  padding-top: 14px;
+  border-top: 1px solid rgb(231 232 224 / 0.3);
+}
+
+.ew-open-interface > div {
+  display: grid;
+  gap: 5px;
+}
+
+.ew-open-interface > div span,
+.ew-open-interface > div p,
+.ew-open-interface nav,
+.ew-open-interface > a,
+.ew-dawn-interface {
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+}
+
+.ew-open-interface > div span {
+  color: #72d9d6;
+  font-size: 8px;
+}
+
+.ew-open-interface > div strong {
+  font-size: 19px;
+}
+
+.ew-open-interface > div p {
+  margin: 0;
+  color: rgb(231 232 224 / 0.5);
+  font-size: 8px;
+}
+
+.ew-open-interface nav {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  border-bottom: 1px solid rgb(231 232 224 / 0.2);
+}
+
+.ew-open-interface nav button {
+  display: grid;
+  min-height: 44px;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 0 13px;
+  border: 0;
+  border-left: 1px solid rgb(231 232 224 / 0.16);
+  background: transparent;
+  color: rgb(231 232 224 / 0.46);
+  cursor: pointer;
+}
+
+.ew-open-interface nav button span,
+.ew-open-interface nav button strong {
+  font-size: 8px;
+  text-align: left;
+}
+
+.ew-open-interface nav button[aria-pressed='true'] {
+  box-shadow: inset 0 -2px #72d9d6;
+  color: #e7e8e0;
+}
+
+.ew-open-interface > a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  color: #72d9d6;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.ew-open-interface > a svg {
+  width: 15px;
+  height: 15px;
+}
+
+.ew-dawn-interface {
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  padding-top: 14px;
+  border-top: 1px solid rgb(231 232 224 / 0.32);
+  color: rgb(231 232 224 / 0.64);
+  font-size: 8px;
+}
+
+.ew-dawn-interface p {
+  margin: 0;
+}
+
+.ew-dawn-interface nav {
+  display: flex;
+  gap: 26px;
+}
+
+.ew-dawn-interface a {
+  color: #e7e8e0;
+}
+
+.ew-section[data-open-ready] .ew-map-interface {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(20px);
+}
+
+.ew-section[data-open-ready] .ew-open-interface {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.ew-section[data-dawn-ready] .ew-open-interface {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(20px);
+}
+
+.ew-section[data-dawn-ready] .ew-dawn-interface {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.ew-section[data-dawn-ready] .ew-stage__grade {
+  background:
+    linear-gradient(180deg, rgb(5 8 8 / 0.48), transparent 31%, transparent 72%, rgb(8 12 11 / 0.6)),
+    linear-gradient(90deg, rgb(4 8 8 / 0.5), transparent 40%, transparent 76%, rgb(4 8 8 / 0.22));
+}
+
+.ew-footer {
+  position: relative;
+  z-index: 25;
+  display: grid;
+  min-height: 68dvh;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: 1fr auto;
+  align-items: end;
+  gap: 42px;
+  padding: 12vh 5vw 44px;
+  border-top: 1px solid rgb(16 23 21 / 0.18);
+  background: #c7d0c3;
+  color: #101715;
+}
+
+.ew-footer > div {
+  align-self: center;
+}
+
+.ew-footer > div span {
+  display: block;
+  margin-bottom: 12px;
+  font: 9px 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+}
+
+.ew-footer > div strong {
+  display: block;
+  font-family: 'Cinzel', serif;
+  font-size: clamp(54px, 9vw, 132px);
+  font-weight: 500;
+  line-height: 0.9;
+}
+
+.ew-footer nav {
+  display: grid;
+  align-self: center;
+  gap: 10px;
+  font: 10px 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+}
+
+.ew-footer nav a {
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgb(16 23 21 / 0.28);
+}
+
+.ew-footer > p {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-top: 16px;
+  border-top: 1px solid rgb(16 23 21 / 0.22);
+  font: 8px 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+}
+
 @media (max-width: 760px) {
   .ew-section {
-    height: 600dvh;
+    height: 850dvh;
   }
 
   .ew-heading {
@@ -460,6 +683,69 @@
     font-size: 36px;
   }
 
+  .ew-open-interface {
+    right: 49px;
+    bottom: 20px;
+    left: 18px;
+    min-height: 154px;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 12px 16px;
+  }
+
+  .ew-open-interface > div strong {
+    font-size: 15px;
+  }
+
+  .ew-open-interface nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .ew-open-interface nav button {
+    padding: 0 8px;
+  }
+
+  .ew-open-interface > a {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 8px;
+  }
+
+  .ew-dawn-interface {
+    right: 49px;
+    bottom: 20px;
+    left: 18px;
+    display: grid;
+    gap: 14px;
+  }
+
+  .ew-dawn-interface nav {
+    display: grid;
+    grid-template-columns: repeat(4, auto);
+    gap: 12px;
+  }
+
+  .ew-footer {
+    min-height: 76dvh;
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto auto;
+    gap: 32px;
+    padding: 10vh 20px 28px;
+  }
+
+  .ew-footer > div strong {
+    font-size: 54px;
+  }
+
+  .ew-footer nav {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ew-footer > p {
+    grid-column: 1;
+  }
+
   .ew-scroll-state {
     right: 18px;
   }
@@ -472,5 +758,15 @@
 
   .ew-scroll-state {
     display: none;
+  }
+
+  .ew-chapter-sentinel--evidence,
+  .ew-chapter-sentinel--return,
+  .ew-chapter-sentinel--open {
+    height: 0;
+  }
+
+  .ew-chapter-sentinel--dawn {
+    top: 0;
   }
 }

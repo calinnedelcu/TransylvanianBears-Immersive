@@ -91,3 +91,31 @@ export const CITADEL_PROJECTS = [
   { id: 'economy', label: 'ECONOMYNEWS', group: 'RESEARCH', position: [0.95, -3.55, 0.88], color: '#c4a65f' },
   { id: 'automation', label: 'AUTOMATION RISK', group: 'RESEARCH', position: [3.45, -1.35, 1.08], color: '#c4a65f' },
 ] as const;
+
+export type OpenPath = {
+  id: 'join' | 'partner';
+  index: string;
+  label: string;
+  detail: string;
+  href: string;
+  color: string;
+};
+
+export const OPEN_PATHS: OpenPath[] = [
+  {
+    id: 'join',
+    index: '01',
+    label: 'JOIN THE TEAM',
+    detail: 'roluri, standard și contribuții',
+    href: '/next#join',
+    color: '#72d9d6',
+  },
+  {
+    id: 'partner',
+    index: '02',
+    label: 'WORK WITH US',
+    detail: 'mentorat, parteneriate și contact',
+    href: 'mailto:calin.nedelcu08@gmail.com?subject=Transylvanian%20Bears%20collaboration',
+    color: '#d7b468',
+  },
+];
