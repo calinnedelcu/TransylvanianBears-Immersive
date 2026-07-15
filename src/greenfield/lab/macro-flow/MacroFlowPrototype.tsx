@@ -41,7 +41,8 @@ type MacroChapter =
   | 'build'
   | 'infect'
   | 'research'
-  | 'evidence-weave';
+  | 'evidence-weave'
+  | 'final-return';
 type TraceScenario = 'valid' | 'expired' | 'used';
 type BuriedRule = 'oil' | 'mechanism' | 'mercury';
 
@@ -59,6 +60,7 @@ const CHAPTERS: Array<{ id: MacroChapter; index: string; label: string }> = [
   { id: 'infect', index: '11', label: '1-bit breach' },
   { id: 'research', index: '12', label: 'Research crossing' },
   { id: 'evidence-weave', index: '13', label: 'Evidence weave' },
+  { id: 'final-return', index: '14', label: 'Final return' },
 ];
 
 const BURIED_RULES: Array<{
@@ -234,7 +236,8 @@ export default function MacroFlowPrototype() {
   const traceAllowed = traceOutcome === 'allowed';
   const macroWorldActive = activeChapter !== 'infect'
     && activeChapter !== 'research'
-    && activeChapter !== 'evidence-weave';
+    && activeChapter !== 'evidence-weave'
+    && activeChapter !== 'final-return';
   const traceResult = traceAllowed
     ? 'ALLOW / token redeemed once'
     : traceOutcome === 'expired'

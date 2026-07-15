@@ -1,7 +1,13 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { ExternalLink, ScanSearch } from 'lucide-react';
+import { ArrowUpRight, ExternalLink, ScanSearch } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { usePrefersReducedMotion } from '../../../hooks/usePrefersReducedMotion';
-import { EVIDENCE_ARTIFACTS, type EvidenceArtifact } from './evidenceData';
+import {
+  CITADEL_ROUTES,
+  EVIDENCE_ARTIFACTS,
+  type CitadelRoute,
+  type EvidenceArtifact,
+} from './evidenceData';
 import './evidence-weave.css';
 
 const EvidenceWeaveScene = lazy(() => import('./EvidenceWeaveScene'));
@@ -11,6 +17,8 @@ export default function EvidenceWeave() {
   const progressRef = useRef(0);
   const reducedMotion = usePrefersReducedMotion();
   const [activeId, setActiveId] = useState<EvidenceArtifact['id']>('nexus');
+  const [activeRoute, setActiveRoute] = useState<CitadelRoute['id']>('work');
+  const [planReady, setPlanReady] = useState(false);
   const [nearViewport, setNearViewport] = useState(false);
 
   const updateProgress = useCallback(() => {
@@ -23,6 +31,8 @@ export default function EvidenceWeave() {
     section.style.setProperty('--ew-progress', progress.toFixed(4));
     const nextId: EvidenceArtifact['id'] = progress < 0.37 ? 'nexus' : progress < 0.64 ? 'aegis' : 'infect';
     setActiveId((current) => current === nextId ? current : nextId);
+    const nextPlanReady = progress >= 0.84;
+    setPlanReady((current) => current === nextPlanReady ? current : nextPlanReady);
   }, []);
 
   useEffect(() => {
@@ -52,9 +62,17 @@ export default function EvidenceWeave() {
   }, [updateProgress]);
 
   const active = EVIDENCE_ARTIFACTS.find((item) => item.id === activeId) ?? EVIDENCE_ARTIFACTS[0];
+  const activePath = CITADEL_ROUTES.find((route) => route.id === activeRoute) ?? CITADEL_ROUTES[0];
 
   return (
-    <section id="mf-evidence-weave" ref={sectionRef} className="ew-section" data-chapter="evidence-weave">
+    <section
+      id="mf-evidence-weave"
+      ref={sectionRef}
+      className="ew-section"
+      data-plan-ready={planReady || undefined}
+    >
+      <div className="ew-chapter-sentinel ew-chapter-sentinel--evidence" data-chapter="evidence-weave" aria-hidden="true" />
+      <div id="mf-final-return" className="ew-chapter-sentinel ew-chapter-sentinel--return" data-chapter="final-return" aria-hidden="true" />
       <div className="ew-stage">
         <div className="ew-stage__canvas" aria-hidden="true">
           {nearViewport ? (
@@ -63,6 +81,8 @@ export default function EvidenceWeave() {
                 progressRef={progressRef}
                 activeId={activeId}
                 onSelect={setActiveId}
+                activeRoute={activeRoute}
+                onSelectRoute={setActiveRoute}
                 reducedMotion={reducedMotion}
               />
             </Suspense>
@@ -72,9 +92,9 @@ export default function EvidenceWeave() {
         <div className="ew-stage__grade" />
 
         <header className="ew-heading">
-          <p>13 / Evidence weave</p>
-          <h2>Dovada nu stă<br />pe un raft.</h2>
-          <span>Este legată de proiect, timp și sursă.</span>
+          <p>{planReady ? '14 / Final return' : '13 / Evidence weave'}</p>
+          <h2>{planReady ? <>Acum vezi<br />sistemul.</> : <>Dovada nu stă<br />pe un raft.</>}</h2>
+          <span>{planReady ? 'Șapte proiecte. Patru domenii. O singură echipă.' : 'Este legată de proiect, timp și sursă.'}</span>
         </header>
 
         <div className="ew-readout" aria-live="polite">
@@ -107,6 +127,28 @@ export default function EvidenceWeave() {
         <a className="ew-archive-link" href="/next/archive">
           <ScanSearch aria-hidden="true" /> Open full archive <ExternalLink aria-hidden="true" />
         </a>
+
+        <div className="ew-map-interface">
+          <div>
+            <span>{activePath.index} / Open route</span>
+            <strong>{activePath.label}</strong>
+            <p>{activePath.detail}</p>
+          </div>
+          <nav aria-label="Rutele citadelei">
+            {CITADEL_ROUTES.map((route) => (
+              <button
+                key={route.id}
+                type="button"
+                aria-label={`${route.index} ${route.label}`}
+                aria-pressed={activeRoute === route.id}
+                onClick={() => setActiveRoute(route.id)}
+              >
+                <span>{route.index}</span><strong>{route.label}</strong>
+              </button>
+            ))}
+          </nav>
+          <Link to={activePath.href}>Enter {activePath.label} <ArrowUpRight aria-hidden="true" /></Link>
+        </div>
       </div>
 
       <div className="ew-accessible-records">

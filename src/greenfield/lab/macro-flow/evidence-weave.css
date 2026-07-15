@@ -2,7 +2,7 @@
   --ew-progress: 0;
   position: relative;
   z-index: 24;
-  height: 620dvh;
+  height: 760dvh;
   background: #030708;
   color: #e7e8e0;
 }
@@ -14,6 +14,23 @@
   overflow: hidden;
   isolation: isolate;
   background: #030708;
+}
+
+.ew-chapter-sentinel {
+  position: absolute;
+  right: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.ew-chapter-sentinel--evidence {
+  top: 0;
+  height: 84%;
+}
+
+.ew-chapter-sentinel--return {
+  top: 84%;
+  bottom: 0;
 }
 
 .ew-stage__canvas,
@@ -51,6 +68,7 @@
   left: 32px;
   max-width: 420px;
   pointer-events: none;
+  transition: transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .ew-heading p,
@@ -99,6 +117,7 @@
   border-top: 1px solid rgb(231 232 224 / 0.28);
   border-left: 2px solid #72d9d6;
   pointer-events: none;
+  transition: opacity 350ms ease, transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .ew-readout span {
@@ -135,6 +154,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  transition: opacity 300ms ease, transform 450ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .ew-selector button {
@@ -216,6 +236,7 @@
   gap: 8px;
   color: #72d9d6;
   font-size: 8px;
+  transition: opacity 300ms ease;
 }
 
 .ew-archive-link svg {
@@ -233,9 +254,128 @@
   white-space: nowrap;
 }
 
+.ew-map-interface {
+  position: absolute;
+  z-index: 9;
+  right: 74px;
+  bottom: 28px;
+  left: 32px;
+  display: grid;
+  min-height: 72px;
+  grid-template-columns: minmax(230px, 1fr) minmax(360px, 1.4fr) auto;
+  align-items: end;
+  gap: 28px;
+  padding-top: 14px;
+  border-top: 1px solid rgb(231 232 224 / 0.28);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(24px);
+  transition: opacity 420ms ease, transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.ew-map-interface > div {
+  display: grid;
+  gap: 5px;
+}
+
+.ew-map-interface > div span,
+.ew-map-interface > div p,
+.ew-map-interface nav,
+.ew-map-interface > a {
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+}
+
+.ew-map-interface > div span {
+  color: #72d9d6;
+  font-size: 8px;
+}
+
+.ew-map-interface > div strong {
+  font-size: 20px;
+}
+
+.ew-map-interface > div p {
+  margin: 0;
+  color: rgb(231 232 224 / 0.48);
+  font-size: 8px;
+}
+
+.ew-map-interface nav {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-bottom: 1px solid rgb(231 232 224 / 0.2);
+}
+
+.ew-map-interface nav button {
+  display: grid;
+  min-height: 43px;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border: 0;
+  border-left: 1px solid rgb(231 232 224 / 0.14);
+  background: transparent;
+  color: rgb(231 232 224 / 0.44);
+  cursor: pointer;
+}
+
+.ew-map-interface nav button span {
+  color: currentColor;
+  font-size: 8px;
+}
+
+.ew-map-interface nav button strong {
+  font-size: 8px;
+  text-align: left;
+}
+
+.ew-map-interface nav button[aria-pressed='true'] {
+  box-shadow: inset 0 -2px #72d9d6;
+  color: #e7e8e0;
+}
+
+.ew-map-interface > a {
+  display: inline-flex;
+  min-height: 43px;
+  align-items: center;
+  gap: 12px;
+  color: #72d9d6;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.ew-map-interface > a svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ew-section[data-plan-ready] .ew-heading {
+  transform: translateY(-12px);
+}
+
+.ew-section[data-plan-ready] .ew-readout,
+.ew-section[data-plan-ready] .ew-selector {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(20px);
+}
+
+.ew-section[data-plan-ready] .ew-archive-link {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ew-section[data-plan-ready] .ew-map-interface {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
 @media (max-width: 760px) {
   .ew-section {
-    height: 480dvh;
+    height: 600dvh;
   }
 
   .ew-heading {
@@ -284,6 +424,40 @@
   .ew-archive-link {
     right: 49px;
     bottom: 25px;
+  }
+
+  .ew-map-interface {
+    right: 49px;
+    bottom: 20px;
+    left: 18px;
+    min-height: 154px;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 12px 18px;
+  }
+
+  .ew-map-interface > div strong {
+    font-size: 16px;
+  }
+
+  .ew-map-interface nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .ew-map-interface nav button {
+    min-height: 42px;
+    padding: 0 8px;
+  }
+
+  .ew-map-interface > a {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 8px;
+  }
+
+  .ew-section[data-plan-ready] .ew-heading h2 {
+    font-size: 36px;
   }
 
   .ew-scroll-state {
