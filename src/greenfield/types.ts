@@ -36,6 +36,7 @@ export type AssetSlot = {
   motionRole: string;
   mobileTreatment: string;
   alt: string;
+  previewSrc?: string;
 };
 
 export type Metric = {

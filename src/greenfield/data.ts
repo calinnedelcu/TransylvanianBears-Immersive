@@ -254,10 +254,33 @@ export const SCENES: SceneDefinition[] = [
   },
 ];
 
+const PROVISIONAL_MEDIA: Record<string, string> = {
+  'nexus-synthetic-to-real-sequence': '/assets/projects/project-nexus.webp',
+  'nexus-world-contact-sheet': '/assets/projects/project-nexus.webp',
+  'nexus-pipeline-proof': '/assets/projects/project-nexus.webp',
+  'nexus-real-validation': '/assets/projects/project-nexus.webp',
+  'aegis-system-flow': '/assets/projects/aegis.webp',
+  'aegis-token-flow': '/assets/projects/aegis.webp',
+  'aegis-role-map': '/assets/projects/aegis.webp',
+  'schoolmate-product-map': '/assets/projects/schoolmate.webp',
+  'schoolmate-workflows': '/assets/projects/schoolmate.webp',
+  'buried-hands-gameplay-descent': '/assets/projects/the-buried-hands.webp',
+  'buried-hands-player-state': '/assets/projects/buried-hands/guards.webp',
+  'buried-hands-system-triptych': '/assets/projects/buried-hands/royal-hall.webp',
+  'research-evidence-table': '/assets/projects/research-crossing/economy-event-timeline.webp',
+  'economy-news-method': '/assets/projects/research-crossing/economy-pre-post-drift.webp',
+  'automation-risk-evidence': '/assets/projects/research-crossing/automation-shap.webp',
+  'infect-exe-hero': '/assets/projects/infectexe.webp',
+  'infect-exe-loop': '/assets/projects/infect-exe/gpu.png',
+};
+
 function sceneAsset(sceneId: SceneId): AssetSlot {
   const scene = SCENES.find((candidate) => candidate.id === sceneId);
   if (!scene) throw new Error(`Unknown scene asset: ${sceneId}`);
-  return scene.asset;
+  return {
+    ...scene.asset,
+    previewSrc: PROVISIONAL_MEDIA[scene.asset.id],
+  };
 }
 
 function placeholderAsset(
@@ -279,6 +302,7 @@ function placeholderAsset(
     motionRole,
     mobileTreatment: 'Versiune 4:5 separată; subiectul și dovada principală rămân în centrul cadrului.',
     alt,
+    previewSrc: PROVISIONAL_MEDIA[id],
   };
 }
 

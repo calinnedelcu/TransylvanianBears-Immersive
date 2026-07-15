@@ -1,7 +1,8 @@
 import { ArrowLeft, ArrowUpRight } from 'lucide-react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { GreenfieldPageShell } from '../components/GreenfieldPageShell';
 import { MediaPlaceholder } from '../components/MediaPlaceholder';
+import { ViewTransitionLink } from '../components/ViewTransitionLink';
 import { PROJECTS, TEAM, projectBySlug } from '../data';
 
 const EVIDENCE_LABEL = {
@@ -44,10 +45,10 @@ export function ProjectCaseStudyPage() {
       <article className="gf-case" data-tone={project.accent}>
         <header className="gf-case-hero" data-gf-motion>
           <div className="gf-case-hero__copy">
-            <Link className="gf-back-link" to="/work">
+            <ViewTransitionLink className="gf-back-link" to="/work" transitionKind="project">
               <ArrowLeft aria-hidden="true" />
               Toate proiectele
-            </Link>
+            </ViewTransitionLink>
             <p className="gf-page-kicker">{project.index} / {project.disciplineLabel} / {project.year}</p>
             <h1>{project.title}</h1>
             <p className="gf-case-hero__thesis">{project.thesis}</p>
@@ -104,7 +105,7 @@ export function ProjectCaseStudyPage() {
               <ol>
                 {credits.map(({ credit, member }) => (
                   <li key={credit.memberId}>
-                    <Link to={`/team/${member?.id}`}>{member?.name}</Link>
+                    <ViewTransitionLink to={`/team/${member?.id}`}>{member?.name}</ViewTransitionLink>
                     <span>{credit.role ?? 'Rol detaliat în validare'}</span>
                   </li>
                 ))}
@@ -131,11 +132,11 @@ export function ProjectCaseStudyPage() {
           <nav className="gf-related" aria-label="Proiecte conexe">
             <p>Proiecte conexe</p>
             {related.map((candidate) => (
-              <Link key={candidate.id} to={`/work/${candidate.slug}`}>
+              <ViewTransitionLink key={candidate.id} to={`/work/${candidate.slug}`} transitionKind="project">
                 <span>{candidate.index}</span>
                 <strong>{candidate.title}</strong>
                 <ArrowUpRight aria-hidden="true" />
-              </Link>
+              </ViewTransitionLink>
             ))}
           </nav>
         )}

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowUpRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { GreenfieldPageShell } from '../components/GreenfieldPageShell';
+import { ViewTransitionLink } from '../components/ViewTransitionLink';
 import { ARCHIVE, projectById } from '../data';
 import type { ArchiveEntry } from '../types';
 
@@ -86,7 +86,7 @@ export function ArchivePage() {
             return (
               <li key={entry.id} data-gf-motion>
                 {project ? (
-                  <Link to={`/work/${project.slug}`}>{content}</Link>
+                  <ViewTransitionLink to={`/work/${project.slug}`} transitionKind="project">{content}</ViewTransitionLink>
                 ) : entry.href ? (
                   <a href={entry.href} target="_blank" rel="noreferrer">{content}</a>
                 ) : (

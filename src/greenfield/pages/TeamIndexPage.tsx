@@ -1,6 +1,6 @@
 import { ArrowUpRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { GreenfieldPageShell } from '../components/GreenfieldPageShell';
+import { ViewTransitionLink } from '../components/ViewTransitionLink';
 import { PROJECTS, TEAM } from '../data';
 
 export function TeamIndexPage() {
@@ -36,16 +36,16 @@ export function TeamIndexPage() {
                   <span>Verified team credits</span>
                   {credits.length > 0 ? (
                     credits.map((project) => (
-                      <Link key={project.id} to={`/work/${project.slug}`}>{project.shortTitle}</Link>
+                      <ViewTransitionLink key={project.id} to={`/work/${project.slug}`} transitionKind="project">{project.shortTitle}</ViewTransitionLink>
                     ))
                   ) : (
                     <small>Credite în validare</small>
                   )}
                 </div>
               </div>
-              <Link className="gf-team-row__open" to={`/team/${member.id}`} aria-label={`Deschide profilul lui ${member.name}`}>
+              <ViewTransitionLink className="gf-team-row__open" to={`/team/${member.id}`} aria-label={`Deschide profilul lui ${member.name}`}>
                 <ArrowUpRight aria-hidden="true" />
-              </Link>
+              </ViewTransitionLink>
             </article>
           );
         })}

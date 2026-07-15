@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, ExternalLink, Mail, ScanSearch } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { usePrefersReducedMotion } from '../../../hooks/usePrefersReducedMotion';
+import { ViewTransitionLink } from '../../components/ViewTransitionLink';
 import {
   CITADEL_ROUTES,
   EVIDENCE_ARTIFACTS,
@@ -147,9 +147,9 @@ export default function EvidenceWeave() {
           <i><b /></i>
         </div>
 
-        <Link className="ew-archive-link" to="/archive">
+        <ViewTransitionLink className="ew-archive-link" to="/archive">
           <ScanSearch aria-hidden="true" /> Open full archive <ExternalLink aria-hidden="true" />
-        </Link>
+        </ViewTransitionLink>
 
         <div className="ew-map-interface">
           <div>
@@ -170,7 +170,7 @@ export default function EvidenceWeave() {
               </button>
             ))}
           </nav>
-          <Link to={activePath.href}>Enter {activePath.label} <ArrowUpRight aria-hidden="true" /></Link>
+          <ViewTransitionLink to={activePath.href}>Enter {activePath.label} <ArrowUpRight aria-hidden="true" /></ViewTransitionLink>
         </div>
 
         <div className="ew-open-interface">
@@ -193,7 +193,7 @@ export default function EvidenceWeave() {
             ))}
           </nav>
           {activeOpen.href.startsWith('/') ? (
-            <Link to={activeOpen.href}>Follow path <ArrowUpRight aria-hidden="true" /></Link>
+            <ViewTransitionLink to={activeOpen.href}>Follow path <ArrowUpRight aria-hidden="true" /></ViewTransitionLink>
           ) : (
             <a href={activeOpen.href}>Open channel <Mail aria-hidden="true" /></a>
           )}
@@ -202,9 +202,9 @@ export default function EvidenceWeave() {
         <div className="ew-dawn-interface">
           <p>Expedition complete / the website stays open</p>
           <nav aria-label="Continuă explorarea">
-            <Link to="/work">Work</Link>
-            <Link to="/team">Team</Link>
-            <Link to="/archive">Archive</Link>
+            <ViewTransitionLink to="/work">Work</ViewTransitionLink>
+            <ViewTransitionLink to="/team">Team</ViewTransitionLink>
+            <ViewTransitionLink to="/archive">Archive</ViewTransitionLink>
             <a href="mailto:calin.nedelcu08@gmail.com">Contact</a>
           </nav>
         </div>
@@ -225,9 +225,9 @@ export default function EvidenceWeave() {
       <footer className="ew-footer">
         <div><span>Transylvanian Bears</span><strong>Build together.</strong></div>
         <nav aria-label="Footer">
-          <Link to="/work">Work</Link>
-          <Link to="/team">Team</Link>
-          <Link to="/archive">Archive</Link>
+          <ViewTransitionLink to="/work">Work</ViewTransitionLink>
+          <ViewTransitionLink to="/team">Team</ViewTransitionLink>
+          <ViewTransitionLink to="/archive">Archive</ViewTransitionLink>
           <a href="mailto:calin.nedelcu08@gmail.com">calin.nedelcu08@gmail.com</a>
         </nav>
         <p>Romania / 2026</p>

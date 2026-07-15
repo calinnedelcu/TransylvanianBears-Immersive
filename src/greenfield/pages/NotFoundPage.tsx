@@ -1,6 +1,6 @@
 import { ArrowLeft, Waypoints } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { GreenfieldPageShell } from '../components/GreenfieldPageShell';
+import { ViewTransitionLink } from '../components/ViewTransitionLink';
 
 export function NotFoundPage() {
   return (
@@ -18,8 +18,8 @@ export function NotFoundPage() {
           <h1 id="not-found-title">Drumul acesta nu face parte din sistem.</h1>
           <p>Poți reveni în experiență sau poți deschide direct indexul proiectelor.</p>
           <nav aria-label="Ieșiri din pagina 404">
-            <Link to="/"><ArrowLeft aria-hidden="true" /> Înapoi în experiență</Link>
-            <Link to="/work">Index proiecte <Waypoints aria-hidden="true" /></Link>
+            <ViewTransitionLink to="/"><ArrowLeft aria-hidden="true" /> Înapoi în experiență</ViewTransitionLink>
+            <ViewTransitionLink to="/work">Index proiecte <Waypoints aria-hidden="true" /></ViewTransitionLink>
           </nav>
         </div>
       </section>

@@ -18,8 +18,8 @@ import {
   Wind,
 } from 'lucide-react';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { Link } from 'react-router-dom';
 import { usePrefersReducedMotion } from '../../../hooks/usePrefersReducedMotion';
+import { ViewTransitionLink } from '../../components/ViewTransitionLink';
 import { JOURNEY_CHAPTERS, chapterTone, type JourneyChapter } from '../../experience/chapters';
 import { ExperienceProvider } from '../../experience/ExperienceProvider';
 import { useAmbientAudio } from '../../experience/audio/useAmbientAudio';
@@ -252,10 +252,10 @@ function MacroFlowExperience() {
       </div>
 
       <header className="mf-header">
-        <Link className="mf-brand" to="/" aria-label="Transylvanian Bears, start">
+        <ViewTransitionLink className="mf-brand" to="/" aria-label="Transylvanian Bears, start">
           <span className="mf-brand__mark" aria-hidden="true"><i /></span>
           <span>Transylvanian Bears</span>
-        </Link>
+        </ViewTransitionLink>
         <p>Interactive expedition / 16 chapters</p>
         <div className="mf-header__actions">
           <button
@@ -279,9 +279,9 @@ function MacroFlowExperience() {
           >
             {audioEnabled ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
           </button>
-          <Link className="mf-index-link" to="/work">
+          <ViewTransitionLink className="mf-index-link" to="/work">
             Open work index <Waypoints aria-hidden="true" />
-          </Link>
+          </ViewTransitionLink>
         </div>
       </header>
 

@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowUpRight } from 'lucide-react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { GreenfieldPageShell } from '../components/GreenfieldPageShell';
+import { ViewTransitionLink } from '../components/ViewTransitionLink';
 import { PROJECTS, TEAM } from '../data';
 
 export function MemberProfilePage() {
@@ -19,10 +20,10 @@ export function MemberProfilePage() {
       <article className="gf-member-profile">
         <header className="gf-member-hero" data-gf-motion>
           <div className="gf-member-hero__copy">
-            <Link className="gf-back-link" to="/team">
+            <ViewTransitionLink className="gf-back-link" to="/team">
               <ArrowLeft aria-hidden="true" />
               Echipa
-            </Link>
+            </ViewTransitionLink>
             <p className="gf-page-kicker">Member / Contribution profile</p>
             <h1>{member.name}</h1>
             <p>{member.discipline}</p>
@@ -55,7 +56,7 @@ export function MemberProfilePage() {
                 <li key={project.id} data-gf-motion>
                   <span>{project.index}</span>
                   <div><small>{project.disciplineLabel}</small><strong>{project.title}</strong></div>
-                  <Link to={`/work/${project.slug}`} aria-label={`Deschide ${project.title}`}><ArrowUpRight aria-hidden="true" /></Link>
+                  <ViewTransitionLink to={`/work/${project.slug}`} transitionKind="project" aria-label={`Deschide ${project.title}`}><ArrowUpRight aria-hidden="true" /></ViewTransitionLink>
                 </li>
               ))}
             </ol>

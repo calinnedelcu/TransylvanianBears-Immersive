@@ -26,7 +26,7 @@ least one of these outcomes:
 | --- | --- | --- |
 | UI and semantics | React 18 + TypeScript | all text, controls, routes and evidence remain DOM |
 | Realtime world | Three.js + React Three Fiber | one persistent canvas per continuous world |
-| Choreography | GSAP ScrollTrigger | maps native scroll to normalized chapter progress |
+| Choreography | Lenis + GSAP ScrollTrigger | one inertial scroll clock maps input to normalized chapter progress |
 | Discrete experience logic | XState 5 | chapter, quality, motion, audio and interaction states |
 | Camera authoring | Theatre.js in development | exported keyframes only; Studio never ships by default |
 | Offline geometry | Blender | modeling, UV, bake, pivots, cameras and deterministic animation |
@@ -199,4 +199,3 @@ A sequence is production-ready only when:
 - mobile is recomposed rather than cropped;
 - measured budgets are recorded and respected;
 - every visual effect has a narrative purpose.
-

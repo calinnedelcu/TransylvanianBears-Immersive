@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { GreenfieldPageShell } from '../components/GreenfieldPageShell';
 import { MediaPlaceholder } from '../components/MediaPlaceholder';
+import { ViewTransitionLink } from '../components/ViewTransitionLink';
 import { PROJECTS } from '../data';
 import type { ProjectFacet } from '../types';
 
@@ -71,8 +71,9 @@ export function WorkIndexPage() {
           <ol className="gf-work-list">
             {visibleProjects.map((project) => (
               <li key={project.id} data-gf-motion>
-                <Link
+                <ViewTransitionLink
                   to={`/work/${project.slug}`}
+                  transitionKind="project"
                   data-active={activeProject.id === project.id || undefined}
                   onMouseEnter={() => setActiveId(project.id)}
                   onFocus={() => setActiveId(project.id)}
@@ -85,7 +86,7 @@ export function WorkIndexPage() {
                   </span>
                   <span className="gf-work-list__year">{project.year}</span>
                   <ArrowRight aria-hidden="true" />
-                </Link>
+                </ViewTransitionLink>
               </li>
             ))}
           </ol>

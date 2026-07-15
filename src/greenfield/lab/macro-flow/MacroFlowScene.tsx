@@ -1,4 +1,4 @@
-import { PerformanceMonitor, useGLTF } from '@react-three/drei';
+import { PerformanceMonitor, useGLTF, useTexture } from '@react-three/drei';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Bloom, EffectComposer, Noise, Vignette } from '@react-three/postprocessing';
 import { Suspense, useMemo, useRef, type MutableRefObject } from 'react';
@@ -552,6 +552,129 @@ function NexusTargets({ lensMode }: Pick<MacroFlowSceneProps, 'lensMode'>) {
   );
 }
 
+function SpatialEvidenceScreen({
+  progressRef,
+  lensMode,
+}: Pick<MacroFlowSceneProps, 'progressRef' | 'lensMode'>) {
+  const rootRef = useRef<THREE.Group>(null);
+  const screenMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const frameMaterialRef = useRef<THREE.MeshStandardMaterial>(null);
+  const texture = useTexture('/assets/projects/project-nexus.webp');
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+
+  useFrame((_, delta) => {
+    if (!rootRef.current) return;
+    const reveal = smooth(range(progressRef.current, 0.145, 0.205));
+    const departure = smooth(range(progressRef.current, 0.285, 0.35));
+    rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, -2.8 + reveal * 7.1 - departure * 7, 5.5, delta);
+    rootRef.current.rotation.y = THREE.MathUtils.damp(rootRef.current.rotation.y, -0.38 + reveal * 0.16, 4.5, delta);
+    rootRef.current.scale.setScalar(0.82 + reveal * 0.18);
+
+    const modeColor = lensMode === 'segmentation' ? '#80d8ce' : lensMode === 'detection' ? '#e4b365' : '#ffffff';
+    if (screenMaterialRef.current) screenMaterialRef.current.color.set(modeColor);
+    if (frameMaterialRef.current) {
+      frameMaterialRef.current.emissive.set(modeColor);
+      frameMaterialRef.current.emissiveIntensity = lensMode === 'raw' ? 0.2 : 1.15;
+    }
+  });
+
+  return (
+    <group ref={rootRef} position={[4.9, -2.8, -25.4]} rotation={[0, -0.38, 0]}>
+      <mesh position={[0, 0, -0.12]}>
+        <boxGeometry args={[6.18, 5.28, 0.26]} />
+        <meshStandardMaterial ref={frameMaterialRef} color="#20292a" emissive="#ffffff" emissiveIntensity={0.2} roughness={0.48} metalness={0.34} />
+      </mesh>
+      <mesh position={[0, 0, 0.03]}>
+        <planeGeometry args={[5.8, 4.96]} />
+        <meshBasicMaterial ref={screenMaterialRef} map={texture} color="#ffffff" toneMapped={false} />
+      </mesh>
+      <mesh position={[0, 2.78, 0]}>
+        <boxGeometry args={[6.18, 0.08, 0.08]} />
+        <meshBasicMaterial color="#72d9d6" />
+      </mesh>
+      <mesh position={[-3.32, 0, -0.02]}>
+        <boxGeometry args={[0.08, 5.28, 0.08]} />
+        <meshBasicMaterial color="#72d9d6" transparent opacity={0.42} />
+      </mesh>
+    </group>
+  );
+}
+
+function SystemTerminal({
+  texturePath,
+  position,
+  rotationY,
+  accent,
+}: {
+  texturePath: string;
+  position: [number, number, number];
+  rotationY: number;
+  accent: string;
+}) {
+  const texture = useTexture(texturePath);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <mesh position={[0, 0, -0.13]}>
+        <boxGeometry args={[4.9, 3.88, 0.28]} />
+        <meshStandardMaterial color="#172021" roughness={0.44} metalness={0.4} />
+      </mesh>
+      <mesh position={[0, 0, 0.03]}>
+        <planeGeometry args={[4.58, 3.52]} />
+        <meshBasicMaterial map={texture} color="#e6e5dd" toneMapped={false} />
+      </mesh>
+      <mesh position={[0, -2.08, -0.18]}>
+        <boxGeometry args={[1.7, 0.26, 1.8]} />
+        <meshStandardMaterial color="#1c2526" roughness={0.62} metalness={0.28} />
+      </mesh>
+      <mesh position={[0, -3.05, -0.18]}>
+        <cylinderGeometry args={[1.22, 1.54, 0.28, 8]} />
+        <meshStandardMaterial color="#12191a" roughness={0.78} />
+      </mesh>
+      <mesh position={[0, 2.08, 0.01]}>
+        <boxGeometry args={[4.92, 0.08, 0.08]} />
+        <meshBasicMaterial color={accent} />
+      </mesh>
+    </group>
+  );
+}
+
+function SchoolSystemsTerminals({
+  progressRef,
+  traceOutcome,
+}: Pick<MacroFlowSceneProps, 'progressRef' | 'traceOutcome'>) {
+  const rootRef = useRef<THREE.Group>(null);
+  const tokenRef = useRef<THREE.Mesh>(null);
+
+  useFrame((_, delta) => {
+    if (!rootRef.current) return;
+    const reveal = smooth(range(progressRef.current, 0.35, 0.42));
+    const departure = smooth(range(progressRef.current, 0.48, 0.515));
+    rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, -6 + reveal * 8.9 - departure * 10, 5.2, delta);
+    if (!tokenRef.current) return;
+    tokenRef.current.rotation.x += delta * 0.45;
+    tokenRef.current.rotation.y += delta * 0.72;
+    const denied = traceOutcome === 'expired' || traceOutcome === 'used';
+    const material = tokenRef.current.material as THREE.MeshStandardMaterial;
+    material.color.set(denied ? '#df6553' : '#72d9d6');
+    material.emissive.set(denied ? '#df6553' : '#72d9d6');
+  });
+
+  return (
+    <group ref={rootRef} position={[0, -6, -84]}>
+      <SystemTerminal texturePath="/assets/projects/aegis.webp" position={[-4.3, 0.5, 0]} rotationY={0.28} accent="#72d9d6" />
+      <SystemTerminal texturePath="/assets/projects/schoolmate.webp" position={[4.3, 0.5, -1.8]} rotationY={-0.28} accent="#b8a46d" />
+      <mesh ref={tokenRef} position={[0, 1.1, -0.4]}>
+        <icosahedronGeometry args={[0.3, 1]} />
+        <meshStandardMaterial color="#72d9d6" emissive="#72d9d6" emissiveIntensity={3.4} roughness={0.18} />
+      </mesh>
+    </group>
+  );
+}
+
 function SignalBeads({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>) {
   const refs = useRef<Array<THREE.Mesh | null>>([]);
 
@@ -905,6 +1028,7 @@ function World({
       <GateApparatus progressRef={progressRef} />
       <SyntheticField lensMode={lensMode} />
       <NexusTargets lensMode={lensMode} />
+      <SpatialEvidenceScreen progressRef={progressRef} lensMode={lensMode} />
       <SignalBeads progressRef={progressRef} />
       <AegisPassage progressRef={progressRef} />
       <AccessTrace
@@ -912,6 +1036,7 @@ function World({
         traceStep={traceStep}
         traceOutcome={traceOutcome}
       />
+      <SchoolSystemsTerminals progressRef={progressRef} traceOutcome={traceOutcome} />
       <DescentLayers progressRef={progressRef} />
       <BuriedChamber progressRef={progressRef} buriedDiscoveries={buriedDiscoveries} />
 

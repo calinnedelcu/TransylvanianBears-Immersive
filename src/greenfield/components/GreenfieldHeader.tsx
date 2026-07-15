@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import { useLenis } from 'lenis/react';
 import { Menu, X } from 'lucide-react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { ViewTransitionLink } from './ViewTransitionLink';
 
 const FAST_LINKS = [
   { index: '00', label: 'Poveste', detail: 'Experiența imersivă', to: '/' },
@@ -16,6 +18,7 @@ export function GreenfieldHeader() {
   const toggleRef = useRef<HTMLButtonElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef(false);
+  const lenis = useLenis();
 
   useEffect(() => {
     if (!open) {
@@ -25,6 +28,7 @@ export function GreenfieldHeader() {
     }
 
     restoreFocusRef.current = true;
+    lenis?.stop();
 
     const previousOverflow = document.documentElement.style.overflow;
     const inertTargets = Array.from(
@@ -61,23 +65,39 @@ export function GreenfieldHeader() {
       window.removeEventListener('keydown', onKeyDown);
       document.documentElement.style.overflow = previousOverflow;
       inertTargets.forEach((target) => { target.inert = false; });
+      lenis?.start();
     };
-  }, [open]);
+  }, [lenis, open]);
 
   return (
     <>
       <header className="gf-header" data-menu-open={open || undefined}>
-        <Link className="gf-brand" to="/" aria-label="Transylvanian Bears, pagina principală" tabIndex={open ? -1 : undefined}>
+        <ViewTransitionLink className="gf-brand" to="/" aria-label="Transylvanian Bears, pagina principală" tabIndex={open ? -1 : undefined}>
           <span className="gf-mark" aria-hidden="true">
             <span />
           </span>
           <span className="gf-brand__name">Transylvanian Bears</span>
-        </Link>
+        </ViewTransitionLink>
 
         <nav className="gf-header__links" aria-label="Navigație principală">
-          <NavLink to="/work" tabIndex={open ? -1 : undefined}>Work</NavLink>
-          <NavLink to="/team" tabIndex={open ? -1 : undefined}>Echipa</NavLink>
-          <NavLink to="/archive" tabIndex={open ? -1 : undefined}>Arhivă</NavLink>
+          {[
+            { to: '/work', label: 'Work' },
+            { to: '/team', label: 'Echipa' },
+            { to: '/archive', label: 'Arhivă' },
+          ].map((item) => {
+            const active = location.pathname.startsWith(item.to);
+            return (
+              <ViewTransitionLink
+                key={item.to}
+                to={item.to}
+                className={active ? 'active' : undefined}
+                aria-current={active ? 'page' : undefined}
+                tabIndex={open ? -1 : undefined}
+              >
+                {item.label}
+              </ViewTransitionLink>
+            );
+          })}
         </nav>
 
         <button
@@ -128,7 +148,7 @@ export function GreenfieldHeader() {
             return item.to.startsWith('mailto:') ? (
               <a key={item.to} href={item.to} {...sharedProps}>{content}</a>
             ) : (
-              <Link key={item.to} to={item.to} {...sharedProps}>{content}</Link>
+              <ViewTransitionLink key={item.to} to={item.to} {...sharedProps}>{content}</ViewTransitionLink>
             );
           })}
         </nav>
