@@ -18,11 +18,16 @@ import type { QualityTier } from '../../experience/quality';
 import { CarpathianThreshold } from './CarpathianThreshold';
 import { FirstLightLayer } from './FirstLightLayer';
 import { NexusActScene } from './NexusActScene';
-import { SchoolActScene } from './SchoolActScene';
 import { SystemContinuityRig } from './SystemContinuityRig';
 import { VerticalSliceLoader } from './VerticalSliceLoader';
 import { VerticalSliceLoadingGate } from './VerticalSliceLoadingGate';
 import type { LensPointerState, MacroLensMode, MacroTraceOutcome, NexusFlightInput } from './macroFlowTypes';
+import { SchoolActPackage } from './school-act/SchoolActPackage';
+import {
+  sampleSchoolActCamera,
+  useSchoolActCamera,
+  type SchoolActCameraCurve,
+} from './school-act/schoolActCamera';
 import { getVerticalSliceAsset, resolveVerticalSliceAsset } from './verticalSliceAssets';
 import {
   sampleVerticalSliceCamera,
@@ -35,12 +40,15 @@ export type { MacroLensMode, MacroTraceOutcome } from './macroFlowTypes';
 type MacroFlowSceneProps = {
   activeChapter: JourneyChapter;
   progressRef: MutableRefObject<number>;
+  schoolActProgressRef: MutableRefObject<number>;
+  schoolEntranceHandoffProgressRef: MutableRefObject<number>;
+  descentHandoffProgressRef: MutableRefObject<number>;
   lensPointerRef: MutableRefObject<LensPointerState>;
   nexusFlightInputRef: MutableRefObject<NexusFlightInput>;
   lensMode: MacroLensMode;
   collectedEvidenceCores: EvidenceCoreId[];
   onCollectEvidenceCore: (core: EvidenceCoreId) => void;
-  traceStep: number;
+  traceProgress: number;
   traceOutcome: MacroTraceOutcome;
   buriedDiscoveries: number;
   reducedMotion: boolean;
@@ -132,11 +140,11 @@ function cameraProgress(progress: number) {
   if (progress < 0.23) return 0.38 + smooth(range(progress, 0.15, 0.23)) * 0.12;
   if (progress < 0.35) return 0.5 + smooth(range(progress, 0.23, 0.35)) * 0.15;
   if (progress < 0.43) return 0.65 + smooth(range(progress, 0.35, 0.43)) * 0.15;
-  if (progress < 0.6) return 0.8 + smooth(range(progress, 0.43, 0.6)) * 0.055;
-  if (progress < 0.68) return 0.855 + smooth(range(progress, 0.6, 0.68)) * 0.065;
-  if (progress < 0.77) return 0.92 + smooth(range(progress, 0.68, 0.77)) * 0.01;
-  if (progress < 0.9) return 0.93 + smooth(range(progress, 0.77, 0.9)) * 0.02;
-  return 0.95 + smooth(range(progress, 0.9, 1)) * 0.05;
+  if (progress < 0.6) return 0.8 + smooth(range(progress, 0.43, 0.6)) * 0.11;
+  if (progress < 0.68) return 0.91 + smooth(range(progress, 0.6, 0.68)) * 0.06;
+  if (progress < 0.77) return 0.97 + smooth(range(progress, 0.68, 0.77)) * 0.015;
+  if (progress < 0.9) return 0.985 + smooth(range(progress, 0.77, 0.9)) * 0.01;
+  return 0.995 + smooth(range(progress, 0.9, 1)) * 0.005;
 }
 
 function legacyProgress(progress: number) {
@@ -144,16 +152,26 @@ function legacyProgress(progress: number) {
 }
 
 function CameraDirector({
+  activeChapter,
   progressRef,
+  schoolActProgressRef,
+  schoolEntranceHandoffProgressRef,
+  descentHandoffProgressRef,
   reducedMotion,
   qualityTier,
   velocityRef,
   authoredCurves,
-}: Pick<MacroFlowSceneProps, 'progressRef' | 'reducedMotion' | 'qualityTier' | 'velocityRef'> & {
+  schoolCameraCurve,
+}: Pick<MacroFlowSceneProps, 'activeChapter' | 'progressRef' | 'schoolActProgressRef' | 'schoolEntranceHandoffProgressRef' | 'descentHandoffProgressRef' | 'reducedMotion' | 'qualityTier' | 'velocityRef'> & {
   authoredCurves: VerticalSliceCameraCurves;
+  schoolCameraCurve: SchoolActCameraCurve | null;
 }) {
   const targetPosition = useMemo(() => new THREE.Vector3(), []);
   const lookTarget = useMemo(() => new THREE.Vector3(), []);
+  const genericPosition = useMemo(() => new THREE.Vector3(), []);
+  const genericLookTarget = useMemo(() => new THREE.Vector3(), []);
+  const schoolPosition = useMemo(() => new THREE.Vector3(), []);
+  const schoolLookTarget = useMemo(() => new THREE.Vector3(), []);
   const orientation = useMemo(() => new THREE.PerspectiveCamera(), []);
   useEffect(() => {
     const root = document.querySelector<HTMLElement>('.mf-lab');
@@ -169,17 +187,68 @@ function CameraDirector({
       targetPosition,
       lookTarget,
     );
+    const schoolCamera = SCHOOL_CAMERA_CHAPTERS.has(activeChapter)
+      ? sampleSchoolActCamera(
+          schoolCameraCurve,
+          schoolActProgressRef.current,
+          schoolPosition,
+          schoolLookTarget,
+        )
+      : null;
+    const directedCamera = schoolCamera ?? authoredCamera;
     const schoolFocus = smooth(range(worldProgress, 0.365, 0.43))
       * (1 - smooth(range(worldProgress, 0.445, 0.505)));
-    if (!authoredCamera) {
+    const compact = size.width <= 820;
+    const genericFov = (compact ? 57 : 48) + Math.min(1, Math.abs(velocityRef.current)) * 1.4;
+    const genericRoll = THREE.MathUtils.clamp(-velocityRef.current * 0.012, -0.018, 0.018);
+    let directedFov = authoredCamera?.fovDegrees;
+    let directedRoll = authoredCamera?.rollRadians;
+
+    if (schoolCamera) {
+      const entranceHandoff = activeChapter === 'passage'
+        ? smooth(clamp01(schoolEntranceHandoffProgressRef.current))
+        : 1;
+      if (authoredCamera && entranceHandoff < 0.999) {
+        targetPosition.lerp(schoolPosition, entranceHandoff);
+        lookTarget.lerp(schoolLookTarget, entranceHandoff);
+        directedFov = THREE.MathUtils.lerp(
+          authoredCamera.fovDegrees,
+          schoolCamera.fovDegrees,
+          entranceHandoff,
+        );
+        directedRoll = THREE.MathUtils.lerp(
+          authoredCamera.rollRadians,
+          schoolCamera.rollRadians,
+          entranceHandoff,
+        );
+      } else {
+        targetPosition.copy(schoolPosition);
+        lookTarget.copy(schoolLookTarget);
+        directedFov = schoolCamera.fovDegrees;
+        directedRoll = schoolCamera.rollRadians;
+      }
+    }
+
+    if (!directedCamera || activeChapter === 'descent') {
       const progress = cameraProgress(worldProgress);
       const lookDistance = THREE.MathUtils.lerp(0.11, 0.035, schoolFocus);
       const lookAhead = Math.min(1, progress + lookDistance);
-      const cameraPath = size.width <= 820 ? MOBILE_CAMERA_PATH : CAMERA_PATH;
-      cameraPath.getPoint(progress, targetPosition);
-      cameraPath.getPoint(lookAhead, lookTarget);
-      lookTarget.x += schoolFocus * (size.width <= 820 ? 0.72 : 1.65);
-      lookTarget.y -= schoolFocus * (size.width <= 820 ? 3.1 : 4.35);
+      const cameraPath = compact ? MOBILE_CAMERA_PATH : CAMERA_PATH;
+      cameraPath.getPoint(progress, genericPosition);
+      cameraPath.getPoint(lookAhead, genericLookTarget);
+      genericLookTarget.x += schoolFocus * (compact ? 0.72 : 1.65);
+      genericLookTarget.y -= schoolFocus * (compact ? 3.1 : 4.35);
+
+      if (!directedCamera) {
+        targetPosition.copy(genericPosition);
+        lookTarget.copy(genericLookTarget);
+      } else {
+        const handoff = smooth(clamp01(descentHandoffProgressRef.current));
+        targetPosition.lerp(genericPosition, handoff);
+        lookTarget.lerp(genericLookTarget, handoff);
+        directedFov = THREE.MathUtils.lerp(directedCamera.fovDegrees, genericFov, handoff);
+        directedRoll = THREE.MathUtils.lerp(directedCamera.rollRadians, genericRoll, handoff);
+      }
     }
 
     const parallax = reducedMotion ? 0 : qualityTier === 'cinematic' ? 0.42 : 0.16;
@@ -194,16 +263,14 @@ function CameraDirector({
     orientation.position.copy(camera.position);
     orientation.lookAt(lookTarget);
     orientation.rotateZ(
-      authoredCamera?.rollRadians
-        ?? THREE.MathUtils.clamp(-velocityRef.current * 0.012, -0.018, 0.018),
+      directedRoll ?? genericRoll,
     );
     camera.quaternion.slerp(orientation.quaternion, damping);
 
     if (camera instanceof THREE.PerspectiveCamera) {
       camera.fov = THREE.MathUtils.damp(
         camera.fov,
-        authoredCamera?.fovDegrees
-          ?? (size.width <= 820 ? 57 : 48) + Math.min(1, Math.abs(velocityRef.current)) * 1.4,
+        directedFov ?? genericFov,
         4.5,
         delta,
       );
@@ -805,30 +872,72 @@ function RenderBudgetMonitor() {
   return null;
 }
 
+function SchoolTransitionLights({
+  handoffProgressRef,
+}: Readonly<{ handoffProgressRef: MutableRefObject<number> }>) {
+  const entryRef = useRef<THREE.PointLight>(null);
+  const accessRef = useRef<THREE.PointLight>(null);
+  const corridorRef = useRef<THREE.PointLight>(null);
+
+  useFrame(() => {
+    const intensity = 1 - smooth(range(handoffProgressRef.current, 0.52, 0.96));
+    if (entryRef.current) entryRef.current.intensity = 30 * intensity;
+    if (accessRef.current) accessRef.current.intensity = 24 * intensity;
+    if (corridorRef.current) corridorRef.current.intensity = 38 * intensity;
+  });
+
+  return (
+    <>
+      <pointLight ref={entryRef} position={[0, 5, -54]} intensity={30} distance={24} color="#c0a66b" />
+      <pointLight ref={accessRef} position={[0, 5, -79]} intensity={24} distance={22} color="#75dcda" />
+      <pointLight ref={corridorRef} position={[0, 6, -99]} intensity={38} distance={24} color="#8dded8" />
+    </>
+  );
+}
+
+function BuriedTransitionLight({
+  handoffProgressRef,
+}: Readonly<{ handoffProgressRef: MutableRefObject<number> }>) {
+  const lightRef = useRef<THREE.PointLight>(null);
+
+  useFrame(() => {
+    if (!lightRef.current) return;
+    lightRef.current.intensity = 30 * smooth(range(handoffProgressRef.current, 0.04, 0.5));
+  });
+
+  return <pointLight ref={lightRef} position={[0, 4, -120]} intensity={0} distance={28} color="#d88538" />;
+}
+
 const THRESHOLD_CHAPTERS = new Set<JourneyChapter>(['threshold', 'field']);
-const NEXUS_CHAPTERS = new Set<JourneyChapter>(['field', 'lens', 'proof', 'passage']);
-const SCHOOL_CHAPTERS = new Set<JourneyChapter>(['proof', 'passage', 'access', 'schoolmate', 'descent']);
-const BURIED_CHAPTERS = new Set<JourneyChapter>(['schoolmate', 'descent', 'lamp', 'build']);
+const NEXUS_CHAPTERS = new Set<JourneyChapter>(['field', 'lens', 'proof']);
+const SCHOOL_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
+const SCHOOL_CAMERA_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
+const BURIED_CHAPTERS = new Set<JourneyChapter>(['descent', 'lamp', 'build']);
 
 type WorldProps = MacroFlowSceneProps & {
   authoredCameraCurves: VerticalSliceCameraCurves;
+  schoolCameraCurve: SchoolActCameraCurve | null;
 };
 
 function World({
   activeChapter,
   progressRef,
+  schoolActProgressRef,
+  schoolEntranceHandoffProgressRef,
+  descentHandoffProgressRef,
   lensPointerRef,
   nexusFlightInputRef,
   lensMode,
   collectedEvidenceCores,
   onCollectEvidenceCore,
-  traceStep,
+  traceProgress,
   traceOutcome,
   buriedDiscoveries,
   reducedMotion,
   qualityTier,
   velocityRef,
   authoredCameraCurves,
+  schoolCameraCurve,
 }: WorldProps) {
   const showThreshold = THRESHOLD_CHAPTERS.has(activeChapter);
   const showNexus = NEXUS_CHAPTERS.has(activeChapter);
@@ -883,20 +992,21 @@ function World({
         </>
       ) : null}
       {showSchool ? (
-        <>
-          <pointLight position={[0, 5, -54]} intensity={30} distance={24} color="#c0a66b" />
-          <pointLight position={[0, 5, -79]} intensity={24} distance={22} color="#75dcda" />
-          <pointLight position={[0, 6, -99]} intensity={38} distance={24} color="#8dded8" />
-        </>
+        <SchoolTransitionLights handoffProgressRef={descentHandoffProgressRef} />
       ) : null}
-      {showBuried ? <pointLight position={[0, 4, -120]} intensity={30} distance={28} color="#d88538" /> : null}
+      {showBuried ? <BuriedTransitionLight handoffProgressRef={descentHandoffProgressRef} /> : null}
 
       <CameraDirector
+        activeChapter={activeChapter}
         progressRef={progressRef}
+        schoolActProgressRef={schoolActProgressRef}
+        schoolEntranceHandoffProgressRef={schoolEntranceHandoffProgressRef}
+        descentHandoffProgressRef={descentHandoffProgressRef}
         reducedMotion={reducedMotion}
         qualityTier={qualityTier}
         velocityRef={velocityRef}
         authoredCurves={authoredCameraCurves}
+        schoolCameraCurve={schoolCameraCurve}
       />
       <RenderBudgetMonitor />
       <SystemContinuityRig
@@ -928,9 +1038,10 @@ function World({
         />
       ) : null}
       {showSchool ? (
-        <SchoolActScene
-          progressRef={progressRef}
-          traceStep={traceStep}
+        <SchoolActPackage
+          localProgressRef={schoolActProgressRef}
+          handoffProgressRef={descentHandoffProgressRef}
+          traceProgress={traceProgress}
           traceOutcome={traceOutcome}
           qualityTier={qualityTier}
         />
@@ -954,15 +1065,34 @@ function World({
 
 export function MacroFlowScene(props: MacroFlowSceneProps) {
   const [compact, setCompact] = useState(() => window.innerWidth <= 820);
+  const [schoolCompact, setSchoolCompact] = useState(() => window.innerWidth <= 840);
   const authoredCameraCurves = useVerticalSliceCameraCurves(compact);
-  const cameraReady = Object.keys(authoredCameraCurves).length === 4;
+  const schoolCamera = useSchoolActCamera(schoolCompact);
+  const cameraReady = Object.keys(authoredCameraCurves).length === 4
+    && (schoolCamera.ready || schoolCamera.error !== null);
   const dpr: [number, number] | number = props.qualityTier === 'cinematic' ? [1, 1.5] : 1;
 
   useEffect(() => {
-    const onResize = () => setCompact(window.innerWidth <= 820);
+    const onResize = () => {
+      setCompact(window.innerWidth <= 820);
+      setSchoolCompact(window.innerWidth <= 840);
+    };
     window.addEventListener('resize', onResize, { passive: true });
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  useEffect(() => {
+    const root = document.querySelector<HTMLElement>('.mf-lab');
+    if (!root) return undefined;
+    root.dataset.schoolActCamera = schoolCamera.ready
+      ? 'ready'
+      : schoolCamera.error
+        ? 'fallback'
+        : 'loading';
+    return () => {
+      delete root.dataset.schoolActCamera;
+    };
+  }, [schoolCamera.error, schoolCamera.ready]);
 
   return (
     <>
@@ -986,7 +1116,11 @@ export function MacroFlowScene(props: MacroFlowSceneProps) {
           onFallback={props.onPerformanceFallback}
         >
           <Suspense fallback={null}>
-            <World {...props} authoredCameraCurves={authoredCameraCurves} />
+            <World
+              {...props}
+              authoredCameraCurves={authoredCameraCurves}
+              schoolCameraCurve={schoolCamera.curve}
+            />
           </Suspense>
         </PerformanceMonitor>
       </Canvas>

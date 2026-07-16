@@ -1,12 +1,12 @@
 # Trust Passage prototype: Aegis / SchoolMate
 
-Status: contract de interacțiune aprobat pentru graybox-ul integrat în Macro Flow.
+Status: contract implementat în vertical slice-ul 05-07 din Macro Flow.
 
 ## Decizia
 
 Trust Passage nu simulează hacking și nu transformă securitatea într-un puzzle. Vizitatorul
-urmărește un eveniment real prin sistem, poate schimba condiția tokenului și vede aceeași
-tranzacție ajungând la rezultate diferite.
+urmărește un singur eveniment canonic prin sistem: token emis, prezentat, verificat, consumat
+o singură dată și trimis în audit. Rezultatele de eroare apar numai ca referință pasivă.
 
 Secvența păstrează două adevăruri editoriale distincte:
 
@@ -33,17 +33,16 @@ versiuni succesive ale aceluiași produs.
 
 ## Micro-loop
 
-Vizitatorul alege una dintre trei condiții reale:
+Există un singur traseu interactiv:
 
 | Condiție | Traseu | Rezultat |
 | --- | --- | --- |
 | token valid | issue -> present -> gate auth -> atomic redeem -> audit | `ALLOW` |
-| token expirat | issue -> present -> gate auth -> expiry check -> audit | `DENY / EXPIRED` |
-| token folosit | issue -> present -> gate auth -> used check -> audit | `DENY / ALREADY_USED` |
 
-Interacțiunea nu cere ghicirea rezultatului. Scopul este comparația și inspectarea regulii.
-Butonul `Rulează trace-ul` pornește o secvență scurtă, iar fiecare stare rămâne exprimată și
-în DOM semantic pentru tastatură și cititoare de ecran.
+Butonul `Scanează accesul` pornește secvența scurtă. Dacă vizitatorul continuă să deruleze,
+regizorul rezolvă aceeași secvență canonică fără să blocheze traseul. `EXPIRED` și
+`ALREADY_USED` rămân răspunsuri server-side explicate pasiv, nu scenarii, rute sau ending-uri.
+Progresul și rezultatul sunt exprimate și în DOM semantic pentru tastatură și cititoare de ecran.
 
 ## Continuitate materială
 
@@ -58,7 +57,7 @@ Butonul `Rulează trace-ul` pornește o secvență scurtă, iar fiecare stare r�
 Clearing-ul nu combină proiectele într-un singur card. Este o bandă editorială cu două
 studii scurte separate:
 
-- Aegis: captură QR, 20s, 256-bit, cinci roluri, locul 2 Skills for the Future, repo;
+- Aegis: captură QR, TTL 20s, single-use, cinci roluri, locul 2 Skills for the Future, repo;
 - SchoolMate: captură portal, șase suprafețe de rol, anunțuri/cereri/orar, demo, pitch,
   portal web și repo.
 
@@ -73,4 +72,3 @@ prezentate numai ca obiective, nu ca rezultate.
 - [SchoolMate repository](https://github.com/calinnedelcu/SchoolMate-final)
 - [SchoolMate README](https://github.com/calinnedelcu/SchoolMate-final/blob/main/README.md)
 - [SchoolMate business plan](https://github.com/calinnedelcu/SchoolMate-final/blob/main/livrabile/business-plan.md)
-

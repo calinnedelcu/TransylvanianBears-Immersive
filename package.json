@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "qa:immersive": "node scripts/qa-immersive.mjs",
+    "qa:school-act": "node scripts/qa-school-act.mjs",
     "qa:visual": "node scripts/qa-visual.mjs",
     "preview": "vite preview",
     "build:cameras": "blender --background --python-exit-code 1 --python scripts/blender/build_vertical_slice_cameras.py",

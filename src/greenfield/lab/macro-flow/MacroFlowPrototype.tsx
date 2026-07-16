@@ -3,21 +3,18 @@ import {
   Boxes,
   Check,
   ChevronDown,
-  CircleX,
   Cog,
   Eye,
   Flame,
   Gauge,
-  Play,
-  RefreshCcw,
   ScanLine,
-  ShieldCheck,
   Volume2,
   VolumeX,
   Waypoints,
   Wind,
 } from 'lucide-react';
 import {
+  Component,
   lazy,
   Suspense,
   useCallback,
@@ -26,6 +23,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from 'react';
 import { usePrefersReducedMotion } from '../../../hooks/usePrefersReducedMotion';
 import { ViewTransitionLink } from '../../components/ViewTransitionLink';
@@ -37,7 +35,7 @@ import { effectiveQuality } from '../../experience/experienceMachine';
 import { useExperienceActorRef, useExperienceSelector } from '../../experience/useExperience';
 import { useJourneyDirector } from '../../experience/useJourneyDirector';
 import { useGreenfieldMode } from '../../hooks/useGreenfieldMode';
-import type { MacroLensMode, MacroTraceOutcome } from './MacroFlowScene';
+import type { MacroLensMode } from './MacroFlowScene';
 import type { LensPointerState, NexusFlightInput } from './macroFlowTypes';
 import InfectInterlude from './InfectInterlude';
 import ResearchCrossing from './ResearchCrossing';
@@ -46,11 +44,43 @@ import { NexusProofInspector } from './NexusProofInspector';
 import BuriedGameplayTheater from './BuriedGameplayTheater';
 import { VerticalSliceSoundscape } from './VerticalSliceSoundscape';
 import { VerticalSliceLoader } from './VerticalSliceLoader';
+import { SchoolActOverlay } from './school-act/SchoolActOverlay';
+import { SchoolActSoundscape } from './school-act/SchoolActSoundscape';
+import { useSchoolActController } from './school-act/useSchoolActController';
+import type { SchoolActStatus } from './school-act/schoolActTypes';
 import './macro-flow.css';
 
 const MacroFlowScene = lazy(() => import('./MacroFlowScene').then((module) => ({ default: module.MacroFlowScene })));
 
-type TraceScenario = 'valid' | 'expired' | 'used';
+type WorldErrorBoundaryProps = { children: ReactNode };
+type WorldErrorBoundaryState = { failed: boolean };
+
+class WorldErrorBoundary extends Component<WorldErrorBoundaryProps, WorldErrorBoundaryState> {
+  state: WorldErrorBoundaryState = { failed: false };
+
+  static getDerivedStateFromError(): WorldErrorBoundaryState {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.warn('Immersive renderer unavailable; continuing with the editorial route.', error);
+  }
+
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+
+function supportsWebGL() {
+  if (typeof document === 'undefined') return false;
+  try {
+    const canvas = document.createElement('canvas');
+    return Boolean(canvas.getContext('webgl2') ?? canvas.getContext('webgl'));
+  } catch {
+    return false;
+  }
+}
+
 type BuriedRule = 'oil' | 'mechanism' | 'mercury';
 
 const BURIED_RULES: Array<{
@@ -87,14 +117,6 @@ const BURIED_RULES: Array<{
   },
 ];
 
-const TRACE_SCENARIOS: Array<{ id: TraceScenario; label: string; detail: string }> = [
-  { id: 'valid', label: 'Valid', detail: 'În fereastra de 20s' },
-  { id: 'expired', label: 'Expired', detail: 'TTL depășit' },
-  { id: 'used', label: 'Already used', detail: 'Redeem repetat' },
-];
-
-const TRACE_STEPS = ['Issued', 'Presented', 'Gate role', 'Atomic redeem', 'Audit log'];
-
 const LENS_OPTIONS: Array<{
   id: MacroLensMode;
   label: string;
@@ -108,14 +130,19 @@ const LENS_OPTIONS: Array<{
 
 function MacroFlowExperience() {
   const rootRef = useRef<HTMLElement>(null);
-  const traceTimersRef = useRef<number[]>([]);
   const sharedAudioContextRef = useRef<AudioContext | null>(null);
   const verticalSoundscapeRef = useRef<VerticalSliceSoundscape | null>(null);
+  const schoolSoundscapeRef = useRef<SchoolActSoundscape | null>(null);
   const verticalSoundParametersRef = useRef({ progress: 0, velocity: 0, lensMode: 'raw' as MacroLensMode });
+  const schoolSoundParametersRef = useRef({ progress: 0, scanProgress: 0, velocity: 0 });
+  const schoolActStatusRef = useRef<SchoolActStatus>('idle');
+  const previousSchoolActStatusRef = useRef<SchoolActStatus>('idle');
+  const schoolRequestCueRef = useRef(false);
   const lastSoundChapterRef = useRef<JourneyChapter | null>(null);
   const lensPointerRef = useRef<LensPointerState>({ x: 0.5, y: 0.5, active: false });
   const nexusFlightInputRef = useRef<NexusFlightInput>({ x: 0, y: 0, active: false });
   const reducedMotion = usePrefersReducedMotion();
+  const [webglAvailable] = useState(supportsWebGL);
   const experienceActor = useExperienceActorRef();
   const activeChapter = useExperienceSelector((state) => state.context.activeChapter);
   const lensMode = useExperienceSelector((state) => state.context.lensMode);
@@ -123,9 +150,25 @@ function MacroFlowExperience() {
   const qualityMode = useExperienceSelector((state) => state.context.qualityMode);
   const audioEnabled = useExperienceSelector((state) => state.context.audioEnabled);
   const evidenceCores = useExperienceSelector((state) => state.context.evidenceCores);
-  const [traceScenario, setTraceScenario] = useState<TraceScenario>('valid');
-  const [traceStep, setTraceStep] = useState(0);
-  const [traceOutcome, setTraceOutcome] = useState<MacroTraceOutcome>('idle');
+  const schoolAct = useSchoolActController({ reducedMotion });
+  const {
+    canStart: canStartSchoolScan,
+    reset: resetSchoolAct,
+    resolve: resolveSchoolAct,
+    start: runSchoolScan,
+  } = schoolAct;
+  schoolActStatusRef.current = schoolAct.status;
+
+  useEffect(() => {
+    if (
+      (activeChapter === 'schoolmate' || activeChapter === 'descent')
+      && schoolActStatusRef.current === 'idle'
+    ) {
+      schoolActStatusRef.current = 'allowed';
+      resolveSchoolAct();
+    }
+  }, [activeChapter, resolveSchoolAct]);
+
   const [buriedRules, setBuriedRules] = useState<Set<BuriedRule>>(() => new Set());
   const [activeBuriedRule, setActiveBuriedRule] = useState<BuriedRule>('oil');
 
@@ -150,6 +193,18 @@ function MacroFlowExperience() {
     });
     verticalSoundscapeRef.current.update(verticalSoundParametersRef.current);
     return verticalSoundscapeRef.current;
+  }, [getSharedAudioContext, reducedMotion]);
+
+  const getSchoolSoundscape = useCallback(() => {
+    const context = getSharedAudioContext();
+    if (!context) return null;
+    schoolSoundscapeRef.current ??= new SchoolActSoundscape({
+      audioContext: context,
+      reducedMotion,
+      masterLevel: 0.36,
+    });
+    schoolSoundscapeRef.current.update(schoolSoundParametersRef.current);
+    return schoolSoundscapeRef.current;
   }, [getSharedAudioContext, reducedMotion]);
 
   const enableAudio = useCallback(() => experienceActor.send({ type: 'AUDIO_ENABLED' }), [experienceActor]);
@@ -188,18 +243,21 @@ function MacroFlowExperience() {
   }, [experienceActor]);
   const toggleComposedAudio = useCallback(async () => {
     const soundscape = getVerticalSoundscape();
+    const schoolSoundscape = getSchoolSoundscape();
     if (audioEnabled) {
       soundscape?.mute();
+      schoolSoundscape?.mute();
       await toggleAmbientAudio();
       return;
     }
 
-    const [ambientStarted, verticalStarted] = await Promise.all([
+    const [ambientStarted, verticalStarted, schoolStarted] = await Promise.all([
       toggleAmbientAudio(),
       soundscape?.resume() ?? Promise.resolve(false),
+      schoolSoundscape?.resume() ?? Promise.resolve(false),
     ]);
-    if (verticalStarted && !ambientStarted) enableAudio();
-  }, [audioEnabled, enableAudio, getVerticalSoundscape, toggleAmbientAudio]);
+    if ((verticalStarted || schoolStarted) && !ambientStarted) enableAudio();
+  }, [audioEnabled, enableAudio, getSchoolSoundscape, getVerticalSoundscape, toggleAmbientAudio]);
   const onJourneyProgress = useCallback((progress: number, velocity: number) => {
     updateAudio(progress, velocity);
   }, [updateAudio]);
@@ -208,12 +266,38 @@ function MacroFlowExperience() {
     verticalSoundParametersRef.current.velocity = velocity;
     verticalSoundscapeRef.current?.update({ progress, velocity });
   }, []);
-  const { worldProgressRef: progressRef, velocityRef } = useJourneyDirector({
+  const onSchoolActProgress = useCallback((progress: number, velocity: number) => {
+    schoolSoundParametersRef.current.progress = progress;
+    schoolSoundParametersRef.current.velocity = velocity;
+    schoolSoundscapeRef.current?.update({ progress, velocity });
+
+    if (progress >= 0.43 && schoolActStatusRef.current === 'idle') {
+      schoolActStatusRef.current = 'allowed';
+      resolveSchoolAct();
+    } else if (progress <= 0.12 && schoolActStatusRef.current !== 'idle') {
+      schoolActStatusRef.current = 'idle';
+      schoolRequestCueRef.current = false;
+      resetSchoolAct();
+    }
+
+    if (progress >= 0.78 && !schoolRequestCueRef.current) {
+      schoolRequestCueRef.current = true;
+      schoolSoundscapeRef.current?.trigger('request-resolved');
+    }
+  }, [resetSchoolAct, resolveSchoolAct]);
+  const {
+    worldProgressRef: progressRef,
+    schoolActProgressRef,
+    schoolEntranceHandoffProgressRef,
+    descentHandoffProgressRef,
+    velocityRef,
+  } = useJourneyDirector({
     rootRef,
     reducedMotion,
     onChapterChange: enterChapter,
     onProgress: onJourneyProgress,
     onSliceProgress,
+    onSchoolActProgress,
   });
 
   useGreenfieldMode({
@@ -222,47 +306,19 @@ function MacroFlowExperience() {
     absoluteTitle: true,
   });
 
-  const clearTraceTimers = useCallback(() => {
-    traceTimersRef.current.forEach((timer) => window.clearTimeout(timer));
-    traceTimersRef.current = [];
-  }, []);
+  const startSchoolScan = useCallback(() => {
+    if (!canStartSchoolScan) return;
+    schoolActStatusRef.current = reducedMotion ? 'allowed' : 'running';
+    schoolSoundParametersRef.current.scanProgress = 0;
 
-  const resetTrace = useCallback(() => {
-    clearTraceTimers();
-    setTraceStep(0);
-    setTraceOutcome('idle');
-  }, [clearTraceTimers]);
-
-  const selectTraceScenario = useCallback((scenario: TraceScenario) => {
-    clearTraceTimers();
-    setTraceScenario(scenario);
-    setTraceStep(0);
-    setTraceOutcome('idle');
-  }, [clearTraceTimers]);
-
-  const runTrace = useCallback(() => {
-    clearTraceTimers();
-    setTraceStep(0);
-    setTraceOutcome('running');
-
-    const finalOutcome: MacroTraceOutcome =
-      traceScenario === 'valid' ? 'allowed' : traceScenario;
-
-    if (reducedMotion) {
-      setTraceStep(TRACE_STEPS.length - 1);
-      setTraceOutcome(finalOutcome);
-      return;
+    if (audioEnabled) {
+      const soundscape = getSchoolSoundscape();
+      void soundscape?.resume().then((started) => {
+        if (started) soundscape.trigger('scan-start');
+      });
     }
-
-    TRACE_STEPS.slice(1).forEach((_, index) => {
-      const timer = window.setTimeout(() => {
-        const nextStep = index + 1;
-        setTraceStep(nextStep);
-        if (nextStep === TRACE_STEPS.length - 1) setTraceOutcome(finalOutcome);
-      }, 430 * (index + 1));
-      traceTimersRef.current.push(timer);
-    });
-  }, [clearTraceTimers, reducedMotion, traceScenario]);
+    runSchoolScan();
+  }, [audioEnabled, canStartSchoolScan, getSchoolSoundscape, reducedMotion, runSchoolScan]);
 
   const revealBuriedRule = useCallback((rule: BuriedRule) => {
     setActiveBuriedRule(rule);
@@ -345,38 +401,45 @@ function MacroFlowExperience() {
 
   useEffect(() => {
     verticalSoundscapeRef.current?.setReducedMotion(reducedMotion);
+    schoolSoundscapeRef.current?.setReducedMotion(reducedMotion);
   }, [reducedMotion]);
 
   useEffect(() => {
-    if (!audioEnabled) verticalSoundscapeRef.current?.mute();
+    if (!audioEnabled) {
+      verticalSoundscapeRef.current?.mute();
+      schoolSoundscapeRef.current?.mute();
+    }
   }, [audioEnabled]);
+
+  useEffect(() => {
+    schoolSoundParametersRef.current.scanProgress = schoolAct.progress;
+    schoolSoundscapeRef.current?.update({ scanProgress: schoolAct.progress });
+
+    if (
+      previousSchoolActStatusRef.current !== 'allowed'
+      && schoolAct.status === 'allowed'
+    ) {
+      schoolSoundscapeRef.current?.trigger('gate-open');
+    }
+    previousSchoolActStatusRef.current = schoolAct.status;
+  }, [schoolAct.progress, schoolAct.status]);
 
   useEffect(() => () => {
     verticalSoundscapeRef.current?.dispose();
+    schoolSoundscapeRef.current?.dispose();
     const context = sharedAudioContextRef.current;
     sharedAudioContextRef.current = null;
     if (context && context.state !== 'closed') void context.close();
   }, []);
 
-  useEffect(() => clearTraceTimers, [clearTraceTimers]);
-
-  const traceFinished = traceOutcome !== 'idle' && traceOutcome !== 'running';
-  const traceAllowed = traceOutcome === 'allowed';
-  const macroWorldActive = qualityTier !== 'editorial'
+  const macroWorldActive = webglAvailable
+    && qualityTier !== 'editorial'
     && activeChapter !== 'infect'
     && activeChapter !== 'research'
     && activeChapter !== 'evidence-weave'
     && activeChapter !== 'final-return'
     && activeChapter !== 'open-paths'
     && activeChapter !== 'dawn';
-  const traceResult = traceAllowed
-    ? 'ALLOW / token redeemed once'
-    : traceOutcome === 'expired'
-      ? 'DENY / EXPIRED'
-      : traceOutcome === 'used'
-        ? 'DENY / ALREADY_USED'
-        : 'Awaiting trace';
-
   return (
     <main
       ref={rootRef}
@@ -385,31 +448,37 @@ function MacroFlowExperience() {
       data-quality-tier={qualityTier}
       data-lens={lensMode}
       data-evidence-cores={evidenceCores.length}
-      data-trace-outcome={traceOutcome}
+      data-trace-outcome={schoolAct.status}
+      data-renderer={macroWorldActive ? 'webgl' : 'editorial'}
     >
       <a className="mf-skip" href="#mf-proof">Sari la dovada proiectului</a>
 
       <div className="mf-world" aria-hidden="true">
         {macroWorldActive ? (
-          <Suspense fallback={<VerticalSliceLoader />}>
-            <MacroFlowScene
-              activeChapter={activeChapter}
-              progressRef={progressRef}
-              lensPointerRef={lensPointerRef}
-              nexusFlightInputRef={nexusFlightInputRef}
-              lensMode={lensMode}
-              collectedEvidenceCores={evidenceCores}
-              onCollectEvidenceCore={collectEvidenceCore}
-              traceStep={traceStep}
-              traceOutcome={traceOutcome}
-              buriedDiscoveries={buriedRules.size}
-              reducedMotion={reducedMotion}
-              qualityTier={qualityTier}
-              velocityRef={velocityRef}
-              onPerformanceFactor={(factor) => experienceActor.send({ type: 'QUALITY_SAMPLE', factor })}
-              onPerformanceFallback={() => experienceActor.send({ type: 'QUALITY_FALLBACK' })}
-            />
-          </Suspense>
+          <WorldErrorBoundary>
+            <Suspense fallback={<VerticalSliceLoader />}>
+              <MacroFlowScene
+                activeChapter={activeChapter}
+                progressRef={progressRef}
+                schoolActProgressRef={schoolActProgressRef}
+                schoolEntranceHandoffProgressRef={schoolEntranceHandoffProgressRef}
+                descentHandoffProgressRef={descentHandoffProgressRef}
+                lensPointerRef={lensPointerRef}
+                nexusFlightInputRef={nexusFlightInputRef}
+                lensMode={lensMode}
+                collectedEvidenceCores={evidenceCores}
+                onCollectEvidenceCore={collectEvidenceCore}
+                traceProgress={schoolAct.progress}
+                traceOutcome={schoolAct.status}
+                buriedDiscoveries={buriedRules.size}
+                reducedMotion={reducedMotion}
+                qualityTier={qualityTier}
+                velocityRef={velocityRef}
+                onPerformanceFactor={(factor) => experienceActor.send({ type: 'QUALITY_SAMPLE', factor })}
+                onPerformanceFallback={() => experienceActor.send({ type: 'QUALITY_FALLBACK' })}
+              />
+            </Suspense>
+          </WorldErrorBoundary>
         ) : null}
         <div className="mf-world__grade" />
       </div>
@@ -620,192 +689,13 @@ function MacroFlowExperience() {
         </div>
       </section>
 
-      <section id="mf-passage" className="mf-beat mf-beat--passage" data-chapter="passage">
-        <div className="mf-copy mf-copy--passage">
-          <p className="mf-kicker">Continuity rule / Nexus → Aegis</p>
-          <h2>Detecția devine decizie.</h2>
-          <p>
-            Bounding-box-urile nu dispar. Se ridică în cadre de acces, iar semnalul verificat
-            devine traseul prin sistemul Aegis.
-          </p>
-          <div className="mf-next-beat">
-            <span>Urmează</span>
-            <strong>Un eveniment prin sistem</strong>
-          </div>
-        </div>
-      </section>
-
-      <section id="mf-access" className="mf-beat mf-beat--access" data-chapter="access">
-        <div className="mf-trace-knot">
-          <div className="mf-trace-knot__heading">
-            <p className="mf-kicker">Protect / Aegis transaction</p>
-            <h2>Un cod scurt. Un singur drum prin sistem.</h2>
-            <p>
-              Tokenul este emis în backend, prezentat la poartă și consumat într-o tranzacție
-              atomică. Condiția se schimbă; regula rămâne inspectabilă.
-            </p>
-          </div>
-
-          <div className="mf-scenario-control" aria-label="Condiția tokenului">
-            {TRACE_SCENARIOS.map((scenario) => (
-              <button
-                key={scenario.id}
-                type="button"
-                data-active={traceScenario === scenario.id || undefined}
-                aria-pressed={traceScenario === scenario.id}
-                onClick={() => selectTraceScenario(scenario.id)}
-              >
-                <strong>{scenario.label}</strong>
-                <small>{scenario.detail}</small>
-              </button>
-            ))}
-          </div>
-
-          <ol className="mf-trace-flow" aria-label="Fluxul de validare Aegis">
-            {TRACE_STEPS.map((step, index) => (
-              <li
-                key={step}
-                data-current={traceOutcome === 'running' && traceStep === index || undefined}
-                data-complete={traceStep >= index && traceOutcome !== 'idle' || undefined}
-              >
-                <span>0{index + 1}</span>
-                <strong>{step}</strong>
-                {traceStep > index || traceFinished && traceStep === index
-                  ? <Check aria-hidden="true" />
-                  : <i aria-hidden="true" />}
-              </li>
-            ))}
-          </ol>
-
-          <div className="mf-trace-command">
-            <div className="mf-trace-result" role="status" aria-live="polite" data-finished={traceFinished || undefined}>
-              {traceFinished
-                ? traceAllowed ? <ShieldCheck aria-hidden="true" /> : <CircleX aria-hidden="true" />
-                : <ScanLine aria-hidden="true" />}
-              <span><small>Transaction result</small><strong>{traceResult}</strong></span>
-            </div>
-            <div className="mf-trace-actions">
-              <button
-                className="mf-reset-trace"
-                type="button"
-                aria-label="Resetează trace-ul"
-                title="Resetează trace-ul"
-                onClick={resetTrace}
-              >
-                <RefreshCcw aria-hidden="true" />
-              </button>
-              <button
-                className="mf-run-trace"
-                type="button"
-                disabled={traceOutcome === 'running'}
-                onClick={runTrace}
-              >
-                <Play aria-hidden="true" />
-                {traceOutcome === 'running' ? 'Tracing' : 'Rulează trace-ul'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="mf-school-bridge">
-          <div className="mf-school-bridge__copy">
-            <p className="mf-kicker">Campus passage / Aegis → SchoolMate</p>
-            <h2>Poarta nu încheie traseul. Îl mută înăuntru.</h2>
-            <p>
-              După validare, elevul intră în același context pe care SchoolMate îl conectează:
-              coridor, clasă, profesor și secretariat.
-            </p>
-            <div className="mf-school-bridge__roles" aria-label="Traseul prin școală">
-              <span><small>01</small><strong>Poartă</strong></span>
-              <span><small>02</small><strong>Coridor</strong></span>
-              <span><small>03</small><strong>Clasă</strong></span>
-              <span><small>04</small><strong>Secretariat</strong></span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="mf-schoolmate" className="mf-trust-clearing" data-chapter="schoolmate">
-        <div className="mf-trust-clearing__inner">
-          <header className="mf-trust-head">
-            <p className="mf-kicker">Editorial clearing / school software</p>
-            <p>Connected context / separate builds</p>
-          </header>
-
-          <div className="mf-trust-intro">
-            <span>02 produse</span>
-            <h2>Același context.<br />Două sisteme distincte.</h2>
-            <p>
-              Aegis tratează accesul și auditul de la poartă. SchoolMate tratează comunicarea,
-              cererile, orarul și operațiunile dintre rolurile școlii.
-            </p>
-          </div>
-
-          <article className="mf-product mf-product--aegis">
-            <header>
-              <p className="mf-kicker">Aegis / safe access</p>
-              <h3>Aegis</h3>
-              <p>Control de acces cu token QR opac, scurt, single-use și validare server-side.</p>
-            </header>
-            <figure>
-              <img src="/assets/projects/aegis.webp" alt="Ecranul QR de acces din Aegis și marca proiectului" width="851" height="656" loading="lazy" decoding="async" />
-              <figcaption>Build capture / student access surface</figcaption>
-            </figure>
-            <dl>
-              <div><dt>Token TTL</dt><dd>20s</dd></div>
-              <div><dt>Entropie</dt><dd>256-bit</dd></div>
-              <div><dt>Roluri</dt><dd>5</dd></div>
-            </dl>
-            <div className="mf-product__links">
-              <a href="https://github.com/BosRegele/Aegis" target="_blank" rel="noreferrer">Repository <span aria-hidden="true">↗</span></a>
-              <a href="https://www.jaromania.org/noutati/articole/news/o-noua-editie-a-programului-skills-for-the-future-se-deruleaza-in-bucuresti" target="_blank" rel="noreferrer">Skills for the Future <span aria-hidden="true">↗</span></a>
-            </div>
-          </article>
-
-          <div className="mf-product-relation">
-            <span>Aegis</span>
-            <i aria-hidden="true" />
-            <strong>Context comun, nu același produs</strong>
-            <i aria-hidden="true" />
-            <span>SchoolMate</span>
-          </div>
-
-          <article className="mf-product mf-product--schoolmate">
-            <header>
-              <p className="mf-kicker">SchoolMate / school operations</p>
-              <h3>SchoolMate</h3>
-              <p>
-                Anunțuri, cereri, orare și administrare într-un build Flutter + Firebase pentru
-                elevi, profesori, părinți, secretariat și poartă.
-              </p>
-            </header>
-            <figure>
-              <img src="/assets/projects/schoolmate.webp" alt="Portalul de secretariat SchoolMate cu lista de anunțuri" width="1519" height="890" loading="lazy" decoding="async" />
-              <figcaption>Live portal capture / secretariat surface</figcaption>
-            </figure>
-            <ul className="mf-product-flows">
-              <li><span>01</span> Anunțuri și oportunități</li>
-              <li><span>02</span> Cereri și aprobări</li>
-              <li><span>03</span> Orare și roluri</li>
-              <li><span>04</span> Audit la poartă</li>
-            </ul>
-            <div className="mf-product__links">
-              <a href="https://schoolmate-portal.web.app/" target="_blank" rel="noreferrer">Portal live <span aria-hidden="true">↗</span></a>
-              <a href="https://www.youtube.com/watch?v=wNU1WhSMBKU" target="_blank" rel="noreferrer">Demo video <span aria-hidden="true">↗</span></a>
-              <a href="https://github.com/calinnedelcu/SchoolMate-final" target="_blank" rel="noreferrer">Repository <span aria-hidden="true">↗</span></a>
-            </div>
-          </article>
-
-          <figure className="mf-award-evidence">
-            <img src="/assets/achievements/aegis-skills-future-2026.webp" alt="Participanți la finala Skills for the Future 2026" width="1600" height="1200" loading="lazy" decoding="async" />
-            <figcaption>
-              <span>Result / Aegis</span>
-              <strong>Locul 2 național</strong>
-              <small>Skills for the Future 2026 / DB Global Technology × Junior Achievement România</small>
-            </figcaption>
-          </figure>
-        </div>
-      </section>
+      <SchoolActOverlay
+        traceProgress={schoolAct.progress}
+        traceStep={schoolAct.stageIndex}
+        traceOutcome={schoolAct.status}
+        onStartScan={startSchoolScan}
+        reducedMotion={reducedMotion}
+      />
 
       <section id="mf-descent" className="mf-beat mf-beat--descent" data-chapter="descent">
         <div className="mf-copy mf-copy--descent">

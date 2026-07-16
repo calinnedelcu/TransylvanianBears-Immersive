@@ -10,6 +10,7 @@ export function VerticalSliceLoadingGate({ cameraReady }: VerticalSliceLoadingGa
   const { active, loaded, progress, total } = useProgress();
   const [started, setStarted] = useState(false);
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (active || total > 0) setStarted(true);
@@ -22,11 +23,12 @@ export function VerticalSliceLoadingGate({ cameraReady }: VerticalSliceLoadingGa
   }, [active, cameraReady, loaded, total]);
 
   useEffect(() => {
-    const fallbackTimer = window.setTimeout(() => setReady(true), 8_000);
+    if (ready) return;
+    const fallbackTimer = window.setTimeout(() => setFailed(true), 8_000);
     return () => window.clearTimeout(fallbackTimer);
-  }, []);
+  }, [ready]);
 
-  if (ready) return null;
+  if (ready || failed) return null;
   const composedProgress = cameraReady
     ? (total === 0 ? 100 : progress)
     : Math.min(progress, 92);

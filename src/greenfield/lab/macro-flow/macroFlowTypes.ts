@@ -1,6 +1,6 @@
 export type MacroLensMode = 'raw' | 'segmentation' | 'detection';
 
-export type MacroTraceOutcome = 'idle' | 'running' | 'allowed' | 'expired' | 'used';
+export type MacroTraceOutcome = 'idle' | 'running' | 'allowed';
 
 export type LensPointerState = {
   x: number;

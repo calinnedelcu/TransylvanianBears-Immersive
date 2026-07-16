@@ -27,5 +27,5 @@ dist-ssr
 *.sw?
 .vercel
 
-# Rebuilt by scripts/blender; the optimized runtime assets stay in public.
-artifacts/blender/*.blend*
+# Rebuilt by Blender and QA scripts; optimized runtime assets stay in public.
+artifacts/

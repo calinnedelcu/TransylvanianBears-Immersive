@@ -410,7 +410,7 @@ export const PROJECTS: ProjectDefinition[] = [
     heroAsset: sceneAsset('aegis'),
     metrics: [
       { value: '20s', label: 'expirare token', evidence: 'verified' },
-      { value: '256-bit', label: 'token aleator', evidence: 'verified' },
+      { value: 'Single-use', label: 'redeem atomic', evidence: 'verified' },
       { value: '5', label: 'roluri în Aegis', evidence: 'verified' },
     ],
     chapters: [

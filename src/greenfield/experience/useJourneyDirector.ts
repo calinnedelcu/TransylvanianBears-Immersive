@@ -9,6 +9,9 @@ export type JourneyTelemetry = {
   journeyProgressRef: MutableRefObject<number>;
   worldProgressRef: MutableRefObject<number>;
   sliceProgressRef: MutableRefObject<number>;
+  schoolActProgressRef: MutableRefObject<number>;
+  schoolEntranceHandoffProgressRef: MutableRefObject<number>;
+  descentHandoffProgressRef: MutableRefObject<number>;
   velocityRef: MutableRefObject<number>;
   directionRef: MutableRefObject<-1 | 0 | 1>;
 };
@@ -19,6 +22,7 @@ type JourneyDirectorOptions = {
   onChapterChange: (chapter: JourneyChapter) => void;
   onProgress?: (progress: number, velocity: number) => void;
   onSliceProgress?: (progress: number, velocity: number) => void;
+  onSchoolActProgress?: (progress: number, velocity: number) => void;
 };
 
 export function useJourneyDirector({
@@ -27,12 +31,17 @@ export function useJourneyDirector({
   onChapterChange,
   onProgress,
   onSliceProgress,
+  onSchoolActProgress,
 }: JourneyDirectorOptions): JourneyTelemetry {
   const journeyProgressRef = useRef(0);
   const worldProgressRef = useRef(0);
   const sliceProgressRef = useRef(0);
+  const schoolActProgressRef = useRef(0);
+  const schoolEntranceHandoffProgressRef = useRef(0);
+  const descentHandoffProgressRef = useRef(0);
   const velocityRef = useRef(0);
   const directionRef = useRef<-1 | 0 | 1>(0);
+  const initialHashRestoredRef = useRef(false);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -41,6 +50,10 @@ export function useJourneyDirector({
     const context = gsap.context(() => {
       const worldEnd = root.querySelector<HTMLElement>('#mf-infect');
       const sliceEnd = root.querySelector<HTMLElement>('#mf-passage');
+      const schoolActStart = root.querySelector<HTMLElement>('#mf-passage');
+      const schoolActEnd = root.querySelector<HTMLElement>('#mf-descent');
+      const descentHandoffStart = root.querySelector<HTMLElement>('#mf-descent');
+      const descentHandoffEnd = root.querySelector<HTMLElement>('#mf-lamp');
       const threshold = root.querySelector<HTMLElement>('#mf-threshold');
       const thresholdCopy = threshold?.querySelector<HTMLElement>('.mf-copy--hero');
       const proof = root.querySelector<HTMLElement>('#mf-proof');
@@ -224,6 +237,43 @@ export function useJourneyDirector({
         });
       }
 
+      if (schoolActStart && schoolActEnd) {
+        ScrollTrigger.create({
+          id: 'journey-school-entrance-handoff',
+          trigger: schoolActStart,
+          start: 'top 46%',
+          end: 'top top',
+          onUpdate: (self) => {
+            schoolEntranceHandoffProgressRef.current = self.progress;
+          },
+        });
+
+        ScrollTrigger.create({
+          id: 'journey-school-act',
+          trigger: schoolActStart,
+          start: 'top top',
+          endTrigger: schoolActEnd,
+          end: 'top top',
+          onUpdate: (self) => {
+            schoolActProgressRef.current = self.progress;
+            onSchoolActProgress?.(self.progress, velocityRef.current);
+          },
+        });
+      }
+
+      if (descentHandoffStart && descentHandoffEnd) {
+        ScrollTrigger.create({
+          id: 'journey-descent-handoff',
+          trigger: descentHandoffStart,
+          start: 'top 46%',
+          endTrigger: descentHandoffEnd,
+          end: 'top 46%',
+          onUpdate: (self) => {
+            descentHandoffProgressRef.current = self.progress;
+          },
+        });
+      }
+
       root.querySelectorAll<HTMLElement>('[data-chapter]').forEach((element) => {
         const chapter = element.dataset.chapter;
         if (!isJourneyChapter(chapter)) return;
@@ -239,13 +289,40 @@ export function useJourneyDirector({
     }, root);
 
     ScrollTrigger.refresh();
+    let hashRestoreFrame = 0;
+    if (!initialHashRestoredRef.current && window.location.hash.length > 1) {
+      const targetId = decodeURIComponent(window.location.hash.slice(1));
+      const target = document.getElementById(targetId);
+      if (target && root.contains(target)) {
+        hashRestoreFrame = window.requestAnimationFrame(() => {
+          ScrollTrigger.refresh();
+          const scrollPadding = Number.parseFloat(
+            getComputedStyle(document.documentElement).scrollPaddingTop,
+          ) || 0;
+          const top = window.scrollY + target.getBoundingClientRect().top - scrollPadding;
+          window.scrollTo({ top, behavior: 'auto' });
+          ScrollTrigger.update();
+          initialHashRestoredRef.current = true;
+        });
+      }
+    }
     return () => {
+      window.cancelAnimationFrame(hashRestoreFrame);
       context.revert();
       root.style.removeProperty('--mf-progress');
     };
-  }, [onChapterChange, onProgress, onSliceProgress, reducedMotion, rootRef]);
+  }, [onChapterChange, onProgress, onSchoolActProgress, onSliceProgress, reducedMotion, rootRef]);
 
-  return { journeyProgressRef, worldProgressRef, sliceProgressRef, velocityRef, directionRef };
+  return {
+    journeyProgressRef,
+    worldProgressRef,
+    sliceProgressRef,
+    schoolActProgressRef,
+    schoolEntranceHandoffProgressRef,
+    descentHandoffProgressRef,
+    velocityRef,
+    directionRef,
+  };
 }
 
 function dampSigned(current: number, target: number, amount: number) {
