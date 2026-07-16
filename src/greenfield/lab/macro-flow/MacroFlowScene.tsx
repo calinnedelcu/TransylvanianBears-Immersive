@@ -288,7 +288,7 @@ function FirstLightCitadel({
 
   useFrame((_, delta) => {
     if (!rootRef.current) return;
-    const departure = smooth(range(progressRef.current, 0.105, 0.18));
+    const departure = smooth(range(progressRef.current, 0.072, 0.112));
     rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, -18 * departure, 5.2, delta);
     rootRef.current.rotation.y = THREE.MathUtils.damp(rootRef.current.rotation.y, departure * -0.018, 4.2, delta);
   });
@@ -317,7 +317,7 @@ function GateApparatus({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>
     const localProgress = legacyProgress(progressRef.current);
     const opening = smooth(range(localProgress, 0.085, 0.205));
     const response = range(localProgress, 0.045, 0.115);
-    const departure = smooth(range(progressRef.current, 0.11, 0.18));
+    const departure = smooth(range(progressRef.current, 0.075, 0.115));
 
     bladeRefs.current.forEach((blade, index) => {
       if (!blade) return;
@@ -428,7 +428,7 @@ function ApproachSignal({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'
     pulseRef.current.position.copy(pulsePosition);
     pulseRef.current.visible = reveal > 0.01 && reveal < 0.995;
     if (rootRef.current) {
-      const departure = smooth(range(progressRef.current, 0.105, 0.18));
+      const departure = smooth(range(progressRef.current, 0.075, 0.115));
       rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, -18 * departure, 5.2, delta);
     }
   });
@@ -464,32 +464,70 @@ const FIELD_BLOCKS = Array.from({ length: 42 }, (_, index) => {
   };
 });
 
-function SyntheticField({ lensMode }: Pick<MacroFlowSceneProps, 'lensMode'>) {
+function SyntheticField({
+  lensMode,
+  progressRef,
+}: Pick<MacroFlowSceneProps, 'lensMode' | 'progressRef'>) {
+  const rootRef = useRef<THREE.Group>(null);
+
+  useFrame((_, delta) => {
+    if (!rootRef.current) return;
+    const reveal = smooth(range(progressRef.current, 0.065, 0.105));
+    const settle = smooth(range(progressRef.current, 0.12, 0.165));
+    const departure = smooth(range(progressRef.current, 0.285, 0.35));
+    const entryLift = reveal * (1 - settle) * 2.6;
+    rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, -3.8 + reveal * 3.8 + entryLift - departure * 5, 5.6, delta);
+  });
+
   return (
-    <group position={[0, 0, -7]}>
+    <group ref={rootRef} position={[0, -3.8, -7]}>
       <mesh position={[0, 0.03, -15]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[7.4, 52]} />
         <meshStandardMaterial
-          color={lensMode === 'segmentation' ? '#5f7270' : '#273335'}
+          color={lensMode === 'segmentation' ? '#5f7270' : '#344345'}
           emissive={lensMode === 'segmentation' ? '#263837' : '#11191a'}
-          emissiveIntensity={0.34}
+          emissiveIntensity={0.5}
           roughness={0.9}
         />
       </mesh>
-      <mesh position={[0, 0.07, -15]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[0.08, 50]} />
-        <meshBasicMaterial color="#75dcda" transparent opacity={lensMode === 'raw' ? 0.22 : 0.7} />
-      </mesh>
+      {[-2.55, 0, 2.55].map((x, index) => (
+        <mesh key={x} position={[x, 0.075, -15]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[index === 1 ? 0.075 : 0.035, 50]} />
+          <meshBasicMaterial color={index === 1 ? '#75dcda' : '#b8a46d'} transparent opacity={lensMode === 'raw' ? 0.38 : 0.78} />
+        </mesh>
+      ))}
+
+      {Array.from({ length: 12 }, (_, index) => {
+        const z = 4 - index * 4.1;
+        const color = index % 3 === 0 ? '#d0ae67' : '#6fd8d6';
+        return (
+          <group key={z} position={[0, 0, z]}>
+            <mesh position={[-3.45, 1.25, 0]}>
+              <boxGeometry args={[0.035, 2.5, 0.035]} />
+              <meshBasicMaterial color={color} transparent opacity={lensMode === 'raw' ? 0.34 : 0.74} />
+            </mesh>
+            <mesh position={[3.45, 1.25, 0]}>
+              <boxGeometry args={[0.035, 2.5, 0.035]} />
+              <meshBasicMaterial color={color} transparent opacity={lensMode === 'raw' ? 0.34 : 0.74} />
+            </mesh>
+            <mesh position={[0, 2.5, 0]}>
+              <boxGeometry args={[6.94, 0.035, 0.035]} />
+              <meshBasicMaterial color={color} transparent opacity={lensMode === 'raw' ? 0.2 : 0.64} />
+            </mesh>
+          </group>
+        );
+      })}
+
       {FIELD_BLOCKS.map((block, index) => {
         const segmentationColors = ['#cf6c57', '#d5b96a', '#6ab0aa'];
         return (
           <mesh key={index} position={block.position}>
             <boxGeometry args={block.scale} />
             <meshStandardMaterial
-              color={lensMode === 'segmentation' ? segmentationColors[block.segment] : '#465456'}
-              emissive={lensMode === 'segmentation' ? segmentationColors[block.segment] : '#172223'}
-              emissiveIntensity={lensMode === 'segmentation' ? 0.12 : 0.28}
-              roughness={0.82}
+              color={lensMode === 'segmentation' ? segmentationColors[block.segment] : '#536365'}
+              emissive={lensMode === 'segmentation' ? segmentationColors[block.segment] : '#1d3031'}
+              emissiveIntensity={lensMode === 'segmentation' ? 0.2 : 0.42}
+              roughness={0.78}
             />
           </mesh>
         );
@@ -679,7 +717,7 @@ function SignalBeads({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>) 
   const refs = useRef<Array<THREE.Mesh | null>>([]);
 
   useFrame(() => {
-    const reveal = range(legacyProgress(progressRef.current), 0.72, 0.96);
+    const reveal = range(progressRef.current, 0.315, 0.425);
     refs.current.forEach((mesh, index) => {
       if (!mesh) return;
       const material = mesh.material as THREE.MeshStandardMaterial;
@@ -712,19 +750,25 @@ function PassageFrame({ z, index }: { z: number; index: number }) {
   const color = index < 3 ? '#6fd8d6' : '#b8a46d';
 
   return (
-    <group position={[Math.sin(index * 0.7) * 1.1, 0, z]} rotation={[0, Math.sin(index) * 0.08, 0]}>
+    <group position={[Math.sin(index * 0.7) * 1.1, 0, z]} rotation={[0, Math.sin(index) * 0.08, 0]} scale={0.62}>
       <mesh position={[-width / 2, height / 2, 0]}>
         <boxGeometry args={[0.12, height, 0.12]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.8} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.85} roughness={0.32} />
       </mesh>
       <mesh position={[width / 2, height / 2, 0]}>
         <boxGeometry args={[0.12, height, 0.12]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.8} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.85} roughness={0.32} />
       </mesh>
       <mesh position={[0, height, 0]}>
         <boxGeometry args={[width, 0.12, 0.12]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.8} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.85} roughness={0.32} />
       </mesh>
+      {index % 2 === 0 ? (
+        <mesh position={[0, height * 0.52, 0.05]}>
+          <planeGeometry args={[width * 0.86, height * 0.78]} />
+          <meshBasicMaterial color={color} transparent opacity={0.035} depthWrite={false} side={THREE.DoubleSide} />
+        </mesh>
+      ) : null}
     </group>
   );
 }
@@ -734,17 +778,17 @@ function AegisPassage({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>)
 
   useFrame(() => {
     if (!rootRef.current) return;
-    const reveal = smooth(range(legacyProgress(progressRef.current), 0.7, 0.9));
+    const reveal = smooth(range(progressRef.current, 0.305, 0.375));
     rootRef.current.position.y = -3.8 + reveal * 3.8;
   });
 
   return (
-    <group ref={rootRef}>
-      {Array.from({ length: 10 }, (_, index) => (
+    <group ref={rootRef} position={[2.8, -3.8, 0]}>
+      {Array.from({ length: 13 }, (_, index) => (
         <PassageFrame key={index} z={-39 - index * 2.9} index={index} />
       ))}
-      <mesh position={[0, 0.02, -54]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[7.5, 34]} />
+      <mesh position={[0, 0.02, -58]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[7.5, 43]} />
         <meshStandardMaterial color="#171d1e" roughness={0.94} />
       </mesh>
     </group>
@@ -808,7 +852,7 @@ function AccessTrace({
   const target = useMemo(() => new THREE.Vector3(), []);
 
   useFrame((_, delta) => {
-    const reveal = smooth(range(legacyProgress(progressRef.current), 0.58, 0.68));
+    const reveal = smooth(range(progressRef.current, 0.395, 0.465));
     if (rootRef.current) rootRef.current.position.y = -4 + reveal * 4;
     if (!tokenRef.current) return;
 
@@ -870,31 +914,64 @@ function AccessTrace({
 
 function DescentLayers({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>) {
   const refs = useRef<Array<THREE.Mesh | null>>([]);
+  const coreRef = useRef<THREE.Group>(null);
 
   useFrame(() => {
-    const fold = smooth(range(legacyProgress(progressRef.current), 0.88, 1));
+    const fold = smooth(range(progressRef.current, 0.625, 0.715));
     refs.current.forEach((layer, index) => {
       if (!layer) return;
       layer.rotation.x = -Math.PI / 2 + fold * (0.2 + index * 0.075);
       layer.position.y = -7 - index * 0.16 + fold * (6.8 + index * 0.18);
       layer.position.z = -96 - index * 1.35;
     });
+    if (coreRef.current) {
+      coreRef.current.position.y = -2.5 + fold * 7.1;
+      coreRef.current.rotation.x = fold * Math.PI * 0.5;
+      coreRef.current.rotation.z += 0.003 + fold * 0.006;
+      coreRef.current.scale.setScalar(0.3 + fold * 0.7);
+    }
   });
 
   return (
     <group>
       {Array.from({ length: 7 }, (_, index) => (
         <mesh key={index} ref={(node) => { refs.current[index] = node; }}>
-          <planeGeometry args={[16 - index * 0.9, 8]} />
+          <planeGeometry args={[16 - index * 0.9, 8 - index * 0.22]} />
           <meshStandardMaterial
-            color={index % 2 === 0 ? '#252322' : '#34302b'}
-            emissive={index % 2 === 0 ? '#181616' : '#211d18'}
-            emissiveIntensity={0.24}
+            color={index % 2 === 0 ? '#1f2b2a' : '#393328'}
+            emissive={index % 2 === 0 ? '#214441' : '#4d3e20'}
+            emissiveIntensity={0.42}
             side={THREE.DoubleSide}
-            roughness={0.94}
+            roughness={0.86}
+            transparent
+            opacity={0.9}
           />
+          {[-1, 1].map((side) => (
+            <mesh key={`h-${side}`} position={[0, side * (4 - index * 0.11), 0.035]}>
+              <boxGeometry args={[16 - index * 0.9, 0.055, 0.055]} />
+              <meshBasicMaterial color={index % 2 === 0 ? '#72d9d6' : '#d4b36b'} transparent opacity={0.72} />
+            </mesh>
+          ))}
+          {[-1, 1].map((side) => (
+            <mesh key={`v-${side}`} position={[side * (8 - index * 0.45), 0, 0.035]}>
+              <boxGeometry args={[0.055, 8 - index * 0.22, 0.055]} />
+              <meshBasicMaterial color={index % 2 === 0 ? '#72d9d6' : '#d4b36b'} transparent opacity={0.72} />
+            </mesh>
+          ))}
         </mesh>
       ))}
+      <group ref={coreRef} position={[0, -2.5, -101.2]} scale={0.3}>
+        <mesh>
+          <icosahedronGeometry args={[0.72, 1]} />
+          <meshStandardMaterial color="#72d9d6" emissive="#72d9d6" emissiveIntensity={3.2} roughness={0.18} />
+        </mesh>
+        {[1.2, 1.7, 2.25].map((radius, index) => (
+          <mesh key={radius} rotation={[index * 0.62, index * 0.4, 0]}>
+            <torusGeometry args={[radius, 0.035, 7, 56]} />
+            <meshBasicMaterial color={index % 2 === 0 ? '#72d9d6' : '#d4b36b'} transparent opacity={0.72} />
+          </mesh>
+        ))}
+      </group>
     </group>
   );
 }
@@ -1011,10 +1088,12 @@ function World({
       />
       <pointLight position={[-7, 8, 24]} intensity={38} distance={34} color="#c9ad72" />
       <pointLight position={[0, 5.2, 14]} intensity={26} distance={20} color="#64cfcb" />
-      <pointLight position={[0, 4.6, 1]} intensity={30} distance={21} color="#d0ad68" />
-      <pointLight position={[0, 5, -30]} intensity={22} distance={16} color="#6fd8d6" />
-      <pointLight position={[0, 5, -54]} intensity={18} distance={18} color="#c0a66b" />
+      <pointLight position={[-3, 5.2, 1]} intensity={42} distance={28} color="#72d9d6" />
+      <pointLight position={[3, 4.4, -13]} intensity={34} distance={27} color="#d0ad68" />
+      <pointLight position={[0, 5, -33]} intensity={36} distance={24} color="#6fd8d6" />
+      <pointLight position={[0, 5, -54]} intensity={30} distance={24} color="#c0a66b" />
       <pointLight position={[0, 5, -79]} intensity={24} distance={22} color="#75dcda" />
+      <pointLight position={[0, 6, -99]} intensity={38} distance={24} color="#8dded8" />
       <pointLight position={[0, 4, -120]} intensity={30} distance={28} color="#d88538" />
 
       <CameraDirector
@@ -1026,7 +1105,7 @@ function World({
       <FirstLightCitadel progressRef={progressRef} qualityTier={qualityTier} />
       <ApproachSignal progressRef={progressRef} />
       <GateApparatus progressRef={progressRef} />
-      <SyntheticField lensMode={lensMode} />
+      <SyntheticField lensMode={lensMode} progressRef={progressRef} />
       <NexusTargets lensMode={lensMode} />
       <SpatialEvidenceScreen progressRef={progressRef} lensMode={lensMode} />
       <SignalBeads progressRef={progressRef} />

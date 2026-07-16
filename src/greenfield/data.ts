@@ -8,12 +8,12 @@ import type {
 } from './types';
 
 export const TEAM: TeamMember[] = [
-  { id: 'calin-nedelcu', name: 'Călin Nedelcu', discipline: 'Product & systems', status: 'needs-review' },
-  { id: 'vlad-bostina', name: 'Vlad Boștină', discipline: 'Backend & 3D', status: 'needs-review' },
-  { id: 'andrei-cheroiu', name: 'Andrei Cheroiu', discipline: 'AI & computer vision', status: 'needs-review' },
-  { id: 'alex-istrate', name: 'Alex Istrate', discipline: 'Full-stack', status: 'needs-review' },
-  { id: 'cristian-buloi', name: 'Cristian Buloi', discipline: 'Design & frontend', status: 'needs-review' },
-  { id: 'vlad-colan', name: 'Vlad Colan', discipline: 'Games & 3D', status: 'needs-review' },
+  { id: 'calin-nedelcu', name: 'Călin Nedelcu', discipline: 'Product & systems', portraitSrc: '/assets/membrii/CalinNedelcu.webp', status: 'needs-review' },
+  { id: 'vlad-bostina', name: 'Vlad Boștină', discipline: 'Backend & 3D', portraitSrc: '/assets/membrii/VladBostina.webp', status: 'needs-review' },
+  { id: 'andrei-cheroiu', name: 'Andrei Cheroiu', discipline: 'AI & computer vision', portraitSrc: '/assets/membrii/AndreiCheroiu.webp', status: 'needs-review' },
+  { id: 'alex-istrate', name: 'Alex Istrate', discipline: 'Full-stack', portraitSrc: '/assets/membrii/AlexIstrate.webp', status: 'needs-review' },
+  { id: 'cristian-buloi', name: 'Cristian Buloi', discipline: 'Design & frontend', portraitSrc: '/assets/membrii/CristianBuloi.webp', status: 'needs-review' },
+  { id: 'vlad-colan', name: 'Vlad Colan', discipline: 'Games & 3D', portraitSrc: '/assets/membrii/VladColan.webp', status: 'needs-review' },
 ];
 
 export const SCENES: SceneDefinition[] = [
@@ -789,6 +789,8 @@ export const ARCHIVE: ArchiveEntry[] = [
     evidence: 'team-confirmed',
     kind: 'award',
     projectId: 'project-nexus',
+    imageSrc: '/assets/achievements/project-nexus-2026.webp',
+    imageAlt: 'Echipa Project Nexus pe scenă după obținerea locului întâi.',
   },
   {
     id: 'aegis-skills-future',
@@ -798,6 +800,8 @@ export const ARCHIVE: ArchiveEntry[] = [
     evidence: 'team-confirmed',
     kind: 'award',
     projectId: 'aegis',
+    imageSrc: '/assets/achievements/aegis-skills-future-2026.webp',
+    imageAlt: 'Finaliștii Skills for the Future 2026 la evenimentul național.',
   },
   {
     id: 'buried-hands-game-jam',
@@ -834,6 +838,8 @@ export const ARCHIVE: ArchiveEntry[] = [
     result: 'Locul 3',
     evidence: 'team-confirmed',
     kind: 'ranking',
+    imageSrc: '/assets/achievements/chronos-ctf-2025.webp',
+    imageAlt: 'Certificatul locului trei la categoria Juniors a Chronos Security CTF 2025.',
   },
   {
     id: 'infect-exe-one-bit-jam',
@@ -845,6 +851,8 @@ export const ARCHIVE: ArchiveEntry[] = [
     projectId: 'infect-exe',
     href: 'https://itch.io/jam/1-bit-jam-7/rate/4068020',
     note: 'Locul 8 la temă și locul 14 la artă, din 56 de înscrieri.',
+    imageSrc: '/assets/achievements/1bit-jam-7-2025.webp',
+    imageAlt: 'Tabelul clasării Infect.exe la 1-BIT JAM 7.',
   },
   {
     id: 'economy-news-siat',
@@ -855,6 +863,8 @@ export const ARCHIVE: ArchiveEntry[] = [
     kind: 'award',
     projectId: 'economy-news',
     note: 'Concurs de comunicări științifice în domeniul economiei.',
+    imageSrc: '/assets/projects/siat-diploma.webp',
+    imageAlt: 'Diploma obținută de EconomyNews la concursul Joseph Schumpeter.',
   },
   {
     id: 'deutsche-bank-internship',

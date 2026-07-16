@@ -226,6 +226,7 @@ function MacroFlowExperience() {
       ref={rootRef}
       className="mf-lab"
       data-active-chapter={activeChapter}
+      data-quality-tier={qualityTier}
       data-lens={lensMode}
       data-trace-outcome={traceOutcome}
     >

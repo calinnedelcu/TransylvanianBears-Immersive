@@ -67,6 +67,7 @@ export type TeamMember = {
   id: string;
   name: string;
   discipline: string;
+  portraitSrc: string;
   status: 'confirmed' | 'needs-review';
 };
 
@@ -80,6 +81,8 @@ export type ArchiveEntry = {
   projectId?: ProjectId;
   note?: string;
   href?: string;
+  imageSrc?: string;
+  imageAlt?: string;
 };
 
 export type ProjectLink = {

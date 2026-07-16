@@ -24,10 +24,11 @@ export function TeamIndexPage() {
 
           return (
             <article key={member.id} className="gf-team-row" data-gf-motion>
-              <div className="gf-team-row__portrait" aria-label={`Placeholder portret pentru ${member.name}`}>
-                <span>{String(index + 1).padStart(2, '0')}</span>
+              <div className="gf-team-row__portrait">
+                <img src={member.portraitSrc} alt={`Portret ${member.name}`} width="500" height="700" loading={index > 1 ? 'lazy' : 'eager'} decoding="async" />
+                <span>Member / {String(index + 1).padStart(2, '0')}</span>
                 <strong>{member.name.split(' ').map((part) => part[0]).join('')}</strong>
-                <small>Portrait / 4:5 / min. 1600x2000</small>
+                <small>Transylvanian Bears / 2026</small>
               </div>
               <div className="gf-team-row__copy">
                 <p>{member.discipline}</p>

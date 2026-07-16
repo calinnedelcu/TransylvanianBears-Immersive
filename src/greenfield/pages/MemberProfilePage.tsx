@@ -28,11 +28,11 @@ export function MemberProfilePage() {
             <h1>{member.name}</h1>
             <p>{member.discipline}</p>
           </div>
-          <div className="gf-member-portrait" aria-label={`Placeholder portret pentru ${member.name}`}>
-            <span>Portrait asset</span>
-            <strong>4:5</strong>
-            <p>Cadru environmental, lumină naturală, mâinile și spațiul de lucru vizibile.</p>
-            <small>Minimum 1600x2000 / variantă mobilă din același cadru</small>
+          <div className="gf-member-portrait">
+            <img src={member.portraitSrc} alt={`Portret ${member.name}`} width="500" height="700" decoding="async" />
+            <span>Team portrait / 2026</span>
+            <strong>{member.name.split(' ').map((part) => part[0]).join('')}</strong>
+            <small>{member.discipline}</small>
           </div>
         </header>
 

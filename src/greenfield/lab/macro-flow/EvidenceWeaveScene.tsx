@@ -480,6 +480,113 @@ function Loom({
   );
 }
 
+function makeDawnTerrainGeometry() {
+  const geometry = new THREE.PlaneGeometry(90, 90, 72, 72);
+  geometry.rotateX(-Math.PI / 2);
+  const position = geometry.attributes.position as THREE.BufferAttribute;
+  for (let index = 0; index < position.count; index += 1) {
+    const x = position.getX(index);
+    const z = position.getZ(index);
+    const grain = Math.sin(x * 0.31 + z * 0.18) * 0.07 + Math.sin(z * 0.47 - x * 0.12) * 0.045;
+    const shoulder = Math.max(0, (Math.abs(x) - 8) / 36) * 0.48;
+    position.setY(index, -0.24 + grain + shoulder);
+  }
+  position.needsUpdate = true;
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function makeRidgeGeometry(seed: number, width: number, height: number, depth: number) {
+  const shape = new THREE.Shape();
+  shape.moveTo(-width / 2, -1.4);
+  const segments = 56;
+  for (let index = 0; index <= segments; index += 1) {
+    const unit = index / segments;
+    const envelope = Math.sin(unit * Math.PI) ** 0.42;
+    const large = 0.58 + Math.sin((unit * 2.7 + seed) * Math.PI) * 0.17;
+    const detail = Math.sin((unit * 8.3 + seed * 2.1) * Math.PI) * 0.09;
+    const x = THREE.MathUtils.lerp(-width / 2, width / 2, unit);
+    const y = -0.4 + envelope * height * Math.max(0.28, large + detail);
+    shape.lineTo(x, y);
+  }
+  shape.lineTo(width / 2, -1.4);
+  shape.closePath();
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    bevelEnabled: false,
+    curveSegments: 1,
+  });
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+const DAWN_TREES = Array.from({ length: 46 }, (_, index) => {
+  const side = index % 2 === 0 ? -1 : 1;
+  const row = Math.floor(index / 2);
+  const z = 5.5 + row * 1.08;
+  const spread = 6.4 + ((index * 7) % 9) * 0.72 + z * 0.14;
+  return {
+    position: [side * spread, 0, z + ((index * 5) % 4) * 0.42] as [number, number, number],
+    scale: 0.56 + ((index * 11) % 7) * 0.075,
+  };
+});
+
+function DawnForest() {
+  const lowerRef = useRef<THREE.InstancedMesh>(null);
+  const upperRef = useRef<THREE.InstancedMesh>(null);
+  const trunkRef = useRef<THREE.InstancedMesh>(null);
+
+  useEffect(() => {
+    const lower = lowerRef.current;
+    const upper = upperRef.current;
+    const trunks = trunkRef.current;
+    if (!lower || !upper || !trunks) return;
+    const transform = new THREE.Object3D();
+
+    DAWN_TREES.forEach((tree, index) => {
+      const [x, , z] = tree.position;
+      transform.position.set(x, 1.32 * tree.scale, z);
+      transform.rotation.y = index * 1.73;
+      transform.scale.setScalar(tree.scale);
+      transform.updateMatrix();
+      lower.setMatrixAt(index, transform.matrix);
+
+      transform.position.set(x, 2.26 * tree.scale, z);
+      transform.rotation.y = index * -0.93;
+      transform.scale.setScalar(tree.scale * 0.72);
+      transform.updateMatrix();
+      upper.setMatrixAt(index, transform.matrix);
+
+      transform.position.set(x, 0.55 * tree.scale, z);
+      transform.rotation.set(0, 0, 0);
+      transform.scale.setScalar(tree.scale);
+      transform.updateMatrix();
+      trunks.setMatrixAt(index, transform.matrix);
+    });
+
+    lower.instanceMatrix.needsUpdate = true;
+    upper.instanceMatrix.needsUpdate = true;
+    trunks.instanceMatrix.needsUpdate = true;
+  }, []);
+
+  return (
+    <group>
+      <instancedMesh ref={trunkRef} args={[undefined, undefined, DAWN_TREES.length]}>
+        <cylinderGeometry args={[0.075, 0.12, 1.1, 6]} />
+        <meshStandardMaterial color="#171d18" roughness={1} />
+      </instancedMesh>
+      <instancedMesh ref={lowerRef} args={[undefined, undefined, DAWN_TREES.length]}>
+        <coneGeometry args={[0.78, 2.4, 7]} />
+        <meshStandardMaterial color="#16241f" roughness={0.96} flatShading />
+      </instancedMesh>
+      <instancedMesh ref={upperRef} args={[undefined, undefined, DAWN_TREES.length]}>
+        <coneGeometry args={[0.72, 2.2, 7]} />
+        <meshStandardMaterial color="#1c2c25" roughness={0.94} flatShading />
+      </instancedMesh>
+    </group>
+  );
+}
+
 function DawnWorld({
   progressRef,
   activeOpenPath,
@@ -490,6 +597,13 @@ function DawnWorld({
   const groupRef = useRef<THREE.Group>(null);
   const warmLightRef = useRef<THREE.DirectionalLight>(null);
   const terrainMaterialRef = useRef<THREE.MeshStandardMaterial>(null);
+  const sunMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const terrainGeometry = useMemo(makeDawnTerrainGeometry, []);
+  const ridgeGeometries = useMemo(() => [
+    makeRidgeGeometry(0.17, 76, 12.5, 3.8),
+    makeRidgeGeometry(0.63, 68, 10, 3.2),
+    makeRidgeGeometry(1.11, 60, 7.8, 2.6),
+  ], []);
   const sky = useMemo(() => {
     const nextSky = new Sky();
     nextSky.scale.setScalar(180);
@@ -520,9 +634,11 @@ function DawnWorld({
 
   useEffect(() => () => {
     pathLabels.forEach((texture) => texture.dispose());
+    terrainGeometry.dispose();
+    ridgeGeometries.forEach((geometry) => geometry.dispose());
     sky.geometry.dispose();
     sky.material.dispose();
-  }, [pathLabels, sky]);
+  }, [pathLabels, ridgeGeometries, sky, terrainGeometry]);
 
   useFrame(({ scene }, delta) => {
     const progress = reducedMotion ? 1 : progressRef.current;
@@ -553,6 +669,9 @@ function DawnWorld({
     if (warmLightRef.current) {
       warmLightRef.current.intensity = THREE.MathUtils.damp(warmLightRef.current.intensity, daylight * 4.8, 4, delta);
     }
+    if (sunMaterialRef.current) {
+      sunMaterialRef.current.opacity = THREE.MathUtils.damp(sunMaterialRef.current.opacity, daylight * 0.78, 4, delta);
+    }
   });
 
   return (
@@ -560,10 +679,30 @@ function DawnWorld({
       <primitive object={sky} />
       <directionalLight ref={warmLightRef} position={[-14, 10, 18]} intensity={0} color="#ffd09a" />
       <group ref={groupRef} visible={false} position={[0, -1.8, 0]}>
-        <mesh position={[0, -0.22, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[90, 90, 1, 1]} />
+        <mesh geometry={terrainGeometry}>
           <meshStandardMaterial ref={terrainMaterialRef} color="#0a1111" roughness={1} metalness={0.02} />
         </mesh>
+
+        <mesh position={[-12.5, 8.1, -43]}>
+          <circleGeometry args={[2.7, 48]} />
+          <meshBasicMaterial ref={sunMaterialRef} color="#ffd7a0" transparent opacity={0} toneMapped={false} depthWrite={false} />
+        </mesh>
+
+        {ridgeGeometries.map((geometry, index) => (
+          <mesh
+            key={index}
+            geometry={geometry}
+            position={[index === 1 ? 3.5 : index === 2 ? -2.5 : 0, -0.18 - index * 0.05, -43 + index * 8.4]}
+          >
+            <meshStandardMaterial
+              color={index === 0 ? '#5b5145' : index === 1 ? '#394238' : '#202d29'}
+              roughness={1}
+              flatShading
+            />
+          </mesh>
+        ))}
+
+        <DawnForest />
 
         <mesh position={[0, -0.04, 0]}>
           <tubeGeometry args={[leftRoad, 72, 0.075, 8, false]} />
@@ -596,15 +735,6 @@ function DawnWorld({
           );
         })}
 
-        {[
-          [-18, 3.6, -22, 8], [-10, 4.8, -27, 10], [0, 5.8, -32, 12],
-          [11, 4.2, -26, 9], [20, 3.8, -21, 8],
-        ].map(([x, y, z, radius], index) => (
-          <mesh key={index} position={[x, y - 0.5, z]} rotation={[0, index * 0.5, 0]}>
-            <coneGeometry args={[radius, y * 2.2, 7]} />
-            <meshStandardMaterial color={index % 2 ? '#202522' : '#18201f'} roughness={1} />
-          </mesh>
-        ))}
       </group>
     </>
   );

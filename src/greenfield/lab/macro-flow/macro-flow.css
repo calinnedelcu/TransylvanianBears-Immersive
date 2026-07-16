@@ -94,6 +94,29 @@ body.mf-lab-mode {
   transition: background-color 500ms ease;
 }
 
+.mf-lab[data-quality-tier='editorial'][data-active-chapter='field'] .mf-world,
+.mf-lab[data-quality-tier='editorial'][data-active-chapter='lens'] .mf-world,
+.mf-lab[data-quality-tier='editorial'][data-active-chapter='passage'] .mf-world {
+  background:
+    linear-gradient(90deg, rgb(7 10 11 / 0.66), rgb(7 10 11 / 0.22)),
+    url('/assets/projects/project-nexus.webp') center / cover no-repeat,
+    var(--mf-bg);
+}
+
+.mf-lab[data-quality-tier='editorial'][data-active-chapter='access'] .mf-world {
+  background:
+    linear-gradient(90deg, rgb(7 10 11 / 0.56), rgb(7 10 11 / 0.3)),
+    url('/assets/projects/aegis.webp') center / cover no-repeat,
+    var(--mf-bg);
+}
+
+.mf-lab[data-quality-tier='editorial'][data-active-chapter='descent'] .mf-world {
+  background:
+    linear-gradient(90deg, rgb(7 10 11 / 0.6), rgb(7 10 11 / 0.28)),
+    url('/assets/projects/buried-hands/mechanism.webp') center / cover no-repeat,
+    var(--mf-bg);
+}
+
 .mf-header {
   position: fixed;
   z-index: 40;
