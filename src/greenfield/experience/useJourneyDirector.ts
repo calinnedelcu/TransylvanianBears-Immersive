@@ -36,9 +36,27 @@ export function useJourneyDirector({
 
     const context = gsap.context(() => {
       const worldEnd = root.querySelector<HTMLElement>('#mf-infect');
+      const threshold = root.querySelector<HTMLElement>('#mf-threshold');
+      const thresholdCopy = threshold?.querySelector<HTMLElement>('.mf-copy--hero');
       const updateCssProgress = (progress: number) => {
         root.style.setProperty('--mf-progress', progress.toFixed(4));
       };
+
+      if (threshold && thresholdCopy && !reducedMotion) {
+        gsap.to(thresholdCopy, {
+          opacity: 0,
+          y: -44,
+          scale: 0.975,
+          filter: 'blur(5px)',
+          ease: 'none',
+          scrollTrigger: {
+            trigger: threshold,
+            start: '22% top',
+            end: '52% top',
+            scrub: true,
+          },
+        });
+      }
 
       ScrollTrigger.create({
         id: 'journey-global',

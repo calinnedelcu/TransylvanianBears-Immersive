@@ -28,9 +28,11 @@ import { useExperienceActorRef, useExperienceSelector } from '../../experience/u
 import { useJourneyDirector } from '../../experience/useJourneyDirector';
 import { useGreenfieldMode } from '../../hooks/useGreenfieldMode';
 import type { MacroLensMode, MacroTraceOutcome } from './MacroFlowScene';
+import type { LensPointerState } from './macroFlowTypes';
 import InfectInterlude from './InfectInterlude';
 import ResearchCrossing from './ResearchCrossing';
 import EvidenceWeave from './EvidenceWeave';
+import { NexusProofInspector } from './NexusProofInspector';
 import './macro-flow.css';
 
 const MacroFlowScene = lazy(() => import('./MacroFlowScene').then((module) => ({ default: module.MacroFlowScene })));
@@ -94,6 +96,7 @@ const LENS_OPTIONS: Array<{
 function MacroFlowExperience() {
   const rootRef = useRef<HTMLElement>(null);
   const traceTimersRef = useRef<number[]>([]);
+  const lensPointerRef = useRef<LensPointerState>({ x: 0.5, y: 0.5, active: false });
   const reducedMotion = usePrefersReducedMotion();
   const experienceActor = useExperienceActorRef();
   const activeChapter = useExperienceSelector((state) => state.context.activeChapter);
@@ -193,6 +196,25 @@ function MacroFlowExperience() {
     event.currentTarget.style.setProperty('--mf-lamp-y', `${y.toFixed(2)}%`);
   }, []);
 
+  const moveLens = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const compact = window.innerWidth <= 820;
+    const minimumX = compact ? 0.75 : 0.59;
+    const maximumX = compact ? 0.8 : 0.94;
+    const minimumY = compact ? 0.36 : 0.06;
+    const maximumY = compact ? 0.64 : 0.94;
+    const x = Math.max(minimumX, Math.min(maximumX, event.clientX / window.innerWidth));
+    const yFromTop = Math.max(minimumY, Math.min(maximumY, event.clientY / window.innerHeight));
+    lensPointerRef.current = { x, y: 1 - yFromTop, active: true };
+    event.currentTarget.style.setProperty('--mf-lens-x', `${(x * 100).toFixed(2)}%`);
+    event.currentTarget.style.setProperty('--mf-lens-y', `${(yFromTop * 100).toFixed(2)}%`);
+    event.currentTarget.dataset.lensEngaged = 'true';
+  }, []);
+
+  const leaveLens = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    lensPointerRef.current.active = false;
+    delete event.currentTarget.dataset.lensEngaged;
+  }, []);
+
   useEffect(() => {
     document.body.classList.add('mf-lab-mode');
     return () => document.body.classList.remove('mf-lab-mode');
@@ -237,6 +259,7 @@ function MacroFlowExperience() {
           <Suspense fallback={<div className="mf-canvas-fallback" aria-hidden="true" />}>
             <MacroFlowScene
               progressRef={progressRef}
+              lensPointerRef={lensPointerRef}
               lensMode={lensMode}
               traceStep={traceStep}
               traceOutcome={traceOutcome}
@@ -324,7 +347,15 @@ function MacroFlowExperience() {
       </section>
 
       <section id="mf-lens" className="mf-beat mf-beat--lens" data-chapter="lens">
-        <div className="mf-lens-knot">
+        <div
+          className="mf-lens-knot"
+          onPointerMove={moveLens}
+          onPointerEnter={moveLens}
+          onPointerLeave={leaveLens}
+        >
+          <div className="mf-lens-reticle" aria-hidden="true">
+            <i /><i /><span>inspect</span>
+          </div>
           <div className="mf-lens-knot__heading">
             <p className="mf-kicker">Agency knot / Lens</p>
             <h2>Aceeași scenă. Trei moduri de a o înțelege.</h2>
@@ -365,10 +396,7 @@ function MacroFlowExperience() {
             </p>
           </div>
 
-          <figure className="mf-proof-media">
-            <img src="/assets/projects/project-nexus.webp" alt="Detecții aeriene Project Nexus într-o intersecție reală" width="589" height="504" loading="lazy" decoding="async" />
-            <figcaption>Real-world validation frame / source material</figcaption>
-          </figure>
+          <NexusProofInspector />
 
           <dl className="mf-metrics">
             <div><dt>Scenarii</dt><dd>11</dd></div>

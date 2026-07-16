@@ -5,12 +5,15 @@ import { Suspense, useMemo, useRef, type MutableRefObject } from 'react';
 import { BlendFunction } from 'postprocessing';
 import * as THREE from 'three';
 import type { QualityTier } from '../../experience/quality';
+import { FirstLightLayer } from './FirstLightLayer';
+import { NexusActScene } from './NexusActScene';
+import type { LensPointerState, MacroLensMode, MacroTraceOutcome } from './macroFlowTypes';
 
-export type MacroLensMode = 'raw' | 'segmentation' | 'detection';
-export type MacroTraceOutcome = 'idle' | 'running' | 'allowed' | 'expired' | 'used';
+export type { MacroLensMode, MacroTraceOutcome } from './macroFlowTypes';
 
 type MacroFlowSceneProps = {
   progressRef: MutableRefObject<number>;
+  lensPointerRef: MutableRefObject<LensPointerState>;
   lensMode: MacroLensMode;
   traceStep: number;
   traceOutcome: MacroTraceOutcome;
@@ -230,6 +233,11 @@ function WorldAtmosphere({ qualityTier }: Pick<MacroFlowSceneProps, 'qualityTier
               vec3 high = vec3(0.012, 0.024, 0.027);
               vec3 color = mix(low, high, upper);
               color += vec3(0.025, 0.045, 0.042) * horizon;
+              float moonAlignment = dot(normalize(vDirection), normalize(vec3(-0.18, 0.52, -0.84)));
+              float moon = smoothstep(0.986, 0.994, moonAlignment);
+              float moonHalo = smoothstep(0.94, 0.992, moonAlignment) * 0.11;
+              color += vec3(0.48, 0.62, 0.6) * moonHalo;
+              color = mix(color, vec3(0.68, 0.75, 0.71), moon * 0.28);
               float shimmer = sin(vDirection.x * 38.0 + vDirection.z * 31.0 + uTime * 0.02) * 0.002;
               gl_FragColor = vec4(color + shimmer, 1.0);
             }
@@ -447,193 +455,6 @@ function ApproachSignal({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'
       <mesh ref={pulseRef} visible={false}>
         <sphereGeometry args={[0.21, 18, 12]} />
         <meshStandardMaterial color="#d6ffff" emissive="#72d9d6" emissiveIntensity={6.5} roughness={0.1} />
-      </mesh>
-    </group>
-  );
-}
-
-const FIELD_BLOCKS = Array.from({ length: 42 }, (_, index) => {
-  const side = index % 2 === 0 ? -1 : 1;
-  const row = Math.floor(index / 2);
-  const width = 1.4 + ((index * 7) % 5) * 0.38;
-  const height = 0.7 + ((index * 11) % 8) * 0.34;
-  return {
-    position: [side * (3.8 + ((index * 3) % 4) * 1.25), height / 2, 1.5 - row * 2.25] as [number, number, number],
-    scale: [width, height, 1.4 + ((index * 5) % 4) * 0.42] as [number, number, number],
-    segment: index % 3,
-  };
-});
-
-function SyntheticField({
-  lensMode,
-  progressRef,
-}: Pick<MacroFlowSceneProps, 'lensMode' | 'progressRef'>) {
-  const rootRef = useRef<THREE.Group>(null);
-
-  useFrame((_, delta) => {
-    if (!rootRef.current) return;
-    const reveal = smooth(range(progressRef.current, 0.065, 0.105));
-    const settle = smooth(range(progressRef.current, 0.12, 0.165));
-    const departure = smooth(range(progressRef.current, 0.285, 0.35));
-    const entryLift = reveal * (1 - settle) * 2.6;
-    rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, -3.8 + reveal * 3.8 + entryLift - departure * 5, 5.6, delta);
-  });
-
-  return (
-    <group ref={rootRef} position={[0, -3.8, -7]}>
-      <mesh position={[0, 0.03, -15]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[7.4, 52]} />
-        <meshStandardMaterial
-          color={lensMode === 'segmentation' ? '#5f7270' : '#344345'}
-          emissive={lensMode === 'segmentation' ? '#263837' : '#11191a'}
-          emissiveIntensity={0.5}
-          roughness={0.9}
-        />
-      </mesh>
-      {[-2.55, 0, 2.55].map((x, index) => (
-        <mesh key={x} position={[x, 0.075, -15]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[index === 1 ? 0.075 : 0.035, 50]} />
-          <meshBasicMaterial color={index === 1 ? '#75dcda' : '#b8a46d'} transparent opacity={lensMode === 'raw' ? 0.38 : 0.78} />
-        </mesh>
-      ))}
-
-      {Array.from({ length: 12 }, (_, index) => {
-        const z = 4 - index * 4.1;
-        const color = index % 3 === 0 ? '#d0ae67' : '#6fd8d6';
-        return (
-          <group key={z} position={[0, 0, z]}>
-            <mesh position={[-3.45, 1.25, 0]}>
-              <boxGeometry args={[0.035, 2.5, 0.035]} />
-              <meshBasicMaterial color={color} transparent opacity={lensMode === 'raw' ? 0.34 : 0.74} />
-            </mesh>
-            <mesh position={[3.45, 1.25, 0]}>
-              <boxGeometry args={[0.035, 2.5, 0.035]} />
-              <meshBasicMaterial color={color} transparent opacity={lensMode === 'raw' ? 0.34 : 0.74} />
-            </mesh>
-            <mesh position={[0, 2.5, 0]}>
-              <boxGeometry args={[6.94, 0.035, 0.035]} />
-              <meshBasicMaterial color={color} transparent opacity={lensMode === 'raw' ? 0.2 : 0.64} />
-            </mesh>
-          </group>
-        );
-      })}
-
-      {FIELD_BLOCKS.map((block, index) => {
-        const segmentationColors = ['#cf6c57', '#d5b96a', '#6ab0aa'];
-        return (
-          <mesh key={index} position={block.position}>
-            <boxGeometry args={block.scale} />
-            <meshStandardMaterial
-              color={lensMode === 'segmentation' ? segmentationColors[block.segment] : '#536365'}
-              emissive={lensMode === 'segmentation' ? segmentationColors[block.segment] : '#1d3031'}
-              emissiveIntensity={lensMode === 'segmentation' ? 0.2 : 0.42}
-              roughness={0.78}
-            />
-          </mesh>
-        );
-      })}
-    </group>
-  );
-}
-
-function DetectionFrame({
-  position,
-  scale,
-  active,
-  color,
-}: {
-  position: [number, number, number];
-  scale: [number, number, number];
-  active: boolean;
-  color: string;
-}) {
-  return (
-    <mesh position={position} scale={scale}>
-      <boxGeometry args={[1, 1, 1]} />
-      <meshBasicMaterial color={color} wireframe transparent opacity={active ? 0.92 : 0.08} />
-    </mesh>
-  );
-}
-
-function NexusTargets({ lensMode }: Pick<MacroFlowSceneProps, 'lensMode'>) {
-  const detecting = lensMode === 'detection';
-  const segmenting = lensMode === 'segmentation';
-
-  return (
-    <group position={[0, 0, -31]}>
-      <group position={[-3.5, 0, 0]}>
-        <mesh position={[0, 0.55, 0]}>
-          <boxGeometry args={[3.2, 1.1, 1.8]} />
-          <meshStandardMaterial color={segmenting ? '#cf6c57' : '#545d5e'} roughness={0.58} />
-        </mesh>
-        <DetectionFrame position={[0, 0.65, 0]} scale={[3.8, 1.65, 2.35]} active={detecting} color="#df6553" />
-      </group>
-      <group position={[0, 0, -0.2]}>
-        <mesh position={[0, 1.25, 0]}>
-          <cylinderGeometry args={[0.34, 0.5, 2.5, 8]} />
-          <meshStandardMaterial color={segmenting ? '#75dcda' : '#b6b2aa'} roughness={0.72} />
-        </mesh>
-        <mesh position={[0, 2.88, 0]}>
-          <sphereGeometry args={[0.48, 16, 12]} />
-          <meshStandardMaterial color={segmenting ? '#75dcda' : '#c7c1b6'} roughness={0.72} />
-        </mesh>
-        <DetectionFrame position={[0, 1.6, 0]} scale={[1.4, 4, 1.4]} active={detecting} color="#75dcda" />
-      </group>
-      <group position={[4.1, 0, 0.2]}>
-        <mesh position={[0, 2.25, 0]}>
-          <boxGeometry args={[3.4, 4.5, 2.1]} />
-          <meshStandardMaterial color={segmenting ? '#d5b96a' : '#414b4c'} roughness={0.86} />
-        </mesh>
-        <DetectionFrame position={[0, 2.3, 0]} scale={[4, 5.2, 2.7]} active={detecting} color="#e9bd68" />
-      </group>
-    </group>
-  );
-}
-
-function SpatialEvidenceScreen({
-  progressRef,
-  lensMode,
-}: Pick<MacroFlowSceneProps, 'progressRef' | 'lensMode'>) {
-  const rootRef = useRef<THREE.Group>(null);
-  const screenMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
-  const frameMaterialRef = useRef<THREE.MeshStandardMaterial>(null);
-  const texture = useTexture('/assets/projects/project-nexus.webp');
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 8;
-
-  useFrame((_, delta) => {
-    if (!rootRef.current) return;
-    const reveal = smooth(range(progressRef.current, 0.145, 0.205));
-    const departure = smooth(range(progressRef.current, 0.285, 0.35));
-    rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, -2.8 + reveal * 7.1 - departure * 7, 5.5, delta);
-    rootRef.current.rotation.y = THREE.MathUtils.damp(rootRef.current.rotation.y, -0.38 + reveal * 0.16, 4.5, delta);
-    rootRef.current.scale.setScalar(0.82 + reveal * 0.18);
-
-    const modeColor = lensMode === 'segmentation' ? '#80d8ce' : lensMode === 'detection' ? '#e4b365' : '#ffffff';
-    if (screenMaterialRef.current) screenMaterialRef.current.color.set(modeColor);
-    if (frameMaterialRef.current) {
-      frameMaterialRef.current.emissive.set(modeColor);
-      frameMaterialRef.current.emissiveIntensity = lensMode === 'raw' ? 0.2 : 1.15;
-    }
-  });
-
-  return (
-    <group ref={rootRef} position={[4.9, -2.8, -25.4]} rotation={[0, -0.38, 0]}>
-      <mesh position={[0, 0, -0.12]}>
-        <boxGeometry args={[6.18, 5.28, 0.26]} />
-        <meshStandardMaterial ref={frameMaterialRef} color="#20292a" emissive="#ffffff" emissiveIntensity={0.2} roughness={0.48} metalness={0.34} />
-      </mesh>
-      <mesh position={[0, 0, 0.03]}>
-        <planeGeometry args={[5.8, 4.96]} />
-        <meshBasicMaterial ref={screenMaterialRef} map={texture} color="#ffffff" toneMapped={false} />
-      </mesh>
-      <mesh position={[0, 2.78, 0]}>
-        <boxGeometry args={[6.18, 0.08, 0.08]} />
-        <meshBasicMaterial color="#72d9d6" />
-      </mesh>
-      <mesh position={[-3.32, 0, -0.02]}>
-        <boxGeometry args={[0.08, 5.28, 0.08]} />
-        <meshBasicMaterial color="#72d9d6" transparent opacity={0.42} />
       </mesh>
     </group>
   );
@@ -1056,6 +877,7 @@ function PostEffects({ qualityTier }: Pick<MacroFlowSceneProps, 'qualityTier'>) 
 
 function World({
   progressRef,
+  lensPointerRef,
   lensMode,
   traceStep,
   traceOutcome,
@@ -1103,11 +925,15 @@ function World({
         velocityRef={velocityRef}
       />
       <FirstLightCitadel progressRef={progressRef} qualityTier={qualityTier} />
+      <FirstLightLayer progressRef={progressRef} qualityTier={qualityTier} />
       <ApproachSignal progressRef={progressRef} />
       <GateApparatus progressRef={progressRef} />
-      <SyntheticField lensMode={lensMode} progressRef={progressRef} />
-      <NexusTargets lensMode={lensMode} />
-      <SpatialEvidenceScreen progressRef={progressRef} lensMode={lensMode} />
+      <NexusActScene
+        progressRef={progressRef}
+        lensMode={lensMode}
+        lensPointerRef={lensPointerRef}
+        qualityTier={qualityTier}
+      />
       <SignalBeads progressRef={progressRef} />
       <AegisPassage progressRef={progressRef} />
       <AccessTrace
