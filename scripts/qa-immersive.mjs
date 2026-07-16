@@ -17,8 +17,7 @@ async function signature(buffer) {
 
 async function moveWithin(page, selector, progress) {
   const locator = page.locator(selector);
-  await locator.scrollIntoViewIfNeeded();
-  await page.waitForTimeout(280);
+  await locator.waitFor({ state: 'attached' });
   const geometry = await locator.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     return {
@@ -63,10 +62,12 @@ try {
     await desktop.waitForTimeout(250);
     report.desktop.audioEnabled = await desktop.getByRole('button', { name: 'Oprește sunetul ambiental' }).count();
   }
-  report.desktop.firstCanvas = await signature(await desktop.locator('.mf-canvas').screenshot());
+  report.desktop.firstCanvas = await signature(await desktop.screenshot());
 
   await moveWithin(desktop, '.mf-beat--descent', 0.7);
-  report.desktop.descentCanvas = await signature(await desktop.locator('.mf-canvas').screenshot());
+  await desktop.waitForFunction(() => document.querySelector('.mf-lab')?.getAttribute('data-active-chapter') === 'descent');
+  await desktop.waitForTimeout(1_200);
+  report.desktop.descentCanvas = await signature(await desktop.screenshot());
   report.desktop.descentFilled = report.desktop.descentCanvas.entropy >= 4;
 
   await moveWithin(desktop, '.bh-theater', 0.5);

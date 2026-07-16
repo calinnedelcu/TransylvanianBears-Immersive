@@ -326,11 +326,11 @@ function MacroFlowExperience() {
 
       <section id="mf-threshold" className="mf-beat mf-beat--threshold" data-chapter="threshold">
         <div className="mf-copy mf-copy--hero">
-          <p className="mf-kicker">Independent build team / Transylvania</p>
+          <p className="mf-kicker">The Citadel of Seven Systems / Transylvania</p>
           <h1><span>Transylvanian</span><span>Bears</span></h1>
           <div className="mf-hero-statement">
-            <strong>Un sistem. Nu șapte insule.</strong>
-            <p>Software, jocuri, machine learning și cercetare aplicată, construite de aceeași echipă.</p>
+            <strong>Șapte sisteme. O singură cetate.</strong>
+            <p>Software, jocuri, machine learning și cercetare aplicată, construite sub același însemn.</p>
           </div>
           <ChevronDown className="mf-scroll-cue" aria-hidden="true" />
         </div>

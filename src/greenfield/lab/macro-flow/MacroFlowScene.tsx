@@ -5,6 +5,7 @@ import { Suspense, useMemo, useRef, type MutableRefObject } from 'react';
 import { BlendFunction } from 'postprocessing';
 import * as THREE from 'three';
 import type { QualityTier } from '../../experience/quality';
+import { CarpathianThreshold } from './CarpathianThreshold';
 import { FirstLightLayer } from './FirstLightLayer';
 import { NexusActScene } from './NexusActScene';
 import { SchoolActScene } from './SchoolActScene';
@@ -304,116 +305,12 @@ function FirstLightCitadel({
 
   useFrame((_, delta) => {
     if (!rootRef.current) return;
-    const departure = smooth(range(progressRef.current, 0.072, 0.112));
+    const departure = smooth(range(progressRef.current, 0.055, 0.095));
     rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, -18 * departure, 5.2, delta);
     rootRef.current.rotation.y = THREE.MathUtils.damp(rootRef.current.rotation.y, departure * -0.018, 4.2, delta);
   });
 
   return <primitive ref={rootRef} object={model} />;
-}
-
-function gateBladeShape() {
-  const shape = new THREE.Shape();
-  shape.moveTo(0.12, -0.42);
-  shape.lineTo(2.62, -0.96);
-  shape.lineTo(2.18, 0.62);
-  shape.lineTo(0.12, 0.48);
-  shape.closePath();
-  return shape;
-}
-
-function GateApparatus({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>) {
-  const rootRef = useRef<THREE.Group>(null);
-  const bladeRefs = useRef<Array<THREE.Mesh | null>>([]);
-  const anchorMaterials = useRef<Array<THREE.MeshStandardMaterial | null>>([]);
-  const glassRef = useRef<THREE.MeshStandardMaterial>(null);
-  const shape = useMemo(gateBladeShape, []);
-
-  useFrame((_, delta) => {
-    const localProgress = legacyProgress(progressRef.current);
-    const opening = smooth(range(localProgress, 0.085, 0.205));
-    const response = range(localProgress, 0.045, 0.115);
-    const departure = smooth(range(progressRef.current, 0.075, 0.115));
-
-    bladeRefs.current.forEach((blade, index) => {
-      if (!blade) return;
-      const angle = (index / 6) * Math.PI * 2;
-      const radius = opening * 3.65;
-      blade.position.x = Math.cos(angle) * radius;
-      blade.position.y = Math.sin(angle) * radius;
-      blade.rotation.z = angle + opening * 0.44;
-      const material = blade.material as THREE.MeshStandardMaterial;
-      material.emissiveIntensity = 0.18 + Math.max(0, response * 6 - index) * 0.18;
-    });
-
-    anchorMaterials.current.forEach((material, index) => {
-      if (!material) return;
-      const lit = smooth(range(response, index / 7, (index + 1.5) / 7));
-      material.emissiveIntensity = 0.25 + lit * 4.2;
-    });
-
-    if (glassRef.current) {
-      glassRef.current.opacity = 0.09 + opening * 0.2;
-      glassRef.current.emissiveIntensity = 0.1 + opening * 0.8;
-    }
-    if (rootRef.current) {
-      rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, 4.82 - departure * 18, 5.2, delta);
-      rootRef.current.rotation.z += delta * opening * 0.015;
-    }
-  });
-
-  return (
-    <group ref={rootRef} position={[0, 4.82, 14.72]}>
-      <mesh position={[0, 0, 0.13]}>
-        <circleGeometry args={[2.46, 48]} />
-        <meshStandardMaterial
-          ref={glassRef}
-          color="#31595a"
-          emissive="#3b9f9d"
-          emissiveIntensity={0.1}
-          roughness={0.18}
-          metalness={0.1}
-          transparent
-          opacity={0.09}
-          depthWrite={false}
-        />
-      </mesh>
-      <mesh position={[0, 0, 0.02]}>
-        <torusGeometry args={[3.02, 0.1, 10, 64]} />
-        <meshStandardMaterial color="#887955" emissive="#3e3727" emissiveIntensity={0.52} roughness={0.38} metalness={0.72} />
-      </mesh>
-      {Array.from({ length: 6 }, (_, index) => {
-        const angle = (index / 6) * Math.PI * 2;
-        return (
-          <group key={index}>
-            <mesh
-              ref={(node) => { bladeRefs.current[index] = node; }}
-              rotation={[0, 0, angle]}
-            >
-              <extrudeGeometry args={[shape, { depth: 0.2, bevelEnabled: true, bevelSize: 0.045, bevelThickness: 0.04, bevelSegments: 2 }]} />
-              <meshStandardMaterial
-                color={index % 2 === 0 ? '#aaa28f' : '#777166'}
-                emissive="#756b51"
-                emissiveIntensity={0.18}
-                roughness={0.5}
-                metalness={0.28}
-              />
-            </mesh>
-            <mesh position={[Math.cos(angle) * 3.03, Math.sin(angle) * 3.03, 0.24]}>
-              <sphereGeometry args={[0.11, 12, 8]} />
-              <meshStandardMaterial
-                ref={(material) => { anchorMaterials.current[index] = material; }}
-                color="#6edbd7"
-                emissive="#6edbd7"
-                emissiveIntensity={0.25}
-                roughness={0.24}
-              />
-            </mesh>
-          </group>
-        );
-      })}
-    </group>
-  );
 }
 
 const APPROACH_SIGNAL = new THREE.CatmullRomCurve3([
@@ -442,9 +339,9 @@ function ApproachSignal({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'
     if (!pulseRef.current) return;
     APPROACH_SIGNAL.getPoint(reveal, pulsePosition);
     pulseRef.current.position.copy(pulsePosition);
-    pulseRef.current.visible = reveal > 0.01 && reveal < 0.995;
+    pulseRef.current.visible = reveal > 0.01 && reveal < 0.82;
     if (rootRef.current) {
-      const departure = smooth(range(progressRef.current, 0.075, 0.115));
+      const departure = smooth(range(progressRef.current, 0.058, 0.098));
       rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, -18 * departure, 5.2, delta);
     }
   });
@@ -461,8 +358,8 @@ function ApproachSignal({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'
         );
       })}
       <mesh ref={pulseRef} visible={false}>
-        <sphereGeometry args={[0.21, 18, 12]} />
-        <meshStandardMaterial color="#d6ffff" emissive="#72d9d6" emissiveIntensity={6.5} roughness={0.1} />
+        <sphereGeometry args={[0.105, 16, 10]} />
+        <meshStandardMaterial color="#9de6e1" emissive="#72d9d6" emissiveIntensity={4.8} roughness={0.14} />
       </mesh>
     </group>
   );
@@ -818,7 +715,7 @@ function World({
         shadow-normalBias={0.055}
       />
       <pointLight position={[-7, 8, 24]} intensity={38} distance={34} color="#c9ad72" />
-      <pointLight position={[0, 5.2, 14]} intensity={26} distance={20} color="#64cfcb" />
+      <pointLight position={[0, 5.2, 14]} intensity={34} distance={21} color="#d78b52" />
       <pointLight position={[-3, 5.2, 1]} intensity={42} distance={28} color="#72d9d6" />
       <pointLight position={[3, 4.4, -13]} intensity={34} distance={27} color="#d0ad68" />
       <pointLight position={[0, 5, -33]} intensity={36} distance={24} color="#6fd8d6" />
@@ -835,8 +732,8 @@ function World({
       />
       <FirstLightCitadel progressRef={progressRef} qualityTier={qualityTier} />
       <FirstLightLayer progressRef={progressRef} qualityTier={qualityTier} />
+      <CarpathianThreshold progressRef={progressRef} qualityTier={qualityTier} reducedMotion={reducedMotion} />
       <ApproachSignal progressRef={progressRef} />
-      <GateApparatus progressRef={progressRef} />
       <NexusActScene
         progressRef={progressRef}
         lensMode={lensMode}

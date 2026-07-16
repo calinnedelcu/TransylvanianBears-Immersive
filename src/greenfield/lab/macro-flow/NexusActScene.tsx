@@ -168,12 +168,253 @@ function createPointCloudGeometry(pointMultiplier: number) {
   return geometry;
 }
 
+function createCobblestoneTexture() {
+  const size = 128;
+  const data = new Uint8Array(size * size * 4);
+
+  for (let y = 0; y < size; y += 1) {
+    const row = Math.floor(y / 11);
+    const rowOffset = row % 2 === 0 ? 0 : 8;
+    for (let x = 0; x < size; x += 1) {
+      const shiftedX = (x + rowOffset) % 16;
+      const shiftedY = y % 11;
+      const joint = shiftedX <= 1 || shiftedY <= 1;
+      const cell = Math.floor((x + rowOffset) / 16) + row * 11;
+      const variation = seeded(cell + 217);
+      const grain = Math.sin(x * 1.71 + y * 0.93) * 5;
+      const value = joint ? 38 : Math.round(92 + variation * 58 + grain);
+      const cursor = (y * size + x) * 4;
+      data[cursor] = value;
+      data[cursor + 1] = value;
+      data[cursor + 2] = value;
+      data[cursor + 3] = 255;
+    }
+  }
+
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(4.5, 34);
+  texture.colorSpace = THREE.NoColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function createDataKeepShape() {
+  const shape = new THREE.Shape();
+  shape.moveTo(-5.8, 0);
+  shape.lineTo(5.8, 0);
+  shape.lineTo(5.8, 7.1);
+  shape.lineTo(3.7, 7.1);
+  shape.lineTo(3.7, 8.8);
+  shape.lineTo(1.75, 8.8);
+  shape.lineTo(0, 10.5);
+  shape.lineTo(-1.75, 8.8);
+  shape.lineTo(-3.7, 8.8);
+  shape.lineTo(-3.7, 7.1);
+  shape.lineTo(-5.8, 7.1);
+  shape.closePath();
+
+  const passage = new THREE.Path();
+  passage.moveTo(-2.3, 0);
+  passage.lineTo(2.3, 0);
+  passage.lineTo(2.3, 3.7);
+  passage.quadraticCurveTo(1.65, 5.3, 0, 6.2);
+  passage.quadraticCurveTo(-1.65, 5.3, -2.3, 3.7);
+  passage.closePath();
+  shape.holes.push(passage);
+  return shape;
+}
+
+function createMountainShape(seedOffset: number) {
+  const shape = new THREE.Shape();
+  shape.moveTo(-18, 0);
+  for (let index = 0; index <= 12; index += 1) {
+    const x = -18 + index * 3;
+    const ridge = index % 2 === 0 ? 2.2 : 5.2;
+    const height = ridge + seeded(seedOffset + index) * 2.8;
+    shape.lineTo(x, height);
+  }
+  shape.lineTo(18, 0);
+  shape.closePath();
+  return shape;
+}
+
+const DATA_STREAMS = [
+  new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-2.4, 0.22, 3.5),
+    new THREE.Vector3(-3.1, 2.8, -9),
+    new THREE.Vector3(-1.2, 5.6, -24),
+    new THREE.Vector3(-2.2, 7.2, -36.5),
+  ]),
+  new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 0.24, 3.5),
+    new THREE.Vector3(1.6, 3.5, -10),
+    new THREE.Vector3(-1.1, 6.4, -27),
+    new THREE.Vector3(0, 8.1, -36.5),
+  ]),
+  new THREE.CatmullRomCurve3([
+    new THREE.Vector3(2.4, 0.22, 3.5),
+    new THREE.Vector3(3.2, 2.6, -8),
+    new THREE.Vector3(2.4, 5.1, -23),
+    new THREE.Vector3(2.2, 7.2, -36.5),
+  ]),
+];
+
+function CarpathianDataHorizon() {
+  const nearShape = useMemo(() => createMountainShape(31), []);
+  const farShape = useMemo(() => createMountainShape(91), []);
+
+  return (
+    <group>
+      <mesh position={[-5, -0.1, -51]}>
+        <shapeGeometry args={[farShape]} />
+        <meshBasicMaterial color="#0d191a" fog />
+      </mesh>
+      <mesh position={[5, -0.18, -48.5]} scale={[1.15, 0.72, 1]}>
+        <shapeGeometry args={[nearShape]} />
+        <meshBasicMaterial color="#142423" fog />
+      </mesh>
+    </group>
+  );
+}
+
+function DataStreams({ progressRef, lensMode }: Pick<NexusActSceneProps, 'progressRef' | 'lensMode'>) {
+  const rootRef = useRef<THREE.Group>(null);
+  const packetRefs = useRef<Array<THREE.Mesh | null>>([]);
+  const packetPosition = useMemo(() => new THREE.Vector3(), []);
+
+  useFrame(({ clock }, delta) => {
+    const reveal = smooth(range(progressRef.current, 0.075, 0.135));
+    const departure = smooth(range(progressRef.current, 0.285, 0.325));
+    if (rootRef.current) {
+      rootRef.current.scale.setScalar(THREE.MathUtils.damp(rootRef.current.scale.x, Math.max(0.001, reveal * (1 - departure)), 6.5, delta));
+    }
+    packetRefs.current.forEach((packet, index) => {
+      if (!packet) return;
+      const travel = (clock.elapsedTime * (0.07 + index * 0.015) + index * 0.28 + progressRef.current * 1.6) % 1;
+      DATA_STREAMS[index].getPoint(travel, packetPosition);
+      packet.position.copy(packetPosition);
+      packet.rotation.x = clock.elapsedTime * 0.7 + index;
+      packet.rotation.y = clock.elapsedTime * 1.1 + index;
+    });
+  });
+
+  const colors = lensMode === 'segmentation'
+    ? ['#cf6554', '#d8b75e', '#5ebdb6']
+    : lensMode === 'detection'
+      ? ['#72d9d6', '#d8b75e', '#72d9d6']
+      : ['#536b69', '#c8aa62', '#536b69'];
+
+  return (
+    <group ref={rootRef} scale={0.001}>
+      {DATA_STREAMS.map((curve, index) => (
+        <group key={index}>
+          <mesh>
+            <tubeGeometry args={[curve, 96, index === 1 ? 0.035 : 0.024, 6, false]} />
+            <meshBasicMaterial color={colors[index]} transparent opacity={index === 1 ? 0.72 : 0.42} toneMapped={false} />
+          </mesh>
+          <mesh ref={(node) => { packetRefs.current[index] = node; }}>
+            <octahedronGeometry args={[index === 1 ? 0.18 : 0.13, 0]} />
+            <meshStandardMaterial color={colors[index]} emissive={colors[index]} emissiveIntensity={3.4} roughness={0.16} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function DataKeep({ progressRef, lensMode }: Pick<NexusActSceneProps, 'progressRef' | 'lensMode'>) {
+  const rootRef = useRef<THREE.Group>(null);
+  const ringRef = useRef<THREE.Mesh>(null);
+  const keepShape = useMemo(createDataKeepShape, []);
+
+  useFrame(({ clock }, delta) => {
+    const reveal = smooth(range(progressRef.current, 0.085, 0.145));
+    if (rootRef.current) {
+      rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, -0.2 + reveal * 0.2, 5.8, delta);
+      rootRef.current.scale.y = THREE.MathUtils.damp(rootRef.current.scale.y, Math.max(0.001, reveal), 6.5, delta);
+    }
+    if (ringRef.current) {
+      ringRef.current.rotation.z = clock.elapsedTime * 0.16 + progressRef.current * 2.8;
+    }
+  });
+
+  const accent = lensMode === 'segmentation' ? '#d8b75e' : lensMode === 'detection' ? '#72d9d6' : '#7ba09c';
+
+  return (
+    <group ref={rootRef} position={[0, -0.2, -37.5]} scale={[1.1, 0.001, 1.1]}>
+      <mesh position={[0, 0, -0.65]}>
+        <extrudeGeometry args={[keepShape, { depth: 1.3, bevelEnabled: true, bevelSize: 0.09, bevelThickness: 0.08, bevelSegments: 2 }]} />
+        <meshStandardMaterial color="#344140" emissive="#101d1d" emissiveIntensity={0.5} roughness={0.88} metalness={0.08} />
+      </mesh>
+
+      {[-4.55, 4.55].map((x) => (
+        <group key={x} position={[x, 7.35, 0.08]}>
+          <mesh>
+            <cylinderGeometry args={[1.15, 1.35, 4.7, 8]} />
+            <meshStandardMaterial color="#3f4946" roughness={0.91} />
+          </mesh>
+          <mesh position={[0, 3.15, 0]} rotation={[0, Math.PI / 8, 0]}>
+            <coneGeometry args={[1.72, 3.2, 8]} />
+            <meshStandardMaterial color="#171c1c" roughness={0.82} />
+          </mesh>
+          <mesh position={[0, 0.2, 1.18]}>
+            <planeGeometry args={[0.22, 0.92]} />
+            <meshBasicMaterial color="#c98d55" transparent opacity={0.66} />
+          </mesh>
+        </group>
+      ))}
+
+      <mesh position={[0, 11.45, -0.1]} rotation={[0, Math.PI / 4, 0]} scale={[2.35, 1, 2.05]}>
+        <coneGeometry args={[1, 2.5, 4]} />
+        <meshStandardMaterial color="#4d181d" emissive="#20090c" emissiveIntensity={0.32} roughness={0.82} />
+      </mesh>
+      <mesh position={[0, 13.2, -0.1]}>
+        <octahedronGeometry args={[0.18, 0]} />
+        <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={3.6} roughness={0.16} />
+      </mesh>
+
+      <mesh position={[0, 8.05, 0.78]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1.12, 0.09, 10, 48]} />
+        <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={2.1} metalness={0.38} roughness={0.24} />
+      </mesh>
+      <mesh ref={ringRef} position={[0, 8.05, 0.9]}>
+        <torusGeometry args={[0.76, 0.025, 8, 40]} />
+        <meshBasicMaterial color={accent} transparent opacity={0.82} toneMapped={false} />
+      </mesh>
+      {Array.from({ length: 8 }, (_, index) => {
+        const angle = index * Math.PI / 4;
+        return (
+          <mesh key={index} position={[Math.cos(angle) * 0.76, 8.05 + Math.sin(angle) * 0.76, 0.92]} rotation={[0, 0, angle]}>
+            <boxGeometry args={[0.18, 0.035, 0.035]} />
+            <meshBasicMaterial color={accent} toneMapped={false} />
+          </mesh>
+        );
+      })}
+      <pointLight position={[0, 8.05, 1.4]} color={accent} intensity={8} distance={14} decay={2.1} />
+    </group>
+  );
+}
+
 function StreetFurniture() {
+  const cobblestoneTexture = useMemo(createCobblestoneTexture, []);
+
+  useEffect(() => () => cobblestoneTexture.dispose(), [cobblestoneTexture]);
+
   return (
     <>
       <mesh position={[0, -0.05, -20]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[7.4, 58]} />
-        <meshStandardMaterial color="#273537" emissive="#0c1415" emissiveIntensity={0.46} roughness={0.94} />
+        <meshStandardMaterial
+          color="#52605b"
+          emissive="#0c1415"
+          emissiveIntensity={0.34}
+          map={cobblestoneTexture}
+          bumpMap={cobblestoneTexture}
+          bumpScale={0.09}
+          roughness={0.97}
+        />
       </mesh>
 
       {[-5.05, 5.05].map((x) => (
@@ -368,6 +609,10 @@ function NexusCity({ progressRef, lensMode, lensPointerRef, qualityTier }: Nexus
 
   return (
     <group ref={rootRef} position={[0, 0, -7]}>
+      <CarpathianDataHorizon />
+      <DataStreams progressRef={progressRef} lensMode={lensMode} />
+      <DataKeep progressRef={progressRef} lensMode={lensMode} />
+
       <points geometry={pointGeometry} frustumCulled={false}>
         <pointsMaterial ref={pointMaterialRef} color="#8be3df" size={0.04} transparent opacity={0} depthWrite={false} sizeAttenuation />
       </points>
@@ -391,6 +636,40 @@ function NexusCity({ progressRef, lensMode, lensPointerRef, qualityTier }: Nexus
               <boxGeometry args={[block.scale[0] * 0.62, 0.15, block.scale[2] * 0.58]} />
               <meshStandardMaterial color="#233235" roughness={0.72} metalness={0.16} />
             </mesh>
+            <mesh
+              position={[0, block.scale[1] + 0.72, 0]}
+              rotation={[0, Math.PI / 4, 0]}
+              scale={[block.scale[0] * 0.82, 1, block.scale[2] * 0.82]}
+            >
+              <coneGeometry args={[0.72, 1.42, 4]} />
+              <meshStandardMaterial
+                color={lensMode === 'segmentation'
+                  ? SEGMENT_COLORS[block.segment]
+                  : lensMode === 'detection'
+                    ? '#24484a'
+                    : index % 4 === 0 ? '#5a2426' : '#1a2323'}
+                emissive={lensMode === 'detection' ? '#17383a' : '#120b0c'}
+                emissiveIntensity={lensMode === 'raw' ? 0.16 : 0.38}
+                roughness={0.84}
+                metalness={0.08}
+              />
+            </mesh>
+            {index % 4 === 0 && (
+              <mesh position={[block.scale[0] * 0.16, block.scale[1] + 1.22, -block.scale[2] * 0.08]}>
+                <boxGeometry args={[0.28, 1.1, 0.32]} />
+                <meshStandardMaterial color="#3c3530" roughness={0.9} />
+              </mesh>
+            )}
+            {index < 12 && (
+              <mesh position={[0, Math.min(block.scale[1] - 0.5, 1.25), -block.scale[2] / 2 - 0.022]}>
+                <planeGeometry args={[Math.min(1.1, block.scale[0] * 0.58), 0.72]} />
+                <meshBasicMaterial
+                  color={index % 3 === 0 ? '#7b232a' : index % 3 === 1 ? '#b39a64' : '#315e5d'}
+                  transparent
+                  opacity={lensMode === 'detection' ? 0.22 : 0.64}
+                />
+              </mesh>
+            )}
             {Array.from({ length: windowRows }, (_, row) => Array.from({ length: 2 }, (__, column) => (
               <mesh
                 key={`${row}-${column}`}
@@ -411,6 +690,7 @@ function NexusCity({ progressRef, lensMode, lensPointerRef, qualityTier }: Nexus
       <TrackedSubjects lensMode={lensMode} />
       <pointLight position={[0, 7.5, -17]} color="#6bdad6" intensity={10} distance={27} decay={2.1} />
       <pointLight position={[-4, 4, -34]} color="#d5ad64" intensity={8} distance={20} decay={2.1} />
+      <pointLight position={[0, 7.5, -44]} color="#a7c8c2" intensity={12} distance={26} decay={2.1} />
     </group>
   );
 }

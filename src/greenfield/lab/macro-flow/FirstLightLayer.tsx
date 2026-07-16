@@ -71,7 +71,7 @@ export function FirstLightLayer({ progressRef, qualityTier }: FirstLightLayerPro
   const beamMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const signalRef = useRef<THREE.Mesh>(null);
   const bannerMaterials = useMemo(
-    () => [bannerMaterial('#633a34'), bannerMaterial('#315c59')],
+    () => [bannerMaterial('#641a20'), bannerMaterial('#312b24')],
     [],
   );
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
@@ -98,7 +98,7 @@ export function FirstLightLayer({ progressRef, qualityTier }: FirstLightLayerPro
   }, [bannerMaterials]);
 
   useFrame(({ camera, clock, pointer }, delta) => {
-    const departure = smooth(range(progressRef.current, 0.074, 0.114));
+    const departure = smooth(range(progressRef.current, 0.056, 0.096));
     const opening = smooth(range(progressRef.current, 0.026, 0.092));
 
     if (rootRef.current) {
@@ -127,7 +127,9 @@ export function FirstLightLayer({ progressRef, qualityTier }: FirstLightLayerPro
     }
     if (signalRef.current) {
       const pulse = 1 + Math.sin(clock.elapsedTime * 2.4) * 0.12;
-      signalRef.current.scale.setScalar(pulse);
+      const signalDeparture = smooth(range(progressRef.current, 0.018, 0.052));
+      signalRef.current.scale.setScalar(Math.max(0.001, pulse * (1 - signalDeparture)));
+      signalRef.current.visible = signalDeparture < 0.995;
     }
   });
 
@@ -144,7 +146,7 @@ export function FirstLightLayer({ progressRef, qualityTier }: FirstLightLayerPro
         <coneGeometry args={[4.8, 10, 40, 1, true]} />
         <meshBasicMaterial
           ref={beamMaterialRef}
-          color="#72d9d6"
+          color="#c9d3ca"
           transparent
           opacity={0}
           depthWrite={false}
@@ -166,7 +168,7 @@ export function FirstLightLayer({ progressRef, qualityTier }: FirstLightLayerPro
         </mesh>
       ))}
 
-      <pointLight ref={cursorLightRef} position={[0, 5, 17.4]} color="#7de0dc" intensity={14} distance={12} decay={2.15} />
+      <pointLight ref={cursorLightRef} position={[0, 5, 17.4]} color="#b8c9c1" intensity={14} distance={12} decay={2.15} />
       <mesh ref={signalRef} position={[0, 4.82, 17.15]}>
         <icosahedronGeometry args={[0.095, 1]} />
         <meshStandardMaterial color="#d9ffff" emissive="#72d9d6" emissiveIntensity={8} roughness={0.08} />
