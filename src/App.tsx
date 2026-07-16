@@ -11,19 +11,34 @@ function ScrollToTop() {
 
   useEffect(() => {
     let frame = 0;
-    let attempts = 0;
+    const confirmations: number[] = [];
+    const deadline = window.performance.now() + 15_000;
+
+    const scrollToTarget = (target: HTMLElement) => {
+      if (lenis) lenis.scrollTo(target, { immediate: true, force: true });
+      else target.scrollIntoView({ block: 'start' });
+    };
 
     const move = () => {
       if (hash) {
         const target = document.getElementById(hash.slice(1));
-        if (!target && attempts < 120) {
-          attempts += 1;
+        if (!target && window.performance.now() < deadline) {
           frame = window.requestAnimationFrame(move);
           return;
         }
         if (target) {
-          if (lenis) lenis.scrollTo(target, { immediate: true });
-          else target.scrollIntoView({ block: 'start' });
+          scrollToTarget(target);
+          [240, 820].forEach((delay) => {
+            confirmations.push(window.setTimeout(() => {
+              const currentTarget = document.getElementById(hash.slice(1));
+              if (!currentTarget) return;
+              const scrollPaddingTop = Number.parseFloat(
+                window.getComputedStyle(document.documentElement).scrollPaddingTop,
+              ) || 0;
+              const distance = Math.abs(currentTarget.getBoundingClientRect().top - scrollPaddingTop);
+              if (distance > 2) scrollToTarget(currentTarget);
+            }, delay));
+          });
         }
         return;
       }
@@ -33,7 +48,10 @@ function ScrollToTop() {
     };
 
     frame = window.requestAnimationFrame(move);
-    return () => window.cancelAnimationFrame(frame);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      confirmations.forEach((timer) => window.clearTimeout(timer));
+    };
   }, [pathname, hash, lenis]);
 
   return null;

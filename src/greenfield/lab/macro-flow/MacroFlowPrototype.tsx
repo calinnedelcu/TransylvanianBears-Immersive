@@ -17,23 +17,35 @@ import {
   Waypoints,
   Wind,
 } from 'lucide-react';
-import { lazy, Suspense, useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { usePrefersReducedMotion } from '../../../hooks/usePrefersReducedMotion';
 import { ViewTransitionLink } from '../../components/ViewTransitionLink';
 import { JOURNEY_CHAPTERS, chapterTone, type JourneyChapter } from '../../experience/chapters';
 import { ExperienceProvider } from '../../experience/ExperienceProvider';
 import { useAmbientAudio } from '../../experience/audio/useAmbientAudio';
+import { EVIDENCE_CORE_BY_LENS, type EvidenceCoreId } from '../../experience/evidenceCores';
 import { effectiveQuality } from '../../experience/experienceMachine';
 import { useExperienceActorRef, useExperienceSelector } from '../../experience/useExperience';
 import { useJourneyDirector } from '../../experience/useJourneyDirector';
 import { useGreenfieldMode } from '../../hooks/useGreenfieldMode';
 import type { MacroLensMode, MacroTraceOutcome } from './MacroFlowScene';
-import type { LensPointerState } from './macroFlowTypes';
+import type { LensPointerState, NexusFlightInput } from './macroFlowTypes';
 import InfectInterlude from './InfectInterlude';
 import ResearchCrossing from './ResearchCrossing';
 import EvidenceWeave from './EvidenceWeave';
 import { NexusProofInspector } from './NexusProofInspector';
 import BuriedGameplayTheater from './BuriedGameplayTheater';
+import { VerticalSliceSoundscape } from './VerticalSliceSoundscape';
+import { VerticalSliceLoader } from './VerticalSliceLoader';
 import './macro-flow.css';
 
 const MacroFlowScene = lazy(() => import('./MacroFlowScene').then((module) => ({ default: module.MacroFlowScene })));
@@ -97,7 +109,12 @@ const LENS_OPTIONS: Array<{
 function MacroFlowExperience() {
   const rootRef = useRef<HTMLElement>(null);
   const traceTimersRef = useRef<number[]>([]);
+  const sharedAudioContextRef = useRef<AudioContext | null>(null);
+  const verticalSoundscapeRef = useRef<VerticalSliceSoundscape | null>(null);
+  const verticalSoundParametersRef = useRef({ progress: 0, velocity: 0, lensMode: 'raw' as MacroLensMode });
+  const lastSoundChapterRef = useRef<JourneyChapter | null>(null);
   const lensPointerRef = useRef<LensPointerState>({ x: 0.5, y: 0.5, active: false });
+  const nexusFlightInputRef = useRef<NexusFlightInput>({ x: 0, y: 0, active: false });
   const reducedMotion = usePrefersReducedMotion();
   const experienceActor = useExperienceActorRef();
   const activeChapter = useExperienceSelector((state) => state.context.activeChapter);
@@ -105,30 +122,98 @@ function MacroFlowExperience() {
   const qualityTier = useExperienceSelector((state) => effectiveQuality(state.context));
   const qualityMode = useExperienceSelector((state) => state.context.qualityMode);
   const audioEnabled = useExperienceSelector((state) => state.context.audioEnabled);
+  const evidenceCores = useExperienceSelector((state) => state.context.evidenceCores);
   const [traceScenario, setTraceScenario] = useState<TraceScenario>('valid');
   const [traceStep, setTraceStep] = useState(0);
   const [traceOutcome, setTraceOutcome] = useState<MacroTraceOutcome>('idle');
   const [buriedRules, setBuriedRules] = useState<Set<BuriedRule>>(() => new Set());
   const [activeBuriedRule, setActiveBuriedRule] = useState<BuriedRule>('oil');
 
+  const getSharedAudioContext = useCallback(() => {
+    if (sharedAudioContextRef.current) return sharedAudioContextRef.current;
+    const AudioContextClass = window.AudioContext ?? (window as typeof window & {
+      webkitAudioContext?: typeof AudioContext;
+    }).webkitAudioContext;
+    if (!AudioContextClass) return null;
+    sharedAudioContextRef.current = new AudioContextClass({ latencyHint: 'interactive' });
+    return sharedAudioContextRef.current;
+  }, []);
+
+  const getVerticalSoundscape = useCallback(() => {
+    const context = getSharedAudioContext();
+    if (!context) return null;
+    verticalSoundscapeRef.current ??= new VerticalSliceSoundscape({
+      reducedMotion,
+      masterLevel: 0.46,
+      stemLevels: { evidence: 0.82 },
+      audioContext: context,
+    });
+    verticalSoundscapeRef.current.update(verticalSoundParametersRef.current);
+    return verticalSoundscapeRef.current;
+  }, [getSharedAudioContext, reducedMotion]);
+
   const enableAudio = useCallback(() => experienceActor.send({ type: 'AUDIO_ENABLED' }), [experienceActor]);
   const muteAudio = useCallback(() => experienceActor.send({ type: 'AUDIO_MUTED' }), [experienceActor]);
   const {
-    toggle: toggleAudio,
+    toggle: toggleAmbientAudio,
     update: updateAudio,
     enterChapter: enterAudioChapter,
-  } = useAmbientAudio({ enabled: audioEnabled, onEnabled: enableAudio, onMuted: muteAudio });
+  } = useAmbientAudio({
+    enabled: audioEnabled,
+    onEnabled: enableAudio,
+    onMuted: muteAudio,
+    getContext: getSharedAudioContext,
+  });
   const enterChapter = useCallback((chapter: JourneyChapter) => {
     experienceActor.send({ type: 'CHAPTER_ENTERED', chapter });
+    if (chapter === 'field' && lastSoundChapterRef.current !== 'field') {
+      verticalSoundscapeRef.current?.trigger('threshold-open');
+    }
+    lastSoundChapterRef.current = chapter;
   }, [experienceActor]);
+  const collectEvidenceCore = useCallback((core: EvidenceCoreId) => {
+    experienceActor.send({ type: 'EVIDENCE_CORE_COLLECTED', core });
+    const cueX = core === 'source' ? -1.2 : core === 'structure' ? 1.2 : 0;
+    verticalSoundscapeRef.current?.trigger('evidence-reveal', { x: cueX, y: 0.2, z: -1.4 });
+  }, [experienceActor]);
+  const selectLens = useCallback((mode: MacroLensMode) => {
+    experienceActor.send({ type: 'LENS_SELECTED', mode });
+    verticalSoundParametersRef.current.lensMode = mode;
+    verticalSoundscapeRef.current?.update({ lensMode: mode });
+    verticalSoundscapeRef.current?.trigger('lens-lock', {
+      x: mode === 'raw' ? -0.9 : mode === 'segmentation' ? 0 : 0.9,
+      y: 0.35,
+      z: -1.7,
+    });
+  }, [experienceActor]);
+  const toggleComposedAudio = useCallback(async () => {
+    const soundscape = getVerticalSoundscape();
+    if (audioEnabled) {
+      soundscape?.mute();
+      await toggleAmbientAudio();
+      return;
+    }
+
+    const [ambientStarted, verticalStarted] = await Promise.all([
+      toggleAmbientAudio(),
+      soundscape?.resume() ?? Promise.resolve(false),
+    ]);
+    if (verticalStarted && !ambientStarted) enableAudio();
+  }, [audioEnabled, enableAudio, getVerticalSoundscape, toggleAmbientAudio]);
   const onJourneyProgress = useCallback((progress: number, velocity: number) => {
     updateAudio(progress, velocity);
   }, [updateAudio]);
+  const onSliceProgress = useCallback((progress: number, velocity: number) => {
+    verticalSoundParametersRef.current.progress = progress;
+    verticalSoundParametersRef.current.velocity = velocity;
+    verticalSoundscapeRef.current?.update({ progress, velocity });
+  }, []);
   const { worldProgressRef: progressRef, velocityRef } = useJourneyDirector({
     rootRef,
     reducedMotion,
     onChapterChange: enterChapter,
     onProgress: onJourneyProgress,
+    onSliceProgress,
   });
 
   useGreenfieldMode({
@@ -206,6 +291,11 @@ function MacroFlowExperience() {
     const x = Math.max(minimumX, Math.min(maximumX, event.clientX / window.innerWidth));
     const yFromTop = Math.max(minimumY, Math.min(maximumY, event.clientY / window.innerHeight));
     lensPointerRef.current = { x, y: 1 - yFromTop, active: true };
+    nexusFlightInputRef.current = {
+      x: Math.max(-1, Math.min(1, event.clientX / window.innerWidth * 2 - 1)),
+      y: Math.max(-1, Math.min(1, 1 - event.clientY / window.innerHeight * 2)),
+      active: true,
+    };
     event.currentTarget.style.setProperty('--mf-lens-x', `${(x * 100).toFixed(2)}%`);
     event.currentTarget.style.setProperty('--mf-lens-y', `${(yFromTop * 100).toFixed(2)}%`);
     event.currentTarget.dataset.lensEngaged = 'true';
@@ -213,7 +303,35 @@ function MacroFlowExperience() {
 
   const leaveLens = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     lensPointerRef.current.active = false;
+    nexusFlightInputRef.current.active = false;
     delete event.currentTarget.dataset.lensEngaged;
+  }, []);
+
+  const moveFlightWithKeyboard = useCallback((event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return;
+    const vector = event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a'
+      ? [-1, 0]
+      : event.key === 'ArrowRight' || event.key.toLowerCase() === 'd'
+        ? [1, 0]
+        : event.key === 'ArrowUp' || event.key.toLowerCase() === 'w'
+          ? [0, 1]
+          : event.key === 'ArrowDown' || event.key.toLowerCase() === 's'
+            ? [0, -1]
+            : null;
+    if (!vector) return;
+    event.preventDefault();
+    const step = event.shiftKey ? 0.34 : 0.2;
+    nexusFlightInputRef.current = {
+      x: Math.max(-1, Math.min(1, nexusFlightInputRef.current.x + vector[0] * step)),
+      y: Math.max(-1, Math.min(1, nexusFlightInputRef.current.y + vector[1] * step)),
+      active: true,
+    };
+  }, []);
+
+  const stopFlightWithKeyboard = useCallback((event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return;
+    if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'a', 'd', 'w', 's'].includes(event.key.toLowerCase())) return;
+    nexusFlightInputRef.current.active = false;
   }, []);
 
   useEffect(() => {
@@ -224,6 +342,21 @@ function MacroFlowExperience() {
   useEffect(() => {
     enterAudioChapter(activeChapter, chapterTone(activeChapter));
   }, [activeChapter, audioEnabled, enterAudioChapter]);
+
+  useEffect(() => {
+    verticalSoundscapeRef.current?.setReducedMotion(reducedMotion);
+  }, [reducedMotion]);
+
+  useEffect(() => {
+    if (!audioEnabled) verticalSoundscapeRef.current?.mute();
+  }, [audioEnabled]);
+
+  useEffect(() => () => {
+    verticalSoundscapeRef.current?.dispose();
+    const context = sharedAudioContextRef.current;
+    sharedAudioContextRef.current = null;
+    if (context && context.state !== 'closed') void context.close();
+  }, []);
 
   useEffect(() => clearTraceTimers, [clearTraceTimers]);
 
@@ -251,17 +384,22 @@ function MacroFlowExperience() {
       data-active-chapter={activeChapter}
       data-quality-tier={qualityTier}
       data-lens={lensMode}
+      data-evidence-cores={evidenceCores.length}
       data-trace-outcome={traceOutcome}
     >
       <a className="mf-skip" href="#mf-proof">Sari la dovada proiectului</a>
 
       <div className="mf-world" aria-hidden="true">
         {macroWorldActive ? (
-          <Suspense fallback={<div className="mf-canvas-fallback" aria-hidden="true" />}>
+          <Suspense fallback={<VerticalSliceLoader />}>
             <MacroFlowScene
+              activeChapter={activeChapter}
               progressRef={progressRef}
               lensPointerRef={lensPointerRef}
+              nexusFlightInputRef={nexusFlightInputRef}
               lensMode={lensMode}
+              collectedEvidenceCores={evidenceCores}
+              onCollectEvidenceCore={collectEvidenceCore}
               traceStep={traceStep}
               traceOutcome={traceOutcome}
               buriedDiscoveries={buriedRules.size}
@@ -300,7 +438,7 @@ function MacroFlowExperience() {
             aria-label={audioEnabled ? 'Oprește sunetul ambiental' : 'Pornește sunetul ambiental'}
             title={audioEnabled ? 'Sunet pornit' : 'Sunet oprit'}
             data-active={audioEnabled || undefined}
-            onClick={() => void toggleAudio()}
+            onClick={() => void toggleComposedAudio()}
           >
             {audioEnabled ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
           </button>
@@ -350,9 +488,13 @@ function MacroFlowExperience() {
       <section id="mf-lens" className="mf-beat mf-beat--lens" data-chapter="lens">
         <div
           className="mf-lens-knot"
+          tabIndex={0}
+          aria-label="Controlează drona Nexus și schimbă modul de analiză"
           onPointerMove={moveLens}
           onPointerEnter={moveLens}
           onPointerLeave={leaveLens}
+          onKeyDown={moveFlightWithKeyboard}
+          onKeyUp={stopFlightWithKeyboard}
         >
           <div className="mf-lens-reticle" aria-hidden="true">
             <i /><i /><span>inspect</span>
@@ -370,7 +512,7 @@ function MacroFlowExperience() {
                   type="button"
                   data-active={lensMode === option.id || undefined}
                   aria-pressed={lensMode === option.id}
-                  onClick={() => experienceActor.send({ type: 'LENS_SELECTED', mode: option.id })}
+                  onClick={() => selectLens(option.id)}
                 >
                   <Icon aria-hidden="true" />
                   <span><strong>{option.label}</strong><small>{option.description}</small></span>
@@ -378,10 +520,49 @@ function MacroFlowExperience() {
               );
             })}
           </div>
+          <div className="mf-evidence-cores" aria-live="polite" aria-label={`${evidenceCores.length} din 3 nuclee de dovadă colectate`}>
+            {LENS_OPTIONS.map((option, index) => {
+              const Icon = option.icon;
+              const core = EVIDENCE_CORE_BY_LENS[option.id];
+              const collected = evidenceCores.includes(core);
+              return (
+                <span key={core} data-collected={collected || undefined}>
+                  <Icon aria-hidden="true" />
+                  <small>Core 0{index + 1}</small>
+                  {collected ? <Check aria-hidden="true" /> : <i aria-hidden="true" />}
+                </span>
+              );
+            })}
+          </div>
         </div>
       </section>
 
       <section id="mf-proof" className="mf-clearing" data-chapter="proof">
+        <div className="mf-proof-handoff" aria-hidden="true">
+          <div className="mf-proof-handoff__paper">
+            <img
+              className="mf-proof-handoff__image mf-proof-handoff__image--field"
+              src="/assets/projects/nexus-ue5-aerial.webp"
+              alt=""
+              width="1280"
+              height="960"
+              decoding="async"
+            />
+            <img
+              className="mf-proof-handoff__image mf-proof-handoff__image--validation"
+              src="/assets/projects/project-nexus.webp"
+              alt=""
+              width="589"
+              height="504"
+              decoding="async"
+            />
+            <span>Synthetic field / real-world validation</span>
+          </div>
+          <div className="mf-proof-handoff__frame">
+            <i /><i /><i /><i />
+            <span>NX-01 / source plane</span>
+          </div>
+        </div>
         <div className="mf-clearing__inner">
           <header className="mf-clearing__head">
             <p className="mf-kicker">Editorial clearing / NX-01</p>
@@ -397,7 +578,7 @@ function MacroFlowExperience() {
             </p>
           </div>
 
-          <NexusProofInspector />
+          <NexusProofInspector mode={lensMode} onModeChange={selectLens} />
 
           <dl className="mf-metrics">
             <div><dt>Scenarii</dt><dd>11</dd></div>
@@ -420,6 +601,22 @@ function MacroFlowExperience() {
               Deschide prezentarea sursă <span aria-hidden="true">↗</span>
             </a>
           </div>
+
+          <footer className="mf-clearing__credits">
+            <div>
+              <p className="mf-kicker">Team / confirmed authors</p>
+              <ul>
+                <li>Nedelcu Călin</li>
+                <li>Cheroiu Andrei</li>
+                <li>Buloi Cristian</li>
+                <li>Colan Vlad</li>
+              </ul>
+            </div>
+            <p>
+              Autorii, metoda și volumele publicate sunt verificate în prezentarea echipei.
+              Straturile demonstrative sunt marcate separat de materialul autentic.
+            </p>
+          </footer>
         </div>
       </section>
 

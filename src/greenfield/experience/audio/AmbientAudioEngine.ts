@@ -24,6 +24,7 @@ const TONE_BED_LEVELS: Record<JourneyTone, number> = {
 
 export class AmbientAudioEngine {
   private context: AudioContext | null = null;
+  private readonly ownsContext: boolean;
   private master: GainNode | null = null;
   private windGain: GainNode | null = null;
   private windFilter: BiquadFilterNode | null = null;
@@ -34,6 +35,11 @@ export class AmbientAudioEngine {
   private sources: AudioScheduledSourceNode[] = [];
   private enabled = false;
   private lastChapter: JourneyChapter | null = null;
+
+  constructor(context?: AudioContext) {
+    this.context = context ?? null;
+    this.ownsContext = context === undefined;
+  }
 
   async enable() {
     this.ensureGraph();
@@ -82,7 +88,7 @@ export class AmbientAudioEngine {
       }
     });
     this.sources = [];
-    void this.context?.close();
+    if (this.ownsContext) void this.context?.close();
     this.context = null;
     this.master = null;
     this.windGain = null;
@@ -94,11 +100,10 @@ export class AmbientAudioEngine {
   }
 
   private ensureGraph() {
-    if (this.context) return;
+    if (this.master) return;
     const AudioContextClass = window.AudioContext;
-    if (!AudioContextClass) return;
-
-    const context = new AudioContextClass({ latencyHint: 'interactive' });
+    const context = this.context ?? (AudioContextClass ? new AudioContextClass({ latencyHint: 'interactive' }) : null);
+    if (!context) return;
     const master = context.createGain();
     master.gain.value = 0;
     master.connect(context.destination);

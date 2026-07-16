@@ -37,6 +37,10 @@ and the editorial shell ships independently from the 3D runtime.
 
 Key documents:
 
+- [`docs/vertical-slice-art-bible.md`](docs/vertical-slice-art-bible.md)
+- [`docs/storyboard-01-04.md`](docs/storyboard-01-04.md)
+- [`docs/asset-production-contract.md`](docs/asset-production-contract.md)
+- [`docs/vertical-slice-sound-design.md`](docs/vertical-slice-sound-design.md)
 - [`docs/greenfield/09-hybrid-world-architecture.md`](docs/greenfield/09-hybrid-world-architecture.md)
 - [`docs/greenfield/08-core-loop-control.md`](docs/greenfield/08-core-loop-control.md)
 - [`docs/greenfield/01-content-inventory.md`](docs/greenfield/01-content-inventory.md)
@@ -51,11 +55,21 @@ npm run dev
 Production checks:
 
 ```bash
+npm run build:vertical-slice
 npm run lint
 npm run build
 npm run qa:immersive
+npm run qa:visual
 npm audit --omit=dev
 ```
+
+`build:vertical-slice` regenerates the Blender citadel, its poster, and the separately
+authored desktop/mobile camera curves for chapters 01-04. Camera JSON is schema-checked,
+budget-checked, and verified for exact chapter handoffs by `qa:immersive`.
+
+`qa:visual` records the authored opening, all three Nexus lens modes, the Lens-to-Proof
+handoff, the three authentic proof frames, and the mobile opening/Nexus states in
+`/tmp/transylvanian-bears-qa` for visual review.
 
 The production build is emitted to `dist/` and deployed on Vercel at
 `https://www.transylvanianbears.com`.

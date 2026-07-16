@@ -7,6 +7,7 @@ import {
   type QualityMode,
   type QualityTier,
 } from './quality';
+import type { EvidenceCoreId } from './evidenceCores';
 
 export type LensMode = 'raw' | 'segmentation' | 'detection';
 
@@ -20,6 +21,7 @@ export type ExperienceContext = {
   reducedMotion: boolean;
   audioEnabled: boolean;
   lensMode: LensMode;
+  evidenceCores: EvidenceCoreId[];
 };
 
 export type ExperienceInput = {
@@ -37,7 +39,8 @@ export type ExperienceEvent =
   | { type: 'CYCLE_QUALITY' }
   | { type: 'AUDIO_ENABLED' }
   | { type: 'AUDIO_MUTED' }
-  | { type: 'LENS_SELECTED'; mode: LensMode };
+  | { type: 'LENS_SELECTED'; mode: LensMode }
+  | { type: 'EVIDENCE_CORE_COLLECTED'; core: EvidenceCoreId };
 
 export function effectiveQuality(context: ExperienceContext): QualityTier {
   if (context.reducedMotion) return 'editorial';
@@ -85,6 +88,10 @@ export const experienceMachine = setup({
     selectLens: assign(({ event }) => (
       event.type === 'LENS_SELECTED' ? { lensMode: event.mode } : {}
     )),
+    collectEvidenceCore: assign(({ context, event }) => {
+      if (event.type !== 'EVIDENCE_CORE_COLLECTED' || context.evidenceCores.includes(event.core)) return {};
+      return { evidenceCores: [...context.evidenceCores, event.core] };
+    }),
   },
 }).createMachine({
   id: 'transylvanian-bears-experience',
@@ -99,6 +106,7 @@ export const experienceMachine = setup({
     reducedMotion: input.reducedMotion,
     audioEnabled: false,
     lensMode: 'raw',
+    evidenceCores: [],
   }),
   states: {
     booting: {
@@ -116,5 +124,6 @@ export const experienceMachine = setup({
     AUDIO_ENABLED: { actions: 'enableAudio' },
     AUDIO_MUTED: { actions: 'muteAudio' },
     LENS_SELECTED: { actions: 'selectLens' },
+    EVIDENCE_CORE_COLLECTED: { actions: 'collectEvidenceCore' },
   },
 });

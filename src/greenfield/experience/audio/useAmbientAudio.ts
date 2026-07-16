@@ -6,25 +6,28 @@ type AmbientAudioOptions = {
   enabled: boolean;
   onEnabled: () => void;
   onMuted: () => void;
+  getContext?: () => AudioContext | null;
 };
 
-export function useAmbientAudio({ enabled, onEnabled, onMuted }: AmbientAudioOptions) {
+export function useAmbientAudio({ enabled, onEnabled, onMuted, getContext }: AmbientAudioOptions) {
   const engineRef = useRef<AmbientAudioEngine | null>(null);
 
   const getEngine = useCallback(() => {
-    engineRef.current ??= new AmbientAudioEngine();
+    engineRef.current ??= new AmbientAudioEngine(getContext?.() ?? undefined);
     return engineRef.current;
-  }, []);
+  }, [getContext]);
 
   const toggle = useCallback(async () => {
     const engine = getEngine();
     if (enabled) {
       engine.mute();
       onMuted();
-      return;
+      return false;
     }
 
-    if (await engine.enable()) onEnabled();
+    const started = await engine.enable();
+    if (started) onEnabled();
+    return started;
   }, [enabled, getEngine, onEnabled, onMuted]);
 
   const update = useCallback((progress: number, velocity: number) => {
@@ -43,4 +46,3 @@ export function useAmbientAudio({ enabled, onEnabled, onMuted }: AmbientAudioOpt
 
   return { toggle, update, enterChapter };
 }
-

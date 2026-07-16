@@ -836,6 +836,7 @@ function SchoolMateStage({
 }
 
 export function SchoolActScene({ progressRef, traceStep, traceOutcome, qualityTier }: SchoolActSceneProps) {
+  const rootRef = useRef<THREE.Group>(null);
   const [aegisTexture, schoolmateTexture] = useTexture([
     '/assets/projects/aegis.webp',
     '/assets/projects/schoolmate.webp',
@@ -848,8 +849,14 @@ export function SchoolActScene({ progressRef, traceStep, traceOutcome, qualityTi
     return { aegis: aegisTexture, schoolmate: schoolmateTexture };
   }, [aegisTexture, qualityTier, schoolmateTexture]);
 
+  useFrame(() => {
+    if (!rootRef.current) return;
+    const progress = progressRef.current;
+    rootRef.current.visible = progress >= 0.255 && progress <= 0.655;
+  });
+
   return (
-    <group>
+    <group ref={rootRef} visible={false}>
       <PortalFrames progressRef={progressRef} />
       <SchoolArchitecture progressRef={progressRef} qualityTier={qualityTier} />
       <StudentRig progressRef={progressRef} traceOutcome={traceOutcome} aegisTexture={textures.aegis} />

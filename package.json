@@ -8,8 +8,11 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "qa:immersive": "node scripts/qa-immersive.mjs",
+    "qa:visual": "node scripts/qa-visual.mjs",
     "preview": "vite preview",
+    "build:cameras": "blender --background --python-exit-code 1 --python scripts/blender/build_vertical_slice_cameras.py",
     "build:first-light": "blender --background --python-exit-code 1 --python scripts/blender/build_first_light.py && gltf-transform optimize public/assets/world/first-light-citadel.raw.glb public/assets/world/first-light-citadel.glb --compress meshopt --palette false --texture-compress false && node scripts/convert-first-light-poster.mjs",
+    "build:vertical-slice": "npm run build:cameras && npm run build:first-light",
     "optimize:images": "node scripts/optimize-images.mjs",
     "generate:og": "node scripts/generate-og.mjs",
     "generate:favicons": "node scripts/generate-favicons.mjs"

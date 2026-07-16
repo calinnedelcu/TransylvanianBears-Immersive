@@ -8,6 +8,7 @@ gsap.registerPlugin(ScrollTrigger);
 export type JourneyTelemetry = {
   journeyProgressRef: MutableRefObject<number>;
   worldProgressRef: MutableRefObject<number>;
+  sliceProgressRef: MutableRefObject<number>;
   velocityRef: MutableRefObject<number>;
   directionRef: MutableRefObject<-1 | 0 | 1>;
 };
@@ -17,6 +18,7 @@ type JourneyDirectorOptions = {
   reducedMotion: boolean;
   onChapterChange: (chapter: JourneyChapter) => void;
   onProgress?: (progress: number, velocity: number) => void;
+  onSliceProgress?: (progress: number, velocity: number) => void;
 };
 
 export function useJourneyDirector({
@@ -24,9 +26,11 @@ export function useJourneyDirector({
   reducedMotion,
   onChapterChange,
   onProgress,
+  onSliceProgress,
 }: JourneyDirectorOptions): JourneyTelemetry {
   const journeyProgressRef = useRef(0);
   const worldProgressRef = useRef(0);
+  const sliceProgressRef = useRef(0);
   const velocityRef = useRef(0);
   const directionRef = useRef<-1 | 0 | 1>(0);
 
@@ -36,8 +40,15 @@ export function useJourneyDirector({
 
     const context = gsap.context(() => {
       const worldEnd = root.querySelector<HTMLElement>('#mf-infect');
+      const sliceEnd = root.querySelector<HTMLElement>('#mf-passage');
       const threshold = root.querySelector<HTMLElement>('#mf-threshold');
       const thresholdCopy = threshold?.querySelector<HTMLElement>('.mf-copy--hero');
+      const proof = root.querySelector<HTMLElement>('#mf-proof');
+      const proofHandoff = proof?.querySelector<HTMLElement>('.mf-proof-handoff');
+      const proofPaper = proofHandoff?.querySelector<HTMLElement>('.mf-proof-handoff__paper');
+      const proofFrame = proofHandoff?.querySelector<HTMLElement>('.mf-proof-handoff__frame');
+      const proofFieldImage = proofPaper?.querySelector<HTMLElement>('.mf-proof-handoff__image--field');
+      const proofValidationImage = proofPaper?.querySelector<HTMLElement>('.mf-proof-handoff__image--validation');
       const traceKnot = root.querySelector<HTMLElement>('.mf-trace-knot');
       const schoolBridge = root.querySelector<HTMLElement>('.mf-school-bridge');
       const schoolBridgeCopy = schoolBridge?.querySelector<HTMLElement>('.mf-school-bridge__copy');
@@ -59,6 +70,83 @@ export function useJourneyDirector({
             scrub: true,
           },
         });
+      }
+
+      if (
+        proof
+        && proofHandoff
+        && proofPaper
+        && proofFrame
+        && proofFieldImage
+        && proofValidationImage
+        && !reducedMotion
+      ) {
+        const handoffTimeline = gsap.timeline({
+          scrollTrigger: {
+            trigger: proof,
+            start: 'top 96%',
+            end: 'top 18%',
+            scrub: true,
+            invalidateOnRefresh: true,
+          },
+        });
+
+        handoffTimeline
+          .fromTo(proofHandoff, {
+            autoAlpha: 0,
+          }, {
+            autoAlpha: 1,
+            duration: 0.12,
+            ease: 'none',
+          })
+          .fromTo(proofFrame, {
+            width: '18vmin',
+            height: '18vmin',
+            borderRadius: '50%',
+            rotate: -2,
+          }, {
+            width: '86vw',
+            height: '78vh',
+            borderRadius: '0%',
+            rotate: 0,
+            duration: 0.72,
+            ease: 'power2.inOut',
+          }, 0)
+          .fromTo(proofPaper, {
+            clipPath: 'inset(46% 46% round 50%)',
+          }, {
+            clipPath: 'inset(0% 0% round 0%)',
+            duration: 0.82,
+            ease: 'power2.inOut',
+          }, 0.02)
+          .fromTo(proofFieldImage, {
+            opacity: 1,
+            scale: 1,
+          }, {
+            opacity: 0,
+            scale: 1.045,
+            duration: 0.4,
+            ease: 'power1.inOut',
+          }, 0.34)
+          .fromTo(proofValidationImage, {
+            opacity: 0,
+            scale: 1.06,
+          }, {
+            opacity: 1,
+            scale: 1,
+            duration: 0.46,
+            ease: 'power2.out',
+          }, 0.38)
+          .to(proofFrame, {
+            opacity: 0,
+            duration: 0.16,
+            ease: 'none',
+          }, 0.74)
+          .to(proofHandoff, {
+            autoAlpha: 0,
+            duration: 0.12,
+            ease: 'none',
+          }, 0.86);
       }
 
       if (traceKnot && schoolBridge && schoolBridgeCopy && !reducedMotion) {
@@ -122,6 +210,20 @@ export function useJourneyDirector({
         });
       }
 
+      if (sliceEnd) {
+        ScrollTrigger.create({
+          id: 'journey-vertical-slice',
+          trigger: root,
+          start: 'top top',
+          endTrigger: sliceEnd,
+          end: 'top top',
+          onUpdate: (self) => {
+            sliceProgressRef.current = self.progress;
+            onSliceProgress?.(self.progress, velocityRef.current);
+          },
+        });
+      }
+
       root.querySelectorAll<HTMLElement>('[data-chapter]').forEach((element) => {
         const chapter = element.dataset.chapter;
         if (!isJourneyChapter(chapter)) return;
@@ -141,9 +243,9 @@ export function useJourneyDirector({
       context.revert();
       root.style.removeProperty('--mf-progress');
     };
-  }, [onChapterChange, onProgress, reducedMotion, rootRef]);
+  }, [onChapterChange, onProgress, onSliceProgress, reducedMotion, rootRef]);
 
-  return { journeyProgressRef, worldProgressRef, velocityRef, directionRef };
+  return { journeyProgressRef, worldProgressRef, sliceProgressRef, velocityRef, directionRef };
 }
 
 function dampSigned(current: number, target: number, amount: number) {

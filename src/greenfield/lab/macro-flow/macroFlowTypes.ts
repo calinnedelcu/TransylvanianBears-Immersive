@@ -7,3 +7,9 @@ export type LensPointerState = {
   y: number;
   active: boolean;
 };
+
+export type NexusFlightInput = {
+  x: number;
+  y: number;
+  active: boolean;
+};
