@@ -53,6 +53,7 @@ Production checks:
 ```bash
 npm run lint
 npm run build
+npm run qa:immersive
 npm audit --omit=dev
 ```
 

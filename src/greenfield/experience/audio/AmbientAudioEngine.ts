@@ -11,12 +11,26 @@ const TONE_FREQUENCIES: Record<JourneyTone, [number, number]> = {
   dawn: [220, 329.63],
 };
 
+const TONE_BED_LEVELS: Record<JourneyTone, number> = {
+  mineral: 0.019,
+  cyan: 0.016,
+  paper: 0.011,
+  brass: 0.018,
+  moss: 0.017,
+  mercury: 0.023,
+  vermilion: 0.02,
+  dawn: 0.026,
+};
+
 export class AmbientAudioEngine {
   private context: AudioContext | null = null;
   private master: GainNode | null = null;
   private windGain: GainNode | null = null;
   private windFilter: BiquadFilterNode | null = null;
   private windPan: StereoPannerNode | null = null;
+  private toneGain: GainNode | null = null;
+  private toneFilter: BiquadFilterNode | null = null;
+  private toneOscillators: OscillatorNode[] = [];
   private sources: AudioScheduledSourceNode[] = [];
   private enabled = false;
   private lastChapter: JourneyChapter | null = null;
@@ -49,11 +63,13 @@ export class AmbientAudioEngine {
     this.windGain.gain.setTargetAtTime(0.018 + speed * 0.045, now, 0.12);
     this.windFilter.frequency.setTargetAtTime(420 + progress * 240 + speed * 760, now, 0.14);
     this.windPan.pan.setTargetAtTime(Math.sin(progress * Math.PI * 2) * 0.18, now, 0.2);
+    this.toneFilter?.frequency.setTargetAtTime(310 + progress * 170 + speed * 240, now, 0.24);
   }
 
   enterChapter(chapter: JourneyChapter, tone: JourneyTone) {
     if (!this.enabled || chapter === this.lastChapter) return;
     this.lastChapter = chapter;
+    this.morphTone(tone);
     this.playCue(tone);
   }
 
@@ -72,6 +88,9 @@ export class AmbientAudioEngine {
     this.windGain = null;
     this.windFilter = null;
     this.windPan = null;
+    this.toneGain = null;
+    this.toneFilter = null;
+    this.toneOscillators = [];
   }
 
   private ensureGraph() {
@@ -84,20 +103,25 @@ export class AmbientAudioEngine {
     master.gain.value = 0;
     master.connect(context.destination);
 
-    const bed = context.createGain();
-    bed.gain.value = 0.022;
-    bed.connect(master);
+    const toneGain = context.createGain();
+    toneGain.gain.value = TONE_BED_LEVELS.mineral;
+    const toneFilter = context.createBiquadFilter();
+    toneFilter.type = 'lowpass';
+    toneFilter.frequency.value = 360;
+    toneFilter.Q.value = 0.6;
+    toneGain.connect(toneFilter).connect(master);
 
-    [43.65, 65.41].forEach((frequency, index) => {
+    [TONE_FREQUENCIES.mineral[0] / 3, TONE_FREQUENCIES.mineral[1] / 4].forEach((frequency, index) => {
       const oscillator = context.createOscillator();
       const gain = context.createGain();
       oscillator.type = index === 0 ? 'sine' : 'triangle';
       oscillator.frequency.value = frequency;
       oscillator.detune.value = index === 0 ? -5 : 7;
       gain.gain.value = index === 0 ? 0.42 : 0.11;
-      oscillator.connect(gain).connect(bed);
+      oscillator.connect(gain).connect(toneGain);
       oscillator.start();
       this.sources.push(oscillator);
+      this.toneOscillators.push(oscillator);
     });
 
     const windSource = context.createBufferSource();
@@ -118,7 +142,23 @@ export class AmbientAudioEngine {
     this.windGain = windGain;
     this.windFilter = windFilter;
     this.windPan = windPan;
+    this.toneGain = toneGain;
+    this.toneFilter = toneFilter;
     this.sources.push(windSource);
+  }
+
+  private morphTone(tone: JourneyTone) {
+    if (!this.context || !this.toneGain || this.toneOscillators.length < 2) return;
+    const now = this.context.currentTime;
+    const [root, harmonic] = TONE_FREQUENCIES[tone];
+    const targets = [root / 3, harmonic / 4];
+    this.toneOscillators.forEach((oscillator, index) => {
+      oscillator.frequency.cancelScheduledValues(now);
+      oscillator.frequency.setTargetAtTime(targets[index], now, tone === 'vermilion' ? 0.18 : 0.72);
+      oscillator.detune.setTargetAtTime(index === 0 ? -5 : 7, now, 0.4);
+    });
+    this.toneGain.gain.cancelScheduledValues(now);
+    this.toneGain.gain.setTargetAtTime(TONE_BED_LEVELS[tone], now, 0.65);
   }
 
   private createNoiseBuffer(context: AudioContext, seconds: number) {
@@ -160,4 +200,3 @@ export class AmbientAudioEngine {
     });
   }
 }
-

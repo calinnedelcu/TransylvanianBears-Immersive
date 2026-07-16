@@ -120,6 +120,13 @@ export default function EvidenceWeave() {
           <span>{dawnReady ? 'Observe. Protect. Imagine. Measure. Build together.' : openReady ? 'Următorul semnal poate veni din afara citadelei.' : planReady ? 'Șapte proiecte. Patru domenii. O singură echipă.' : 'Este legată de proiect, timp și sursă.'}</span>
         </header>
 
+        <div className="ew-domain-legend" aria-label="Domeniile proiectelor din citadelă">
+          <span><i className="ew-domain-legend__ml" />Machine learning</span>
+          <span><i className="ew-domain-legend__school" />School software</span>
+          <span><i className="ew-domain-legend__games" />Video games</span>
+          <span><i className="ew-domain-legend__research" />Applied research</span>
+        </div>
+
         <div className="ew-readout" aria-live="polite">
           <span>{active.index} / {active.year}</span>
           <strong>{active.title}</strong>
@@ -223,14 +230,25 @@ export default function EvidenceWeave() {
       </section>
 
       <footer className="ew-footer">
-        <div><span>Transylvanian Bears</span><strong>Build together.</strong></div>
+        <div className="ew-footer__signal">
+          <span>Transylvanian Bears</span>
+          <strong>Build together.</strong>
+          <p>Independent build team / software, games, machine learning and applied research.</p>
+        </div>
+        <div className="ew-footer__constellation" aria-hidden="true">
+          {Array.from({ length: 7 }, (_, index) => <i key={index} />)}
+        </div>
         <nav aria-label="Footer">
           <ViewTransitionLink to="/work">Work</ViewTransitionLink>
           <ViewTransitionLink to="/team">Team</ViewTransitionLink>
           <ViewTransitionLink to="/archive">Archive</ViewTransitionLink>
           <a href="mailto:calin.nedelcu08@gmail.com">calin.nedelcu08@gmail.com</a>
         </nav>
-        <p>Romania / 2026</p>
+        <div className="ew-footer__meta">
+          <span>Romania / 2026</span>
+          <span>07 projects / 04 domains</span>
+          <span>46.7712° N / 23.6236° E</span>
+        </div>
       </footer>
     </>
   );

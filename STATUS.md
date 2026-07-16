@@ -1,6 +1,6 @@
 # Transylvanian Bears - Project Status
 
-Last updated: 15 July 2026
+Last updated: 16 July 2026
 
 ## Current state
 
@@ -19,6 +19,7 @@ the `/next` laboratory shell have been removed from the shipped application.
 
 - `npm run lint`
 - `npm run build`
+- `npm run qa:immersive`
 - Direct refresh on project routes
 - Redirects from old `/next/*` URLs
 - Desktop and 390x844 mobile layouts
@@ -54,6 +55,7 @@ prefilled email links, so contact remains functional without adding two shallow 
 npm run dev
 npm run lint
 npm run build
+npm run qa:immersive
 npm run preview
 npm run optimize:images
 npm run generate:og

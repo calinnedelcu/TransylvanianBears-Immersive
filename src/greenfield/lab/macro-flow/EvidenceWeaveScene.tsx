@@ -1,5 +1,6 @@
 import { Line, PerformanceMonitor, useTexture } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Bloom, EffectComposer } from '@react-three/postprocessing';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
@@ -36,6 +37,13 @@ const RING_ROTATIONS: Array<[number, number, number]> = [
   [-0.58, 0.84, 0.62],
   [0.76, 1.26, 0.93],
 ];
+
+const DOMAIN_SECTORS = [
+  { id: 'school', start: 0.34, length: 1.48, color: '#d7b468' },
+  { id: 'ml', start: 1.9, length: 0.98, color: '#72d9d6' },
+  { id: 'games', start: 3.0, length: 1.42, color: '#e76c58' },
+  { id: 'research', start: 4.5, length: 1.62, color: '#c4a65f' },
+] as const;
 
 function makeLabelTexture(artifact: EvidenceArtifact) {
   const canvas = document.createElement('canvas');
@@ -233,6 +241,190 @@ function ArtifactScreen({
   );
 }
 
+type CitadelProject = (typeof CITADEL_PROJECTS)[number];
+
+function MonumentMaterial({ project, intensity = 0.42 }: { project: CitadelProject; intensity?: number }) {
+  return (
+    <meshStandardMaterial
+      color="#132122"
+      emissive={project.color}
+      emissiveIntensity={intensity}
+      metalness={0.84}
+      roughness={0.27}
+    />
+  );
+}
+
+function ProjectMonument({ project }: { project: CitadelProject }) {
+  const base = (
+    <mesh position={[0, 0, 0.07]}>
+      <cylinderGeometry args={[0.64, 0.72, 0.14, 12]} />
+      <MonumentMaterial project={project} intensity={0.22} />
+    </mesh>
+  );
+
+  if (project.id === 'nexus') {
+    return (
+      <group>
+        {base}
+        <mesh position={[0, 0, 0.36]}>
+          <octahedronGeometry args={[0.24, 0]} />
+          <MonumentMaterial project={project} intensity={0.9} />
+        </mesh>
+        {Array.from({ length: 4 }, (_, index) => (
+          <group key={index} rotation={[0, 0, index * Math.PI / 2]} position={[0, 0, 0.36]}>
+            <mesh position={[0.33, 0, 0]}>
+              <boxGeometry args={[0.58, 0.055, 0.055]} />
+              <MonumentMaterial project={project} intensity={0.55} />
+            </mesh>
+            <mesh position={[0.67, 0, 0]}>
+              <cylinderGeometry args={[0.11, 0.11, 0.08, 12]} />
+              <meshBasicMaterial color={project.color} toneMapped={false} />
+            </mesh>
+          </group>
+        ))}
+        <mesh position={[0, 0, 0.78]}>
+          <ringGeometry args={[0.26, 0.31, 20]} />
+          <meshBasicMaterial color={project.color} transparent opacity={0.74} side={THREE.DoubleSide} toneMapped={false} />
+        </mesh>
+      </group>
+    );
+  }
+
+  if (project.id === 'aegis') {
+    return (
+      <group>
+        {base}
+        {[-0.36, 0.36].map((x) => (
+          <mesh key={x} position={[x, 0, 0.52]}>
+            <boxGeometry args={[0.12, 0.16, 0.9]} />
+            <MonumentMaterial project={project} intensity={0.5} />
+          </mesh>
+        ))}
+        <mesh position={[0, 0, 0.83]}>
+          <boxGeometry args={[0.64, 0.07, 0.07]} />
+          <meshBasicMaterial color={project.color} toneMapped={false} />
+        </mesh>
+        <group position={[0, 0, 0.42]}>
+          {Array.from({ length: 3 }, (_, index) => (
+            <mesh key={index} rotation={[0, 0, index * Math.PI / 3]} position={[0.25, 0, 0]}>
+              <boxGeometry args={[0.5, 0.035, 0.035]} />
+              <MonumentMaterial project={project} intensity={0.72} />
+            </mesh>
+          ))}
+        </group>
+      </group>
+    );
+  }
+
+  if (project.id === 'schoolmate') {
+    return (
+      <group>
+        {base}
+        <mesh position={[0, 0, 0.4]}>
+          <boxGeometry args={[0.92, 0.62, 0.66]} />
+          <MonumentMaterial project={project} intensity={0.32} />
+        </mesh>
+        <mesh position={[0, 0, 0.78]}>
+          <boxGeometry args={[1.05, 0.72, 0.1]} />
+          <MonumentMaterial project={project} intensity={0.65} />
+        </mesh>
+        {[-0.29, 0, 0.29].map((x) => (
+          <mesh key={x} position={[x, -0.321, 0.46]} rotation={[Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[0.18, 0.22]} />
+            <meshBasicMaterial color={project.color} transparent opacity={0.86} toneMapped={false} />
+          </mesh>
+        ))}
+      </group>
+    );
+  }
+
+  if (project.id === 'buried') {
+    return (
+      <group>
+        {base}
+        {[
+          [1.05, 0.76, 0.2, 0.19],
+          [0.78, 0.56, 0.26, 0.42],
+          [0.5, 0.36, 0.34, 0.72],
+        ].map(([width, depth, height, z], index) => (
+          <mesh key={index} position={[0, 0, z]}>
+            <boxGeometry args={[width, depth, height]} />
+            <MonumentMaterial project={project} intensity={0.24 + index * 0.18} />
+          </mesh>
+        ))}
+        <mesh position={[0, 0, 0.94]} rotation={[0, 0, Math.PI / 4]}>
+          <octahedronGeometry args={[0.17, 0]} />
+          <meshBasicMaterial color="#e5aa55" toneMapped={false} />
+        </mesh>
+      </group>
+    );
+  }
+
+  if (project.id === 'infect') {
+    const voxels: Array<[number, number, number]> = [
+      [0, 0, 0.43], [-0.38, 0, 0.43], [0.38, 0, 0.43], [0, -0.38, 0.43],
+      [0, 0.38, 0.43], [-0.28, -0.28, 0.72], [0.28, 0.28, 0.72], [0, 0, 0.84],
+    ];
+    return (
+      <group>
+        {base}
+        {voxels.map((position, index) => (
+          <mesh key={index} position={position}>
+            <boxGeometry args={[index === 0 ? 0.48 : 0.18, index === 0 ? 0.48 : 0.18, index === 0 ? 0.48 : 0.18]} />
+            <MonumentMaterial project={project} intensity={index === 0 ? 1.1 : 0.65} />
+          </mesh>
+        ))}
+      </group>
+    );
+  }
+
+  if (project.id === 'economy') {
+    const bars = [0.34, 0.68, 0.48, 0.92, 0.58];
+    return (
+      <group>
+        {base}
+        {bars.map((height, index) => (
+          <mesh key={index} position={[(index - 2) * 0.2, 0, 0.14 + height / 2]}>
+            <boxGeometry args={[0.13, 0.52, height]} />
+            <MonumentMaterial project={project} intensity={0.36 + index * 0.11} />
+          </mesh>
+        ))}
+        <Line
+          points={bars.map((height, index) => new THREE.Vector3((index - 2) * 0.2, -0.3, 0.18 + height))}
+          color={project.color}
+          lineWidth={1.2}
+          transparent
+          opacity={0.9}
+        />
+      </group>
+    );
+  }
+
+  const nodes = Array.from({ length: 6 }, (_, index) => {
+    const angle = index / 6 * Math.PI * 2;
+    return new THREE.Vector3(Math.cos(angle) * 0.48, Math.sin(angle) * 0.48, 0.36 + (index % 2) * 0.2);
+  });
+  return (
+    <group>
+      {base}
+      <mesh position={[0, 0, 0.5]}>
+        <icosahedronGeometry args={[0.25, 1]} />
+        <MonumentMaterial project={project} intensity={0.88} />
+      </mesh>
+      {nodes.map((position, index) => (
+        <group key={index}>
+          <Line points={[new THREE.Vector3(0, 0, 0.5), position]} color={project.color} lineWidth={0.65} transparent opacity={0.62} />
+          <mesh position={position}>
+            <octahedronGeometry args={[0.1, 0]} />
+            <meshBasicMaterial color={project.color} toneMapped={false} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
 function CitadelPlan({
   progressRef,
   activeRoute,
@@ -240,7 +432,7 @@ function CitadelPlan({
   reducedMotion,
 }: Pick<EvidenceWeaveSceneProps, 'progressRef' | 'activeRoute' | 'onSelectRoute' | 'reducedMotion'>) {
   const groupRef = useRef<THREE.Group>(null);
-  const buildingRefs = useRef<Array<THREE.Mesh | null>>([]);
+  const buildingRefs = useRef<Array<THREE.Group | null>>([]);
   const labelTextures = useMemo(() => [
     ...CITADEL_PROJECTS.map((project) => makeMapLabelTexture(project.label, project.group, project.color)),
     ...CITADEL_ROUTES.map((route) => makeMapLabelTexture(route.label, route.detail.toUpperCase(), route.color)),
@@ -275,18 +467,42 @@ function CitadelPlan({
         <meshBasicMaterial color="#17413f" transparent opacity={0.16} side={THREE.DoubleSide} />
       </mesh>
 
+      {DOMAIN_SECTORS.map((sector) => (
+        <mesh key={sector.id} position={[0, 0, -0.09]}>
+          <ringGeometry args={[1.45, 5.92, 72, 1, sector.start, sector.length]} />
+          <meshBasicMaterial color={sector.color} transparent opacity={0.075} side={THREE.DoubleSide} depthWrite={false} />
+        </mesh>
+      ))}
+
+      {DOMAIN_SECTORS.map((sector) => {
+        const angle = sector.start;
+        return (
+          <Line
+            key={`${sector.id}-boundary`}
+            points={[
+              new THREE.Vector3(Math.cos(angle) * 1.42, Math.sin(angle) * 1.42, -0.06),
+              new THREE.Vector3(Math.cos(angle) * 6.05, Math.sin(angle) * 6.05, -0.06),
+            ]}
+            color={sector.color}
+            lineWidth={0.48}
+            transparent
+            opacity={0.3}
+          />
+        );
+      })}
+
       {CITADEL_PROJECTS.map((project, index) => {
-        const [x, y, height] = project.position;
+        const [x, y] = project.position;
         return (
           <group key={project.id} position={[x, y, 0]}>
-            <mesh ref={(node) => { buildingRefs.current[index] = node; }} position={[0, 0, height / 2]}>
-              <boxGeometry args={[1.05, 0.72, height]} />
-              <meshStandardMaterial color="#132122" emissive={project.color} emissiveIntensity={0.28} metalness={0.86} roughness={0.27} />
-            </mesh>
+            <group ref={(node) => { buildingRefs.current[index] = node; }}>
+              <ProjectMonument project={project} />
+            </group>
             <mesh position={[0, -0.66, 0.04]}>
               <planeGeometry args={[1.62, 0.4]} />
               <meshBasicMaterial map={labelTextures[index]} transparent toneMapped={false} />
             </mesh>
+            <pointLight position={[0, 0, 1.35]} color={project.color} intensity={0.85} distance={2.4} />
           </group>
         );
       })}
@@ -587,6 +803,57 @@ function DawnForest() {
   );
 }
 
+const DAWN_MOTE_BASE = Float32Array.from(Array.from({ length: 84 }, (_, index) => {
+  const z = 3.5 + ((index * 19) % 67) * 0.48;
+  const lane = ((index * 37) % 100) / 100;
+  const spread = 2.2 + z * 0.27;
+  const x = (lane - 0.5) * spread * 2;
+  const y = 0.28 + ((index * 23) % 31) * 0.075;
+  return [x, y, z];
+}).flat());
+
+function DawnMotes({
+  progressRef,
+  reducedMotion,
+}: Pick<EvidenceWeaveSceneProps, 'progressRef' | 'reducedMotion'>) {
+  const geometryRef = useRef<THREE.BufferGeometry>(null);
+  const materialRef = useRef<THREE.PointsMaterial>(null);
+  const positions = useMemo(() => new Float32Array(DAWN_MOTE_BASE), []);
+
+  useFrame(({ clock }, delta) => {
+    const geometry = geometryRef.current;
+    const material = materialRef.current;
+    if (!geometry || !material) return;
+    const daylight = THREE.MathUtils.smoothstep(progressRef.current, 0.88, 1);
+    material.opacity = THREE.MathUtils.damp(material.opacity, daylight * 0.58, 4, delta);
+    if (reducedMotion) return;
+    const attribute = geometry.attributes.position as THREE.BufferAttribute;
+    for (let index = 0; index < attribute.count; index += 1) {
+      const baseY = DAWN_MOTE_BASE[index * 3 + 1];
+      attribute.setY(index, baseY + Math.sin(clock.elapsedTime * 0.72 + index * 1.91) * 0.11);
+    }
+    attribute.needsUpdate = true;
+  });
+
+  return (
+    <points>
+      <bufferGeometry ref={geometryRef}>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial
+        ref={materialRef}
+        color="#ffd39a"
+        size={0.055}
+        transparent
+        opacity={0}
+        depthWrite={false}
+        toneMapped={false}
+        sizeAttenuation
+      />
+    </points>
+  );
+}
+
 function DawnWorld({
   progressRef,
   activeOpenPath,
@@ -703,6 +970,20 @@ function DawnWorld({
         ))}
 
         <DawnForest />
+        <DawnMotes progressRef={progressRef} reducedMotion={reducedMotion} />
+
+        {Array.from({ length: 18 }, (_, index) => {
+          const side = index % 2 === 0 ? -1 : 1;
+          const row = Math.floor(index / 2);
+          const z = 4.2 + row * 2.85;
+          const x = side * (1.1 + z * 0.32);
+          return (
+            <mesh key={index} position={[x, 0.06, z]} rotation={[0, side * 0.16, side * 0.06]}>
+              <boxGeometry args={[0.32 + (index % 3) * 0.08, 0.14, 0.48]} />
+              <meshStandardMaterial color={index % 4 === 0 ? '#514a3d' : '#30392f'} roughness={1} />
+            </mesh>
+          );
+        })}
 
         <mesh position={[0, -0.04, 0]}>
           <tubeGeometry args={[leftRoad, 72, 0.075, 8, false]} />
@@ -781,6 +1062,9 @@ export default function EvidenceWeaveScene(props: EvidenceWeaveSceneProps) {
           onFallback={() => setDpr(1)}
         >
           <World {...props} />
+          <EffectComposer multisampling={0} enableNormalPass={false}>
+            <Bloom intensity={0.34} luminanceThreshold={0.9} luminanceSmoothing={0.28} mipmapBlur />
+          </EffectComposer>
         </PerformanceMonitor>
       </Suspense>
     </Canvas>

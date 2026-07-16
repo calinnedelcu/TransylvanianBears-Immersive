@@ -223,7 +223,7 @@ function MacroFlowExperience() {
 
   useEffect(() => {
     enterAudioChapter(activeChapter, chapterTone(activeChapter));
-  }, [activeChapter, enterAudioChapter]);
+  }, [activeChapter, audioEnabled, enterAudioChapter]);
 
   useEffect(() => clearTraceTimers, [clearTraceTimers]);
 
