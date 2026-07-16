@@ -33,6 +33,7 @@ import InfectInterlude from './InfectInterlude';
 import ResearchCrossing from './ResearchCrossing';
 import EvidenceWeave from './EvidenceWeave';
 import { NexusProofInspector } from './NexusProofInspector';
+import BuriedGameplayTheater from './BuriedGameplayTheater';
 import './macro-flow.css';
 
 const MacroFlowScene = lazy(() => import('./MacroFlowScene').then((module) => ({ default: module.MacroFlowScene })));
@@ -703,22 +704,9 @@ function MacroFlowExperience() {
             </p>
           </header>
 
-          <div className="mf-gameplay-strip">
-            <figure>
-              <img src="/assets/projects/buried-hands/guards.webp" alt="Gardieni într-o sală slab luminată din The Buried Hands" width="1914" height="995" loading="lazy" decoding="async" />
-              <figcaption><span>01 / Sound</span><strong>Gardienii aud pașii.</strong></figcaption>
-            </figure>
-            <figure>
-              <img src="/assets/projects/buried-hands/mercury.webp" alt="Sala cu mercur și mecanisme din The Buried Hands" width="1911" height="1006" loading="lazy" decoding="async" />
-              <figcaption><span>02 / Toxicity</span><strong>Mercurul schimbă traseul.</strong></figcaption>
-            </figure>
-            <figure>
-              <img src="/assets/projects/buried-hands/royal-hall.webp" alt="Sala Regală din mausoleu, cu statui și mecanism central" width="1913" height="1001" loading="lazy" decoding="async" />
-              <figcaption><span>03 / Scale</span><strong>Regula devine arhitectură.</strong></figcaption>
-            </figure>
-          </div>
+          <BuriedGameplayTheater />
 
-          <dl className="mf-build-metrics">
+          <dl id="mf-build-metrics" className="mf-build-metrics">
             <div><dt>Engine</dt><dd>Godot 4.6</dd></div>
             <div><dt>Physics</dt><dd>Jolt</dd></div>
             <div><dt>Platform</dt><dd>Windows</dd></div>

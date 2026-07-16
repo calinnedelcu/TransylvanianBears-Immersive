@@ -13,6 +13,8 @@
 }
 
 .rc-instrument {
+  --rc-pointer-x: 0.5;
+  --rc-pointer-y: 0.5;
   position: sticky;
   top: 0;
   min-height: 100dvh;
@@ -38,6 +40,221 @@
   pointer-events: none;
 }
 
+.rc-projection-field {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  perspective: 1400px;
+}
+
+.rc-source-block {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  display: grid;
+  width: 188px;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid rgb(15 17 20 / 0.22);
+  background: rgb(239 238 233 / 0.76);
+  color: rgb(15 17 20 / 0.52);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.76);
+  transition: opacity 450ms ease, transform 650ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.rc-source-block span,
+.rc-source-block small,
+.rc-projection figcaption,
+.rc-projection--automation-risk,
+.rc-projection-reticle {
+  font-size: 7px;
+  text-transform: uppercase;
+}
+
+.rc-source-block strong {
+  font-family: 'Manrope', sans-serif;
+  font-size: 34px;
+  font-weight: 300;
+  letter-spacing: 0;
+}
+
+.rc-instrument[data-phase='collect'] .rc-source-block {
+  opacity: 0.82;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.rc-projection {
+  position: absolute;
+  top: 32%;
+  right: 12vw;
+  width: min(650px, 46vw);
+  margin: 0;
+  opacity: 0;
+  transform: translate3d(calc((var(--rc-pointer-x) - 0.5) * -22px), 52px, -160px) rotateX(8deg) rotateY(-7deg) scale(0.84);
+  transform-origin: 50% 100%;
+  transition:
+    opacity 500ms ease,
+    clip-path 760ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 900ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  clip-path: inset(0 100% 0 0);
+}
+
+.rc-projection > div:first-child {
+  position: relative;
+  padding: 9px;
+  border: 1px solid rgb(15 17 20 / 0.26);
+  background: rgb(239 238 233 / 0.88);
+  box-shadow: 24px 30px 0 rgb(15 17 20 / 0.045);
+}
+
+.rc-projection > div:first-child::before,
+.rc-projection > div:first-child::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+.rc-projection > div:first-child::before {
+  inset: -24px 10% auto;
+  height: 1px;
+  background: rgb(15 17 20 / 0.28);
+}
+
+.rc-projection > div:first-child::after {
+  top: -32px;
+  right: 14%;
+  width: 7px;
+  aspect-ratio: 1;
+  border: 1px solid currentColor;
+  background: #efeee9;
+}
+
+.rc-projection img {
+  display: block;
+  width: 100%;
+  height: auto;
+  mix-blend-mode: multiply;
+}
+
+.rc-projection figcaption {
+  margin-top: 8px;
+  color: rgb(15 17 20 / 0.5);
+}
+
+.rc-instrument[data-lens='economy'][data-phase='compare'] .rc-projection--economy-timeline,
+.rc-instrument[data-lens='economy'][data-phase='qualify'] .rc-projection--economy-drift,
+.rc-instrument[data-lens='automation'][data-phase='compare'] .rc-projection--automation-shap,
+.rc-instrument[data-lens='automation'][data-phase='qualify'] .rc-projection--automation-risk {
+  opacity: 0.82;
+  transform: translate3d(calc((var(--rc-pointer-x) - 0.5) * -22px), calc((var(--rc-pointer-y) - 0.5) * -14px), 0) rotateX(1deg) rotateY(-2deg) scale(1);
+  clip-path: inset(0);
+}
+
+.rc-instrument[data-lens='economy'][data-phase='qualify'] .rc-projection--economy-timeline,
+.rc-instrument[data-lens='automation'][data-phase='qualify'] .rc-projection--automation-shap {
+  top: 27%;
+  right: 7vw;
+  width: min(360px, 29vw);
+  opacity: 0.2;
+  transform: translate3d(0, -34px, -80px) rotateY(7deg) scale(0.86);
+  clip-path: inset(0);
+}
+
+.rc-projection--automation-risk {
+  display: grid;
+  top: 31%;
+  gap: 0;
+  padding: 18px;
+  border: 1px solid rgb(15 17 20 / 0.3);
+  background: rgb(228 231 228 / 0.9);
+  box-shadow: 24px 30px 0 rgb(15 17 20 / 0.045);
+}
+
+.rc-projection--automation-risk > span {
+  margin-bottom: 17px;
+}
+
+.rc-projection--automation-risk > div {
+  display: grid;
+  min-height: 55px;
+  grid-template-columns: 1fr 70px 80px;
+  align-items: center;
+  gap: 13px;
+  border-top: 1px solid rgb(15 17 20 / 0.22);
+}
+
+.rc-projection--automation-risk i {
+  height: 5px;
+  background: #3e6f48;
+}
+
+.rc-projection--automation-risk > div:nth-of-type(2) i {
+  background: #0f1114;
+}
+
+.rc-projection--automation-risk > div:nth-of-type(3) i {
+  width: 4px;
+  background: #d23728;
+}
+
+.rc-projection--automation-risk strong {
+  font-family: 'Manrope', sans-serif;
+  font-size: 27px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.rc-projection--automation-risk small {
+  justify-self: end;
+}
+
+.rc-projection--automation-risk > b {
+  margin-top: 14px;
+  color: #b12d22;
+  font-size: 7px;
+  font-weight: 500;
+}
+
+.rc-projection-reticle {
+  position: absolute;
+  z-index: 2;
+  top: 29%;
+  right: 9vw;
+  width: min(690px, 50vw);
+  height: 39%;
+  border-top: 1px solid rgb(15 17 20 / 0.14);
+  border-bottom: 1px solid rgb(15 17 20 / 0.14);
+  color: rgb(15 17 20 / 0.32);
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+
+.rc-instrument:not([data-phase='collect']) .rc-projection-reticle {
+  opacity: 1;
+}
+
+.rc-projection-reticle > span {
+  position: absolute;
+  top: -15px;
+  right: 0;
+}
+
+.rc-projection-reticle i {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-color: rgb(15 17 20 / 0.34);
+  border-style: solid;
+}
+
+.rc-projection-reticle i:nth-of-type(1) { top: -1px; left: 0; border-width: 1px 0 0 1px; }
+.rc-projection-reticle i:nth-of-type(2) { top: -1px; right: 0; border-width: 1px 1px 0 0; }
+.rc-projection-reticle i:nth-of-type(3) { bottom: -1px; left: 0; border-width: 0 0 1px 1px; }
+.rc-projection-reticle i:nth-of-type(4) { right: 0; bottom: -1px; border-width: 0 1px 1px 0; }
+
 .rc-instrument::before {
   inset: 0;
   background:
@@ -55,6 +272,7 @@
 
 .rc-heading {
   position: absolute;
+  z-index: 4;
   top: 12dvh;
   left: 7vw;
   max-width: 680px;
@@ -153,6 +371,7 @@
 
 .rc-readout {
   position: absolute;
+  z-index: 4;
   bottom: 9dvh;
   left: 7vw;
   display: grid;
@@ -189,6 +408,7 @@
 
 .rc-phases {
   position: absolute;
+  z-index: 4;
   right: 7vw;
   bottom: 9dvh;
   display: grid;
@@ -233,6 +453,7 @@
 
 .rc-axis-labels {
   position: absolute;
+  z-index: 3;
   top: 50%;
   right: 5vw;
   left: 5vw;
@@ -254,6 +475,7 @@
 
 .rc-to-evidence {
   position: absolute;
+  z-index: 4;
   right: 7vw;
   bottom: 3dvh;
   display: inline-flex;
@@ -593,6 +815,42 @@
 
   .rc-heading h2 {
     font-size: 48px;
+  }
+
+  .rc-projection {
+    top: 31%;
+    right: 48px;
+    width: calc(100% - 68px);
+  }
+
+  .rc-source-block {
+    top: 42%;
+  }
+
+  .rc-instrument[data-lens='economy'][data-phase='qualify'] .rc-projection--economy-timeline,
+  .rc-instrument[data-lens='automation'][data-phase='qualify'] .rc-projection--automation-shap {
+    display: none;
+  }
+
+  .rc-projection-reticle {
+    top: 29%;
+    right: 48px;
+    width: calc(100% - 68px);
+    height: 25%;
+  }
+
+  .rc-projection--automation-risk {
+    top: 30%;
+    padding: 12px;
+  }
+
+  .rc-projection--automation-risk > div {
+    min-height: 42px;
+    grid-template-columns: 1fr 46px 62px;
+  }
+
+  .rc-projection--automation-risk strong {
+    font-size: 21px;
   }
 
   .rc-lenses {

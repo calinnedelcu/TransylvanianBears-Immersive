@@ -241,11 +241,15 @@ export default function ResearchCrossing() {
 
   const moveLens = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
+    const x = clamp((event.clientX - rect.left) / rect.width);
+    const y = clamp((event.clientY - rect.top) / rect.height);
     pointerRef.current = {
-      x: clamp((event.clientX - rect.left) / rect.width),
-      y: clamp((event.clientY - rect.top) / rect.height),
+      x,
+      y,
       active: true,
     };
+    event.currentTarget.style.setProperty('--rc-pointer-x', x.toFixed(4));
+    event.currentTarget.style.setProperty('--rc-pointer-y', y.toFixed(4));
     requestDraw();
   }, [requestDraw]);
 
@@ -261,10 +265,49 @@ export default function ResearchCrossing() {
   return (
     <section id="mf-research" ref={sectionRef} className="rc-section" data-chapter="research">
       <div className="rc-journey">
-        <div className="rc-instrument" onPointerMove={moveLens} onPointerLeave={leaveLens}>
+        <div
+          className="rc-instrument"
+          data-lens={lens}
+          data-phase={phase}
+          onPointerMove={moveLens}
+          onPointerLeave={leaveLens}
+        >
           <canvas ref={canvasRef} className="rc-canvas" role="img" aria-label="Câmp abstract de observații care leagă evenimente financiare și ocupații analizate">
             Două cercetări compară observații: 2.449 evenimente financiare și 654 ocupații COR mapate.
           </canvas>
+
+          <div className="rc-projection-field" aria-hidden="true">
+            <div className="rc-source-block">
+              <span>Raw observation field</span>
+              <strong>{lens === 'economy' ? '63.016' : '3.037'}</strong>
+              <small>{lens === 'economy' ? 'messages ingested' : 'ESCO occupations'}</small>
+            </div>
+
+            <figure className="rc-projection rc-projection--economy-timeline">
+              <div><img src="/assets/projects/research-crossing/economy-event-timeline.webp" alt="" width="2374" height="1091" loading="lazy" decoding="async" /></div>
+              <figcaption>Verified figure / event arrival field</figcaption>
+            </figure>
+            <figure className="rc-projection rc-projection--economy-drift">
+              <div><img src="/assets/projects/research-crossing/economy-pre-post-drift.webp" alt="" width="2462" height="1136" loading="lazy" decoding="async" /></div>
+              <figcaption>Critical check / pre-event versus post-event</figcaption>
+            </figure>
+            <figure className="rc-projection rc-projection--automation-shap">
+              <div><img src="/assets/projects/research-crossing/automation-shap.webp" alt="" width="1130" height="509" loading="lazy" decoding="async" /></div>
+              <figcaption>Verified figure / SHAP impact distribution</figcaption>
+            </figure>
+            <div className="rc-projection rc-projection--automation-risk">
+              <span>Mapped COR subset / 654</span>
+              <div><i /><strong>330</strong><small>Low</small></div>
+              <div><i /><strong>318</strong><small>Medium</small></div>
+              <div><i /><strong>6</strong><small>High</small></div>
+              <b>Coverage 14,7% / not the Romanian labour market</b>
+            </div>
+
+            <div className="rc-projection-reticle">
+              <span>OBS / {lens === 'economy' ? 'MARKET' : 'LABOUR'}</span>
+              <i /><i /><i /><i />
+            </div>
+          </div>
 
           <header className="rc-heading">
             <p>Research Crossing / 12</p>
