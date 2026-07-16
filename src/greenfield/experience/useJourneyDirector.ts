@@ -38,6 +38,9 @@ export function useJourneyDirector({
       const worldEnd = root.querySelector<HTMLElement>('#mf-infect');
       const threshold = root.querySelector<HTMLElement>('#mf-threshold');
       const thresholdCopy = threshold?.querySelector<HTMLElement>('.mf-copy--hero');
+      const traceKnot = root.querySelector<HTMLElement>('.mf-trace-knot');
+      const schoolBridge = root.querySelector<HTMLElement>('.mf-school-bridge');
+      const schoolBridgeCopy = schoolBridge?.querySelector<HTMLElement>('.mf-school-bridge__copy');
       const updateCssProgress = (progress: number) => {
         root.style.setProperty('--mf-progress', progress.toFixed(4));
       };
@@ -53,6 +56,39 @@ export function useJourneyDirector({
             trigger: threshold,
             start: '22% top',
             end: '52% top',
+            scrub: true,
+          },
+        });
+      }
+
+      if (traceKnot && schoolBridge && schoolBridgeCopy && !reducedMotion) {
+        gsap.fromTo(traceKnot, {
+          opacity: 1,
+          y: 0,
+          filter: 'blur(0px)',
+        }, {
+          opacity: 0,
+          y: -26,
+          filter: 'blur(4px)',
+          ease: 'none',
+          scrollTrigger: {
+            trigger: schoolBridge,
+            start: 'top 55%',
+            end: 'top 8%',
+            scrub: true,
+          },
+        });
+        gsap.fromTo(schoolBridgeCopy, {
+          opacity: 0,
+          y: 48,
+        }, {
+          opacity: 1,
+          y: 0,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: schoolBridge,
+            start: 'top 62%',
+            end: 'top 18%',
             scrub: true,
           },
         });

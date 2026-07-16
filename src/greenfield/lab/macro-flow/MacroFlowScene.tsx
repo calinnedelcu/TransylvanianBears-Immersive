@@ -1,4 +1,4 @@
-import { PerformanceMonitor, useGLTF, useTexture } from '@react-three/drei';
+import { PerformanceMonitor, useGLTF } from '@react-three/drei';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Bloom, EffectComposer, Noise, Vignette } from '@react-three/postprocessing';
 import { Suspense, useMemo, useRef, type MutableRefObject } from 'react';
@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import type { QualityTier } from '../../experience/quality';
 import { FirstLightLayer } from './FirstLightLayer';
 import { NexusActScene } from './NexusActScene';
+import { SchoolActScene } from './SchoolActScene';
 import type { LensPointerState, MacroLensMode, MacroTraceOutcome } from './macroFlowTypes';
 
 export type { MacroLensMode, MacroTraceOutcome } from './macroFlowTypes';
@@ -124,11 +125,17 @@ function CameraDirector({
   const orientation = useMemo(() => new THREE.PerspectiveCamera(), []);
 
   useFrame(({ camera, pointer, size }, delta) => {
-    const progress = cameraProgress(progressRef.current);
-    const lookAhead = Math.min(1, progress + 0.11);
+    const worldProgress = progressRef.current;
+    const progress = cameraProgress(worldProgress);
+    const schoolFocus = smooth(range(worldProgress, 0.365, 0.43))
+      * (1 - smooth(range(worldProgress, 0.445, 0.505)));
+    const lookDistance = THREE.MathUtils.lerp(0.11, 0.035, schoolFocus);
+    const lookAhead = Math.min(1, progress + lookDistance);
     const cameraPath = size.width <= 820 ? MOBILE_CAMERA_PATH : CAMERA_PATH;
     cameraPath.getPoint(progress, targetPosition);
     cameraPath.getPoint(lookAhead, lookTarget);
+    lookTarget.x += schoolFocus * (size.width <= 820 ? 0.72 : 1.65);
+    lookTarget.y -= schoolFocus * (size.width <= 820 ? 3.1 : 4.35);
 
     const parallax = reducedMotion ? 0 : qualityTier === 'cinematic' ? 0.42 : 0.16;
     targetPosition.x += pointer.x * parallax;
@@ -460,279 +467,6 @@ function ApproachSignal({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'
   );
 }
 
-function SystemTerminal({
-  texturePath,
-  position,
-  rotationY,
-  accent,
-}: {
-  texturePath: string;
-  position: [number, number, number];
-  rotationY: number;
-  accent: string;
-}) {
-  const texture = useTexture(texturePath);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 8;
-
-  return (
-    <group position={position} rotation={[0, rotationY, 0]}>
-      <mesh position={[0, 0, -0.13]}>
-        <boxGeometry args={[4.9, 3.88, 0.28]} />
-        <meshStandardMaterial color="#172021" roughness={0.44} metalness={0.4} />
-      </mesh>
-      <mesh position={[0, 0, 0.03]}>
-        <planeGeometry args={[4.58, 3.52]} />
-        <meshBasicMaterial map={texture} color="#e6e5dd" toneMapped={false} />
-      </mesh>
-      <mesh position={[0, -2.08, -0.18]}>
-        <boxGeometry args={[1.7, 0.26, 1.8]} />
-        <meshStandardMaterial color="#1c2526" roughness={0.62} metalness={0.28} />
-      </mesh>
-      <mesh position={[0, -3.05, -0.18]}>
-        <cylinderGeometry args={[1.22, 1.54, 0.28, 8]} />
-        <meshStandardMaterial color="#12191a" roughness={0.78} />
-      </mesh>
-      <mesh position={[0, 2.08, 0.01]}>
-        <boxGeometry args={[4.92, 0.08, 0.08]} />
-        <meshBasicMaterial color={accent} />
-      </mesh>
-    </group>
-  );
-}
-
-function SchoolSystemsTerminals({
-  progressRef,
-  traceOutcome,
-}: Pick<MacroFlowSceneProps, 'progressRef' | 'traceOutcome'>) {
-  const rootRef = useRef<THREE.Group>(null);
-  const tokenRef = useRef<THREE.Mesh>(null);
-
-  useFrame((_, delta) => {
-    if (!rootRef.current) return;
-    const reveal = smooth(range(progressRef.current, 0.35, 0.42));
-    const departure = smooth(range(progressRef.current, 0.48, 0.515));
-    rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, -6 + reveal * 8.9 - departure * 10, 5.2, delta);
-    if (!tokenRef.current) return;
-    tokenRef.current.rotation.x += delta * 0.45;
-    tokenRef.current.rotation.y += delta * 0.72;
-    const denied = traceOutcome === 'expired' || traceOutcome === 'used';
-    const material = tokenRef.current.material as THREE.MeshStandardMaterial;
-    material.color.set(denied ? '#df6553' : '#72d9d6');
-    material.emissive.set(denied ? '#df6553' : '#72d9d6');
-  });
-
-  return (
-    <group ref={rootRef} position={[0, -6, -84]}>
-      <SystemTerminal texturePath="/assets/projects/aegis.webp" position={[-4.3, 0.5, 0]} rotationY={0.28} accent="#72d9d6" />
-      <SystemTerminal texturePath="/assets/projects/schoolmate.webp" position={[4.3, 0.5, -1.8]} rotationY={-0.28} accent="#b8a46d" />
-      <mesh ref={tokenRef} position={[0, 1.1, -0.4]}>
-        <icosahedronGeometry args={[0.3, 1]} />
-        <meshStandardMaterial color="#72d9d6" emissive="#72d9d6" emissiveIntensity={3.4} roughness={0.18} />
-      </mesh>
-    </group>
-  );
-}
-
-function SignalBeads({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>) {
-  const refs = useRef<Array<THREE.Mesh | null>>([]);
-
-  useFrame(() => {
-    const reveal = range(progressRef.current, 0.315, 0.425);
-    refs.current.forEach((mesh, index) => {
-      if (!mesh) return;
-      const material = mesh.material as THREE.MeshStandardMaterial;
-      const active = index / refs.current.length < reveal;
-      material.emissiveIntensity = active ? 2.2 : 0.12;
-      mesh.scale.setScalar(active ? 1 : 0.68);
-    });
-  });
-
-  return (
-    <group>
-      {Array.from({ length: 28 }, (_, index) => {
-        const z = -37 - index * 0.92;
-        const x = Math.sin(index * 0.58) * 2.2;
-        const y = 0.34 + Math.sin(index * 0.27) * 0.13;
-        return (
-          <mesh key={index} ref={(node) => { refs.current[index] = node; }} position={[x, y, z]}>
-            <octahedronGeometry args={[0.12, 0]} />
-            <meshStandardMaterial color="#73dedb" emissive="#55c7c5" emissiveIntensity={0.12} />
-          </mesh>
-        );
-      })}
-    </group>
-  );
-}
-
-function PassageFrame({ z, index }: { z: number; index: number }) {
-  const width = 4.4 + index * 0.22;
-  const height = 5.2 + index * 0.16;
-  const color = index < 3 ? '#6fd8d6' : '#b8a46d';
-
-  return (
-    <group position={[Math.sin(index * 0.7) * 1.1, 0, z]} rotation={[0, Math.sin(index) * 0.08, 0]} scale={0.62}>
-      <mesh position={[-width / 2, height / 2, 0]}>
-        <boxGeometry args={[0.12, height, 0.12]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.85} roughness={0.32} />
-      </mesh>
-      <mesh position={[width / 2, height / 2, 0]}>
-        <boxGeometry args={[0.12, height, 0.12]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.85} roughness={0.32} />
-      </mesh>
-      <mesh position={[0, height, 0]}>
-        <boxGeometry args={[width, 0.12, 0.12]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.85} roughness={0.32} />
-      </mesh>
-      {index % 2 === 0 ? (
-        <mesh position={[0, height * 0.52, 0.05]}>
-          <planeGeometry args={[width * 0.86, height * 0.78]} />
-          <meshBasicMaterial color={color} transparent opacity={0.035} depthWrite={false} side={THREE.DoubleSide} />
-        </mesh>
-      ) : null}
-    </group>
-  );
-}
-
-function AegisPassage({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>) {
-  const rootRef = useRef<THREE.Group>(null);
-
-  useFrame(() => {
-    if (!rootRef.current) return;
-    const reveal = smooth(range(progressRef.current, 0.305, 0.375));
-    rootRef.current.position.y = -3.8 + reveal * 3.8;
-  });
-
-  return (
-    <group ref={rootRef} position={[2.8, -3.8, 0]}>
-      {Array.from({ length: 13 }, (_, index) => (
-        <PassageFrame key={index} z={-39 - index * 2.9} index={index} />
-      ))}
-      <mesh position={[0, 0.02, -58]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[7.5, 43]} />
-        <meshStandardMaterial color="#171d1e" roughness={0.94} />
-      </mesh>
-    </group>
-  );
-}
-
-const TRACE_POSITIONS: Array<[number, number, number]> = [
-  [-2.7, 1.2, -67],
-  [2.4, 1.45, -72.5],
-  [-1.8, 1.3, -78],
-  [2.25, 1.6, -83.5],
-  [0, 1.35, -89],
-];
-
-function TraceNode({
-  position,
-  index,
-  traceStep,
-  traceOutcome,
-}: {
-  position: [number, number, number];
-  index: number;
-  traceStep: number;
-  traceOutcome: MacroTraceOutcome;
-}) {
-  const reached = traceStep >= index;
-  const isDecision = index === TRACE_POSITIONS.length - 1;
-  const denied = isDecision && (traceOutcome === 'expired' || traceOutcome === 'used');
-  const color = denied ? '#df6553' : reached ? '#75dcda' : '#4d595a';
-
-  return (
-    <group position={position}>
-      <mesh position={[0, 1.55, 0]}>
-        <cylinderGeometry args={[0.85, 1.12, 3.1, 8]} />
-        <meshStandardMaterial color="#20292a" roughness={0.76} metalness={0.22} />
-      </mesh>
-      <mesh position={[0, 3.2, 0]}>
-        <octahedronGeometry args={[0.48, 0]} />
-        <meshStandardMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={reached ? 2.2 : 0.18}
-          roughness={0.25}
-        />
-      </mesh>
-      <mesh position={[0, 1.8, 0]}>
-        <boxGeometry args={[2.5, 4.5, 2.5]} />
-        <meshBasicMaterial color={color} wireframe transparent opacity={reached ? 0.54 : 0.12} />
-      </mesh>
-    </group>
-  );
-}
-
-function AccessTrace({
-  progressRef,
-  traceStep,
-  traceOutcome,
-}: Pick<MacroFlowSceneProps, 'progressRef' | 'traceStep' | 'traceOutcome'>) {
-  const tokenRef = useRef<THREE.Mesh>(null);
-  const rootRef = useRef<THREE.Group>(null);
-  const target = useMemo(() => new THREE.Vector3(), []);
-
-  useFrame((_, delta) => {
-    const reveal = smooth(range(progressRef.current, 0.395, 0.465));
-    if (rootRef.current) rootRef.current.position.y = -4 + reveal * 4;
-    if (!tokenRef.current) return;
-
-    const position = TRACE_POSITIONS[Math.min(traceStep, TRACE_POSITIONS.length - 1)];
-    target.set(position[0], position[1] + 3.2, position[2]);
-    tokenRef.current.position.lerp(target, 1 - Math.exp(-delta * 5.8));
-    tokenRef.current.rotation.x += delta * 1.1;
-    tokenRef.current.rotation.y += delta * 1.45;
-
-    const material = tokenRef.current.material as THREE.MeshStandardMaterial;
-    const denied = traceOutcome === 'expired' || traceOutcome === 'used';
-    const color = denied ? '#df6553' : '#75dcda';
-    material.color.set(color);
-    material.emissive.set(color);
-  });
-
-  return (
-    <group ref={rootRef}>
-      {TRACE_POSITIONS.map((position, index) => (
-        <TraceNode
-          key={index}
-          position={position}
-          index={index}
-          traceStep={traceStep}
-          traceOutcome={traceOutcome}
-        />
-      ))}
-      {TRACE_POSITIONS.slice(0, -1).map((position, index) => {
-        const next = TRACE_POSITIONS[index + 1];
-        const midpoint: [number, number, number] = [
-          (position[0] + next[0]) / 2,
-          0.18,
-          (position[2] + next[2]) / 2,
-        ];
-        const length = Math.hypot(next[0] - position[0], next[2] - position[2]);
-        const rotation = Math.atan2(next[0] - position[0], next[2] - position[2]);
-        return (
-          <mesh key={index} position={midpoint} rotation={[0, rotation, 0]}>
-            <boxGeometry args={[0.08, 0.08, length]} />
-            <meshStandardMaterial
-              color={traceStep > index ? '#75dcda' : '#3c4849'}
-              emissive={traceStep > index ? '#75dcda' : '#1b2324'}
-              emissiveIntensity={traceStep > index ? 1.5 : 0.12}
-            />
-          </mesh>
-        );
-      })}
-      <mesh ref={tokenRef} position={[-2.7, 4.4, -67]}>
-        <icosahedronGeometry args={[0.34, 1]} />
-        <meshStandardMaterial color="#75dcda" emissive="#75dcda" emissiveIntensity={3.2} />
-      </mesh>
-      <mesh position={[0, 0.02, -79]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[11, 30]} />
-        <meshStandardMaterial color="#12191a" roughness={0.96} />
-      </mesh>
-    </group>
-  );
-}
-
 function DescentLayers({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>) {
   const refs = useRef<Array<THREE.Mesh | null>>([]);
   const coreRef = useRef<THREE.Group>(null);
@@ -934,14 +668,12 @@ function World({
         lensPointerRef={lensPointerRef}
         qualityTier={qualityTier}
       />
-      <SignalBeads progressRef={progressRef} />
-      <AegisPassage progressRef={progressRef} />
-      <AccessTrace
+      <SchoolActScene
         progressRef={progressRef}
         traceStep={traceStep}
         traceOutcome={traceOutcome}
+        qualityTier={qualityTier}
       />
-      <SchoolSystemsTerminals progressRef={progressRef} traceOutcome={traceOutcome} />
       <DescentLayers progressRef={progressRef} />
       <BuriedChamber progressRef={progressRef} buriedDiscoveries={buriedDiscoveries} />
 

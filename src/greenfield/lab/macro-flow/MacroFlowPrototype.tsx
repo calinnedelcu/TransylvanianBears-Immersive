@@ -508,6 +508,23 @@ function MacroFlowExperience() {
             </div>
           </div>
         </div>
+
+        <div className="mf-school-bridge">
+          <div className="mf-school-bridge__copy">
+            <p className="mf-kicker">Campus passage / Aegis → SchoolMate</p>
+            <h2>Poarta nu încheie traseul. Îl mută înăuntru.</h2>
+            <p>
+              După validare, elevul intră în același context pe care SchoolMate îl conectează:
+              coridor, clasă, profesor și secretariat.
+            </p>
+            <div className="mf-school-bridge__roles" aria-label="Traseul prin școală">
+              <span><small>01</small><strong>Poartă</strong></span>
+              <span><small>02</small><strong>Coridor</strong></span>
+              <span><small>03</small><strong>Clasă</strong></span>
+              <span><small>04</small><strong>Secretariat</strong></span>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section id="mf-schoolmate" className="mf-trust-clearing" data-chapter="schoolmate">

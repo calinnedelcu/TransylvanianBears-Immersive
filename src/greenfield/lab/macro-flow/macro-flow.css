@@ -1386,6 +1386,69 @@ body.mf-lab-mode {
   height: 17px;
 }
 
+.mf-school-bridge {
+  position: relative;
+  z-index: 5;
+  display: grid;
+  min-height: 100dvh;
+  align-items: center;
+  padding: 96px 7vw 64px;
+  background: linear-gradient(90deg, rgb(7 10 11 / 0.86) 0, rgb(7 10 11 / 0.58) 35%, transparent 72%);
+  pointer-events: none;
+}
+
+.mf-school-bridge__copy {
+  width: min(590px, 48vw);
+}
+
+.mf-school-bridge__copy h2 {
+  max-width: 580px;
+  margin: 0;
+  font-family: 'Cinzel', serif;
+  font-size: clamp(43px, 5vw, 72px);
+  font-weight: 520;
+  line-height: 0.96;
+  text-wrap: balance;
+}
+
+.mf-school-bridge__copy > p:last-of-type {
+  max-width: 510px;
+  margin: 26px 0 0;
+  color: var(--mf-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.mf-school-bridge__roles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 52px;
+  border-top: 1px solid var(--mf-line);
+  border-bottom: 1px solid var(--mf-line);
+}
+
+.mf-school-bridge__roles span {
+  display: grid;
+  min-height: 78px;
+  align-content: space-between;
+  padding: 12px;
+  border-right: 1px solid var(--mf-line);
+}
+
+.mf-school-bridge__roles span:last-child {
+  border-right: 0;
+}
+
+.mf-school-bridge__roles small {
+  color: var(--mf-cyan);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 7px;
+}
+
+.mf-school-bridge__roles strong {
+  font-size: 10px;
+}
+
 .mf-trust-clearing {
   position: relative;
   z-index: 13;
@@ -2395,6 +2458,38 @@ body.mf-lab-mode {
   .mf-run-trace svg {
     width: 18px;
     height: 18px;
+  }
+
+  .mf-school-bridge {
+    min-height: 100dvh;
+    padding: 86px 20px 46px;
+    background: linear-gradient(180deg, transparent 0, rgb(7 10 11 / 0.6) 24%, rgb(7 10 11 / 0.92) 62%);
+  }
+
+  .mf-school-bridge__copy {
+    width: calc(100% - 28px);
+    align-self: end;
+  }
+
+  .mf-school-bridge__copy h2 {
+    font-size: 39px;
+  }
+
+  .mf-school-bridge__copy > p:last-of-type {
+    font-size: 11px;
+  }
+
+  .mf-school-bridge__roles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 30px;
+  }
+
+  .mf-school-bridge__roles span:nth-child(2) {
+    border-right: 0;
+  }
+
+  .mf-school-bridge__roles span:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--mf-line);
   }
 
   .mf-trust-clearing {
