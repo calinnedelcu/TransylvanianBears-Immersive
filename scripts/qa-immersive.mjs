@@ -65,6 +65,10 @@ try {
   }
   report.desktop.firstCanvas = await signature(await desktop.locator('.mf-canvas').screenshot());
 
+  await moveWithin(desktop, '.mf-beat--descent', 0.7);
+  report.desktop.descentCanvas = await signature(await desktop.locator('.mf-canvas').screenshot());
+  report.desktop.descentFilled = report.desktop.descentCanvas.entropy >= 4;
+
   await moveWithin(desktop, '.bh-theater', 0.5);
   await desktop.getByRole('button', { name: 'II. Mercurul schimbă traseul.' }).click();
   await desktop.waitForTimeout(900);
@@ -156,6 +160,7 @@ const failed = report.errors.length > 0
   || report.mobile.layout?.scrollWidth !== report.mobile.layout?.width
   || report.desktop.layout?.brokenImages.length > 0
   || report.mobile.layout?.brokenImages.length > 0
+  || !report.desktop.descentFilled
   || !report.desktop.evidenceMoved
   || !report.mobile.evidenceMoved;
 

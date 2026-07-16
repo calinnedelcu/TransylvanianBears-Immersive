@@ -104,8 +104,9 @@ function cameraProgress(progress: number) {
   if (progress < 0.23) return 0.38 + smooth(range(progress, 0.15, 0.23)) * 0.12;
   if (progress < 0.35) return 0.5 + smooth(range(progress, 0.23, 0.35)) * 0.15;
   if (progress < 0.43) return 0.65 + smooth(range(progress, 0.35, 0.43)) * 0.15;
-  if (progress < 0.7) return 0.8 + smooth(range(progress, 0.43, 0.7)) * 0.08;
-  if (progress < 0.77) return 0.88 + smooth(range(progress, 0.7, 0.77)) * 0.05;
+  if (progress < 0.6) return 0.8 + smooth(range(progress, 0.43, 0.6)) * 0.055;
+  if (progress < 0.68) return 0.855 + smooth(range(progress, 0.6, 0.68)) * 0.065;
+  if (progress < 0.77) return 0.92 + smooth(range(progress, 0.68, 0.77)) * 0.01;
   if (progress < 0.9) return 0.93 + smooth(range(progress, 0.77, 0.9)) * 0.02;
   return 0.95 + smooth(range(progress, 0.9, 1)) * 0.05;
 }
@@ -471,19 +472,19 @@ function DescentLayers({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>
   const refs = useRef<Array<THREE.Mesh | null>>([]);
   const coreRef = useRef<THREE.Group>(null);
 
-  useFrame(() => {
-    const fold = smooth(range(progressRef.current, 0.625, 0.715));
+  useFrame(({ clock }) => {
+    const fold = smooth(range(progressRef.current, 0.605, 0.67));
     refs.current.forEach((layer, index) => {
       if (!layer) return;
-      layer.rotation.x = -Math.PI / 2 + fold * (0.2 + index * 0.075);
-      layer.position.y = -7 - index * 0.16 + fold * (6.8 + index * 0.18);
-      layer.position.z = -96 - index * 1.35;
+      layer.rotation.x = -Math.PI / 2 + fold * (0.05 + index * 0.018);
+      layer.position.y = -5.6 - index * 0.16 + fold * (4.65 + index * 0.18);
+      layer.position.z = -101 - index * 3.6;
     });
     if (coreRef.current) {
-      coreRef.current.position.y = -2.5 + fold * 7.1;
+      coreRef.current.position.y = -3.5 + fold * 7;
       coreRef.current.rotation.x = fold * Math.PI * 0.5;
-      coreRef.current.rotation.z += 0.003 + fold * 0.006;
-      coreRef.current.scale.setScalar(0.3 + fold * 0.7);
+      coreRef.current.rotation.z = clock.elapsedTime * (0.08 + fold * 0.12);
+      coreRef.current.scale.setScalar(0.2 + fold * 0.8);
     }
   });
 
@@ -515,7 +516,7 @@ function DescentLayers({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>
           ))}
         </mesh>
       ))}
-      <group ref={coreRef} position={[0, -2.5, -101.2]} scale={0.3}>
+      <group ref={coreRef} position={[0, -3.5, -129]} scale={0.2}>
         <mesh>
           <icosahedronGeometry args={[0.72, 1]} />
           <meshStandardMaterial color="#72d9d6" emissive="#72d9d6" emissiveIntensity={3.2} roughness={0.18} />
@@ -531,6 +532,180 @@ function DescentLayers({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>
   );
 }
 
+function DescentVault({
+  progressRef,
+  qualityTier,
+}: Pick<MacroFlowSceneProps, 'progressRef' | 'qualityTier'>) {
+  const rootRef = useRef<THREE.Group>(null);
+  const archRefs = useRef<Array<THREE.Group | null>>([]);
+  const seamMaterials = useRef<Array<THREE.MeshStandardMaterial | null>>([]);
+  const lampMaterials = useRef<Array<THREE.MeshStandardMaterial | null>>([]);
+  const portalRef = useRef<THREE.Group>(null);
+  const archCount = qualityTier === 'cinematic' ? 9 : 7;
+
+  useFrame(({ clock }, delta) => {
+    const reveal = smooth(range(progressRef.current, 0.59, 0.628));
+    const mineralize = smooth(range(progressRef.current, 0.608, 0.675));
+
+    if (rootRef.current) {
+      rootRef.current.position.y = THREE.MathUtils.damp(
+        rootRef.current.position.y,
+        -6.4 + reveal * 6.4,
+        6.4,
+        delta,
+      );
+    }
+
+    archRefs.current.forEach((arch, index) => {
+      if (!arch) return;
+      const stagger = smooth(range(reveal, index * 0.025, 0.7 + index * 0.025));
+      arch.scale.x = THREE.MathUtils.damp(arch.scale.x, 0.86 + stagger * 0.14, 7, delta);
+      arch.scale.y = THREE.MathUtils.damp(arch.scale.y, 0.24 + stagger * 0.76, 7, delta);
+      arch.position.y = THREE.MathUtils.damp(arch.position.y, (1 - stagger) * -1.4, 7, delta);
+      arch.rotation.z = THREE.MathUtils.damp(
+        arch.rotation.z,
+        (1 - stagger) * (index % 2 === 0 ? -0.045 : 0.045),
+        6,
+        delta,
+      );
+
+      const seam = seamMaterials.current[index];
+      if (seam) {
+        seam.opacity = 0.12 + stagger * 0.58;
+        seam.emissiveIntensity = 0.7 + stagger * 1.4 + mineralize * (index / archCount) * 1.1;
+        seam.color.lerpColors(
+          new THREE.Color('#72d9d6'),
+          new THREE.Color('#d49a4e'),
+          mineralize * (0.35 + index / archCount * 0.65),
+        );
+        seam.emissive.copy(seam.color);
+      }
+
+      const lamp = lampMaterials.current[index];
+      if (lamp) {
+        lamp.emissiveIntensity = 1.1 + stagger * 2.2 + Math.sin(clock.elapsedTime * 1.6 + index) * 0.18;
+      }
+    });
+
+    if (portalRef.current) {
+      portalRef.current.rotation.z = clock.elapsedTime * 0.055 + mineralize * 0.18;
+      portalRef.current.scale.setScalar(0.62 + reveal * 0.38);
+    }
+  });
+
+  return (
+    <group ref={rootRef} position={[0, -6.4, 0]}>
+      <mesh position={[0, -0.025, -116.5]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[10.4, 33]} />
+        <meshStandardMaterial color="#232421" emissive="#122321" emissiveIntensity={0.3} roughness={0.96} metalness={0.02} />
+      </mesh>
+
+      {Array.from({ length: archCount }, (_, index) => {
+        const z = -103 - index * (27 / Math.max(1, archCount - 1));
+        const isWarm = index > archCount * 0.55;
+        return (
+          <group
+            key={`descent-arch-${index}`}
+            ref={(node) => { archRefs.current[index] = node; }}
+            position={[Math.sin(index * 0.72) * 0.18, 0, z]}
+          >
+            <mesh position={[-5.2, 2.95, 0]}>
+              <boxGeometry args={[0.72, 5.9, 0.82]} />
+              <meshStandardMaterial
+                color={index % 2 === 0 ? '#463c31' : '#32413f'}
+                emissive={isWarm ? '#3a2415' : '#183533'}
+                emissiveIntensity={0.42}
+                roughness={0.94}
+              />
+            </mesh>
+            <mesh position={[5.2, 2.95, 0]}>
+              <boxGeometry args={[0.72, 5.9, 0.82]} />
+              <meshStandardMaterial
+                color={index % 2 === 0 ? '#463c31' : '#32413f'}
+                emissive={isWarm ? '#3a2415' : '#183533'}
+                emissiveIntensity={0.42}
+                roughness={0.94}
+              />
+            </mesh>
+            <mesh position={[0, 2.95, 0]}>
+              <torusGeometry args={[5.2, 0.36, 10, 56, Math.PI]} />
+              <meshStandardMaterial
+                color={index % 2 === 0 ? '#514536' : '#394947'}
+                emissive={isWarm ? '#3a2415' : '#183533'}
+                emissiveIntensity={0.5}
+                roughness={0.9}
+              />
+            </mesh>
+            <mesh position={[0, 2.95, 0.43]}>
+              <torusGeometry args={[4.82, 0.035, 6, 56, Math.PI]} />
+              <meshStandardMaterial
+                ref={(material) => { seamMaterials.current[index] = material; }}
+                color={isWarm ? '#d49a4e' : '#72d9d6'}
+                emissive={isWarm ? '#d49a4e' : '#72d9d6'}
+                emissiveIntensity={0.7}
+                transparent
+                opacity={0.12}
+                toneMapped={false}
+              />
+            </mesh>
+            <mesh position={[0, 0.035, 0.2]} rotation={[-Math.PI / 2, 0, 0]}>
+              <planeGeometry args={[8.7, 0.16]} />
+              <meshBasicMaterial color={isWarm ? '#c28b45' : '#65bab8'} transparent opacity={0.62} />
+            </mesh>
+            {index % 2 === 1 ? (
+              <mesh position={[index % 4 === 1 ? -4.58 : 4.58, 3.1, 0.5]}>
+                <octahedronGeometry args={[0.18, 0]} />
+                <meshStandardMaterial
+                  ref={(material) => { lampMaterials.current[index] = material; }}
+                  color={isWarm ? '#ffc06a' : '#b8ffff'}
+                  emissive={isWarm ? '#ef8e36' : '#72d9d6'}
+                  emissiveIntensity={1.1}
+                  roughness={0.18}
+                />
+              </mesh>
+            ) : null}
+          </group>
+        );
+      })}
+
+      {Array.from({ length: archCount - 1 }, (_, index) => (
+        <group key={`descent-vein-${index}`}>
+          <mesh position={[-5.35, 1.1, -105.2 - index * (27 / Math.max(1, archCount - 1))]} rotation={[0, 0.04, 0]}>
+            <boxGeometry args={[0.06, 0.06, 4.5]} />
+            <meshBasicMaterial color={index > archCount * 0.5 ? '#b78345' : '#4f9694'} transparent opacity={0.52} />
+          </mesh>
+          <mesh position={[5.35, 1.8, -105.2 - index * (27 / Math.max(1, archCount - 1))]} rotation={[0, -0.04, 0]}>
+            <boxGeometry args={[0.06, 0.06, 4.5]} />
+            <meshBasicMaterial color={index > archCount * 0.5 ? '#b78345' : '#4f9694'} transparent opacity={0.42} />
+          </mesh>
+        </group>
+      ))}
+
+      <group ref={portalRef} position={[0, 4.65, -132]} scale={0.62}>
+        <mesh>
+          <torusGeometry args={[2.75, 0.16, 8, 64]} />
+          <meshStandardMaterial color="#6d5b3e" emissive="#d49a4e" emissiveIntensity={1.15} roughness={0.46} metalness={0.42} />
+        </mesh>
+        <mesh>
+          <torusGeometry args={[2.28, 0.035, 6, 64]} />
+          <meshBasicMaterial color="#f1b75f" transparent opacity={0.7} />
+        </mesh>
+        <mesh>
+          <circleGeometry args={[2.5, 48]} />
+          <meshStandardMaterial color="#100d0c" emissive="#392113" emissiveIntensity={0.64} roughness={0.98} />
+        </mesh>
+        <mesh position={[0, 0, 0.16]}>
+          <icosahedronGeometry args={[0.34, 1]} />
+          <meshStandardMaterial color="#ffd28a" emissive="#e8973d" emissiveIntensity={4.4} roughness={0.14} />
+        </mesh>
+      </group>
+
+      <pointLight position={[0, 4.5, -111]} intensity={48} distance={22} color="#72d9d6" />
+      <pointLight position={[0, 4.6, -127]} intensity={64} distance={24} color="#e89b48" />
+    </group>
+  );
+}
+
 const CHAMBER_DEPTHS = [-108, -114, -120, -126];
 
 function BuriedChamber({
@@ -541,7 +716,7 @@ function BuriedChamber({
   const lampRefs = useRef<Array<THREE.MeshStandardMaterial | null>>([]);
 
   useFrame((_, delta) => {
-    const reveal = smooth(range(progressRef.current, 0.77, 0.88));
+    const reveal = smooth(range(progressRef.current, 0.635, 0.685));
     if (rootRef.current) {
       rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, -9 + reveal * 9, 5, delta);
     }
@@ -674,6 +849,7 @@ function World({
         traceOutcome={traceOutcome}
         qualityTier={qualityTier}
       />
+      <DescentVault progressRef={progressRef} qualityTier={qualityTier} />
       <DescentLayers progressRef={progressRef} />
       <BuriedChamber progressRef={progressRef} buriedDiscoveries={buriedDiscoveries} />
 

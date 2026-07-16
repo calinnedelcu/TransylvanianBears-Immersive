@@ -233,7 +233,7 @@ function SchoolArchitecture({ progressRef, qualityTier }: Pick<SchoolActScenePro
 
   useFrame(({ clock }, delta) => {
     const reveal = smooth(range(progressRef.current, 0.275, 0.335));
-    const departure = smooth(range(progressRef.current, 0.625, 0.68));
+    const departure = smooth(range(progressRef.current, 0.595, 0.635));
     if (rootRef.current) {
       rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, -5.5 + reveal * 5.5 - departure * 9, 5.2, delta);
     }
@@ -754,7 +754,7 @@ function SchoolMateStage({
 
   useFrame(({ clock }, delta) => {
     const reveal = smooth(range(progressRef.current, 0.455, 0.57));
-    const departure = smooth(range(progressRef.current, 0.625, 0.68));
+    const departure = smooth(range(progressRef.current, 0.595, 0.635));
     if (rootRef.current) {
       rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, -5 + reveal * 5 - departure * 8, 5.1, delta);
     }
