@@ -203,6 +203,7 @@ function CameraDirector({
   const buriedLookTarget = useMemo(() => new THREE.Vector3(), []);
   const orientation = useMemo(() => new THREE.PerspectiveCamera(), []);
   const firstFrameRef = useRef(true);
+  const introStartTimeRef = useRef<number | null>(null);
   const previousBuriedProgressRef = useRef<number | null>(null);
   useEffect(() => {
     const root = document.querySelector<HTMLElement>('.mf-lab');
@@ -210,7 +211,9 @@ function CameraDirector({
     root.dataset.cameraCurves = String(Object.keys(authoredCurves).length);
   }, [authoredCurves]);
 
-  useFrame(({ camera, pointer, size }, delta) => {
+  useFrame(({ camera, clock, pointer, size }, delta) => {
+    if (introStartTimeRef.current === null) introStartTimeRef.current = clock.elapsedTime;
+    const sceneTime = clock.elapsedTime - introStartTimeRef.current;
     const worldProgress = progressRef.current;
     const authoredCamera = sampleVerticalSliceCamera(
       authoredCurves,
@@ -316,6 +319,26 @@ function CameraDirector({
       directedRoll = genericRoll;
     }
 
+    const thresholdIdle = activeChapter === 'threshold' && !reducedMotion
+      ? 1 - smooth(range(worldProgress, 0.002, 0.038))
+      : 0;
+    if (thresholdIdle > 0) {
+      const idleTime = sceneTime;
+      const arrival = 1 - smooth(range(idleTime, 0.15, 3.4));
+      targetPosition.x += arrival * 1.4 * thresholdIdle;
+      targetPosition.y += arrival * 0.72 * thresholdIdle;
+      targetPosition.z += arrival * 4.2 * thresholdIdle;
+      targetPosition.x += Math.sin(idleTime * 0.16) * 0.2 * thresholdIdle;
+      targetPosition.y += Math.sin(idleTime * 0.21 + 0.7) * 0.12 * thresholdIdle;
+      targetPosition.z += Math.sin(idleTime * 0.11 + 1.2) * 0.16 * thresholdIdle;
+      lookTarget.x += Math.sin(idleTime * 0.13 + 0.5) * 0.26 * thresholdIdle;
+      lookTarget.y += Math.sin(idleTime * 0.18) * 0.1 * thresholdIdle;
+      directedRoll = (directedRoll ?? genericRoll) + Math.sin(idleTime * 0.12) * 0.0035 * thresholdIdle;
+      directedFov = (directedFov ?? genericFov)
+        + arrival * 2.1 * thresholdIdle
+        + Math.sin(idleTime * 0.1) * 0.32 * thresholdIdle;
+    }
+
     const parallax = reducedMotion || isBuriedChapter
       ? 0
       : qualityTier === 'cinematic'
@@ -381,9 +404,12 @@ function WorldAtmosphere({
 
   useEffect(() => () => dustGeometry.dispose(), [dustGeometry]);
 
-  useFrame(({ camera }) => {
+  useFrame(({ camera, clock }) => {
     if (skyRef.current) skyRef.current.position.copy(camera.position);
-    if (dustRef.current) dustRef.current.rotation.y = progressRef.current * 0.018;
+    if (dustRef.current) {
+      dustRef.current.rotation.y = progressRef.current * 0.018 + clock.elapsedTime * 0.006;
+      dustRef.current.position.y = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.16) * 0.16;
+    }
   });
 
   return (
@@ -458,12 +484,17 @@ function FirstLightCitadel({
   qualityTier,
 }: Pick<MacroFlowSceneProps, 'progressRef' | 'qualityTier'>) {
   const rootRef = useRef<THREE.Group>(null);
+  const occupiedLightMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
+  const introStartTimeRef = useRef<number | null>(null);
+  const occupiedDark = useMemo(() => new THREE.Color('#211f1b'), []);
+  const occupiedLit = useMemo(() => new THREE.Color('#d9ba73'), []);
   const viewportWidth = useThree((state) => state.size.width);
   const compact = viewportWidth <= 820;
   const modelUrl = compact ? FIRST_LIGHT_MODEL_MOBILE : FIRST_LIGHT_MODEL_DESKTOP;
   const { scene } = useGLTF(modelUrl, false, true);
   const model = useMemo(() => {
     const clone = scene.clone(true);
+    occupiedLightMaterialsRef.current = [];
     const materialCache = new Map<string, THREE.Material>();
     const pointA = new THREE.Vector3();
     const pointB = new THREE.Vector3();
@@ -559,9 +590,15 @@ function FirstLightCitadel({
         );
         const fallbackColor = FALLBACK_MATERIAL_COLORS[material.name];
         if (!hasAuthoredPbrMaps && fallbackColor) material.color.set(fallbackColor);
-        material.envMapIntensity = structuralMaterial ? (compact ? 0.52 : 0.42) : (compact ? 0.44 : 0.36);
+        material.envMapIntensity = structuralMaterial ? (compact ? 0.68 : 0.58) : (compact ? 0.5 : 0.44);
+        if (structuralMaterial) {
+          material.color.offsetHSL(0, -0.012, compact ? 0.042 : 0.024);
+          if (material.emissiveIntensity < 0.2) {
+            material.emissive.set('#111b19');
+            material.emissiveIntensity = compact ? 0.28 : 0.16;
+          }
+        }
         if (compact && structuralMaterial) {
-          material.color.offsetHSL(0, -0.015, 0.035);
           material.emissive.set('#101a19');
           material.emissiveIntensity = Math.max(material.emissiveIntensity, 0.62);
         }
@@ -572,7 +609,8 @@ function FirstLightCitadel({
         if (material.name === 'Occupied light') {
           material.color.set('#d9ba73');
           material.emissive.set('#e4b96c');
-          material.emissiveIntensity = Math.max(material.emissiveIntensity, 3.4);
+          material.emissiveIntensity = Math.max(material.emissiveIntensity, 5.4);
+          occupiedLightMaterialsRef.current.push(material);
         }
         if (material.name === 'Signal anchor') {
           material.color.set('#72d9d6');
@@ -602,7 +640,7 @@ function FirstLightCitadel({
     materials.forEach((material) => material.dispose());
   }, [model]);
 
-  useFrame(() => {
+  useFrame(({ clock }) => {
     const root = rootRef.current;
     if (!root) return;
     const departure = smooth(range(progressRef.current, 0.045, 0.072));
@@ -610,6 +648,15 @@ function FirstLightCitadel({
     if (!root.visible) return;
     root.position.y = -18 * departure;
     root.rotation.y = departure * -0.018;
+    if (introStartTimeRef.current === null) introStartTimeRef.current = clock.elapsedTime;
+    const introTime = clock.elapsedTime - introStartTimeRef.current;
+    const ignition = smooth(range(introTime, 0.45, 2.25));
+    occupiedLightMaterialsRef.current.forEach((material, index) => {
+      const stagger = smooth(range(ignition, index * 0.08, 0.68 + index * 0.08));
+      const flicker = Math.sin(clock.elapsedTime * (2.1 + index * 0.17) + index * 1.4) * 0.42;
+      material.color.lerpColors(occupiedDark, occupiedLit, stagger);
+      material.emissiveIntensity = (0.12 + stagger * (6 + flicker)) * (1 - departure);
+    });
   });
 
   return <primitive ref={rootRef} object={model} />;
@@ -1053,7 +1100,7 @@ const NEXUS_CHAPTERS = new Set<JourneyChapter>(['field', 'lens', 'proof']);
 const SCHOOL_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
 const SCHOOL_CAMERA_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
 const BURIED_CHAPTERS = new Set<JourneyChapter>(['descent', 'lamp', 'build', 'infect']);
-const THRESHOLD_HANDOFF_END = 0.074;
+const THRESHOLD_HANDOFF_END = 0.062;
 
 type FirstActPresence = {
   threshold: boolean;
@@ -1146,6 +1193,26 @@ function World({
   const showBuried = BURIED_CHAPTERS.has(activeChapter);
   const showHemisphere = !(showNexus && (compact || showThreshold));
   const showNexusAccent = showNexus && (!showThreshold || compact);
+  const keyLightRef = useRef<THREE.DirectionalLight>(null);
+
+  useFrame(({ clock }) => {
+    const light = keyLightRef.current;
+    if (!light) return;
+    if (showThreshold) {
+      const cycle = clock.elapsedTime % 11.8;
+      const flashA = reducedMotion ? 0 : Math.max(0, 1 - Math.abs(cycle - 2.1) / 0.07);
+      const flashB = reducedMotion ? 0 : Math.max(0, 1 - Math.abs(cycle - 2.32) / 0.045);
+      const weatherPulse = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.72) * 0.12;
+      light.intensity = (compact ? 2.45 : 2.18) + weatherPulse + flashA * 3.6 + flashB * 2.4;
+      light.position.x = -18 + (reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.1) * 3.4);
+      light.position.y = 13 + (reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.14) * 1.2);
+      light.color.set(flashA + flashB > 0.05 ? '#dcebea' : '#c9d9d5');
+      return;
+    }
+    light.intensity = showBuried ? 0.58 : 1.75;
+    light.position.set(10, 18, 18);
+    light.color.set(showBuried ? '#bbae98' : '#dae3d9');
+  });
 
   return (
     <>
@@ -1163,15 +1230,16 @@ function World({
       />
       {showHemisphere ? (
         <hemisphereLight
-          intensity={showBuried ? 0.16 : showThreshold ? (compact ? 0.5 : 0.38) : 0.38}
+          intensity={showBuried ? 0.16 : showThreshold ? (compact ? 0.82 : 0.68) : 0.38}
           color={showBuried ? '#b8ac98' : showThreshold ? '#b8cecd' : '#b9cfcd'}
           groundColor={showBuried ? '#130f0d' : showThreshold ? '#263029' : '#191b17'}
         />
       ) : null}
       <directionalLight
+        ref={keyLightRef}
         castShadow={qualityTier === 'cinematic' && !showBuried && !showThreshold && !showNexus}
         position={showThreshold ? [-18, 13, 10] : [10, 18, 18]}
-        intensity={showBuried ? 0.58 : showThreshold ? (compact ? 1.9 : 1.68) : 1.75}
+        intensity={showBuried ? 0.58 : showThreshold ? (compact ? 2.45 : 2.18) : 1.75}
         color={showBuried ? '#bbae98' : showThreshold ? '#d7e1dc' : '#dae3d9'}
         shadow-mapSize-width={qualityTier === 'cinematic' ? 1536 : 512}
         shadow-mapSize-height={qualityTier === 'cinematic' ? 1536 : 512}

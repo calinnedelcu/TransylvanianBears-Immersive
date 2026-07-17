@@ -2600,7 +2600,7 @@ export function NexusActScene(props: NexusActSceneProps) {
   useFrame(() => {
     if (!rootRef.current) return;
     const progress = props.progressRef.current;
-    rootRef.current.visible = progress >= 0.052 && progress <= 0.355;
+    rootRef.current.visible = progress >= 0.064 && progress <= 0.355;
   });
 
   return (

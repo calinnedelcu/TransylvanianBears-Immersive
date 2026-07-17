@@ -130,8 +130,8 @@ function CarpathianBackdrop({ progressRef, qualityTier, reducedMotion }: Carpath
   const mistRef = useRef<THREE.InstancedMesh>(null);
   const scratch = useMemo(() => new THREE.Object3D(), []);
   const treeCount = compact ? 34 : qualityTier === 'cinematic' ? 74 : 52;
-  const towerCount = compact ? 5 : 9;
-  const lightCount = compact ? 12 : 26;
+  const towerCount = compact ? 7 : 12;
+  const lightCount = compact ? 18 : 36;
   const ridges = useMemo(() => [
     createRidgeShape(131, 56, 8.5),
     createRidgeShape(271, 60, 6.4),
@@ -149,9 +149,9 @@ function CarpathianBackdrop({ progressRef, qualityTier, reducedMotion }: Carpath
     tower: new THREE.MeshBasicMaterial({ color: '#101817', fog: true }),
     roof: new THREE.MeshBasicMaterial({ color: '#090d0d', fog: true }),
     light: new THREE.MeshBasicMaterial({
-      color: '#d6a86a',
+      color: '#efb969',
       transparent: true,
-      opacity: 0.82,
+      opacity: 0.92,
       depthWrite: false,
       toneMapped: false,
     }),
@@ -226,11 +226,21 @@ function CarpathianBackdrop({ progressRef, qualityTier, reducedMotion }: Carpath
     root.visible = departure < 0.995;
     if (!root.visible) return;
     root.position.y = -departure * 4.8;
-    root.position.x = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.08) * 0.24;
-    materials.mist.opacity = (compact ? 0.055 : 0.075)
-      * (0.86 + Math.sin(clock.elapsedTime * 0.22) * 0.14)
+    root.position.x = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.08) * 0.34;
+    if (mistRef.current && !reducedMotion) {
+      mistRef.current.position.x = Math.sin(clock.elapsedTime * 0.12) * 2.2;
+      mistRef.current.position.y = Math.sin(clock.elapsedTime * 0.19) * 0.18;
+    }
+    if (lightRef.current && !reducedMotion) {
+      lightRef.current.position.y = Math.sin(clock.elapsedTime * 0.7) * 0.035;
+    }
+    materials.mist.opacity = (compact ? 0.075 : 0.11)
+      * (0.82 + Math.sin(clock.elapsedTime * 0.22) * 0.18)
       * (1 - departure);
-    materials.light.opacity = (0.7 + Math.sin(clock.elapsedTime * 1.1) * 0.12) * (1 - departure);
+    const villageFlicker = 0.84
+      + Math.sin(clock.elapsedTime * 1.35) * 0.08
+      + Math.sin(clock.elapsedTime * 3.7) * 0.04;
+    materials.light.opacity = villageFlicker * (1 - departure);
   });
 
   return (
@@ -290,11 +300,11 @@ function BatFlock({ progressRef, qualityTier, reducedMotion }: CarpathianThresho
     body: new THREE.MeshBasicMaterial({ color: '#050707' }),
     wing: new THREE.MeshBasicMaterial({ color: '#050707', side: THREE.DoubleSide }),
   }), []);
-  const bats = useMemo(() => Array.from({ length: compact ? 5 : qualityTier === 'cinematic' ? 6 : 4 }, (_, index) => ({
+  const bats = useMemo(() => Array.from({ length: compact ? 8 : qualityTier === 'cinematic' ? 14 : 9 }, (_, index) => ({
     phase: seeded(index + 4),
     y: 9.2 + seeded(index + 11) * 5.8,
     z: 4.5 + seeded(index + 19) * 7.5,
-    scale: 0.17 + seeded(index + 29) * 0.16,
+    scale: 0.21 + seeded(index + 29) * 0.2,
     arc: 1.4 + seeded(index + 37) * 2.2,
   })), [compact, qualityTier]);
 
@@ -309,7 +319,7 @@ function BatFlock({ progressRef, qualityTier, reducedMotion }: CarpathianThresho
     Object.values(materials).forEach((material) => material.dispose());
   }, [geometries, materials]);
 
-  useFrame(() => {
+  useFrame(({ clock }) => {
     const departure = smooth(range(progressRef.current, 0.04, 0.064));
     if (rootRef.current) rootRef.current.visible = departure < 0.995;
     if (departure >= 0.995) return;
@@ -319,7 +329,9 @@ function BatFlock({ progressRef, qualityTier, reducedMotion }: CarpathianThresho
     const rightWings = rightWingRef.current;
     if (!bodies || !leftWings || !rightWings) return;
 
-    const flight = smooth(range(progressRef.current, 0.003, 0.048));
+    const scrollFlight = smooth(range(progressRef.current, 0.003, 0.048));
+    const idleFlight = reducedMotion ? 0 : (clock.elapsedTime * 0.026) % 1;
+    const flight = scrollFlight + idleFlight * (1 - scrollFlight);
     bats.forEach((bat, index) => {
       rootTransform.position.set(
         -4 + bat.phase * 12 + flight * (10 + bat.phase * 5),
@@ -341,7 +353,7 @@ function BatFlock({ progressRef, qualityTier, reducedMotion }: CarpathianThresho
 
       let flap = flapValuesRef.current[index] ?? 0;
       if (!reducedMotion) {
-        flap = Math.sin((flight * 6.4 + bat.phase + index * 0.08) * Math.PI * 2) * 0.62;
+        flap = Math.sin((clock.elapsedTime * 2.4 + flight * 3.8 + bat.phase + index * 0.08) * Math.PI * 2) * 0.62;
         flapValuesRef.current[index] = flap;
       }
       childTransform.rotation.set(0, flap, 0);
@@ -447,7 +459,10 @@ export function CarpathianThreshold({
   const portcullisSpikeRef = useRef<THREE.InstancedMesh>(null);
   const portcullisRailRef = useRef<THREE.InstancedMesh>(null);
   const torchHandleRef = useRef<THREE.InstancedMesh>(null);
+  const gateLightRef = useRef<THREE.PointLight>(null);
+  const flameGroupRefs = useRef<Array<THREE.Group | null>>([]);
   const flameRefs = useRef<Array<THREE.MeshStandardMaterial | null>>([]);
+  const introStartTimeRef = useRef<number | null>(null);
   const scratch = useMemo(() => new THREE.Object3D(), []);
   const doorResources = useMemo<TimberDoorResources>(() => ({
     geometries: {
@@ -526,6 +541,8 @@ export function CarpathianThreshold({
     const doorOpening = smooth(range(progressRef.current, 0.006, 0.04));
     const gateLift = smooth(range(progressRef.current, 0.006, 0.035));
     const departure = smooth(range(progressRef.current, 0.044, 0.072));
+    if (introStartTimeRef.current === null) introStartTimeRef.current = clock.elapsedTime;
+    const introTime = clock.elapsedTime - introStartTimeRef.current;
 
     root.visible = departure < 0.995;
     if (!root.visible) return;
@@ -542,8 +559,33 @@ export function CarpathianThreshold({
     }
     flameRefs.current.forEach((material, index) => {
       if (!material) return;
-      material.emissiveIntensity = 3.6 + Math.sin(clock.elapsedTime * 8.2 + index * 1.7) * 0.65;
+      const ignition = smooth(range(introTime, 0.38 + index * 0.22, 1.28 + index * 0.22));
+      const flicker = Math.sin(clock.elapsedTime * 8.2 + index * 1.7) * 0.62
+        + Math.sin(clock.elapsedTime * 17.4 + index) * 0.28;
+      material.emissiveIntensity = 0.2 + ignition * (4.2 + flicker);
+      material.color.setRGB(
+        0.1 + ignition * 0.9,
+        0.055 + ignition * 0.76,
+        0.025 + ignition * 0.52,
+      );
+      const flame = flameGroupRefs.current[index];
+      if (flame) {
+        flame.scale.set(
+          ignition * (0.92 + (reducedMotion ? 0 : flicker * 0.035)),
+          ignition * (1.08 + (reducedMotion ? 0 : flicker * 0.11)),
+          ignition * (0.92 + (reducedMotion ? 0 : flicker * 0.035)),
+        );
+        flame.rotation.z = reducedMotion ? 0 : flicker * 0.025;
+      }
     });
+    if (gateLightRef.current) {
+      const ignition = smooth(range(introTime, 0.45, 1.85));
+      const lowPulse = Math.sin(clock.elapsedTime * 1.15) * 2.8;
+      const flamePulse = Math.sin(clock.elapsedTime * 8.2) * 1.6
+        + Math.sin(clock.elapsedTime * 17.4) * 0.7;
+      gateLightRef.current.intensity = ignition * (30 + lowPulse + flamePulse) * (1 - departure);
+      gateLightRef.current.position.x = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.72) * 0.42;
+    }
   });
 
   return (
@@ -602,21 +644,32 @@ export function CarpathianThreshold({
         frustumCulled={false}
       />
       {[-1, 1].map((side, index) => (
-        <group key={side} position={[side * 4.48, 5.15, 15.62]}>
+        <group
+          key={side}
+          ref={(node) => { flameGroupRefs.current[index] = node; }}
+          position={[side * 4.48, 5.15, 15.62]}
+        >
           <mesh>
             <coneGeometry args={[0.18, 0.7, 9]} />
             <meshStandardMaterial
               ref={(material) => { flameRefs.current[index] = material; }}
               color="#ffd08a"
               emissive="#e76e36"
-              emissiveIntensity={3.6}
+              emissiveIntensity={4.4}
               roughness={0.18}
             />
           </mesh>
         </group>
       ))}
       {realtimeLightEnabled ? (
-        <pointLight position={[0, 5.15, 15.9]} intensity={20} distance={11} decay={2.1} color="#e88449" />
+        <pointLight
+          ref={gateLightRef}
+          position={[0, 5.15, 15.9]}
+          intensity={30}
+          distance={15}
+          decay={2}
+          color="#ee8b4f"
+        />
       ) : null}
     </group>
   );

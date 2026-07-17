@@ -86,20 +86,22 @@ function bannerMaterial(color: string, phase: number) {
     uniforms: {
       uOpening: { value: 0 },
       uPhase: { value: phase },
+      uTime: { value: 0 },
       uColor: { value: new THREE.Color(color) },
     },
     side: THREE.DoubleSide,
     vertexShader: `
       uniform float uOpening;
       uniform float uPhase;
+      uniform float uTime;
       varying vec2 vUv;
       void main() {
         vUv = uv;
         vec3 transformed = position;
         float freeEdge = smoothstep(0.0, 0.92, 1.0 - uv.y);
-        float fold = sin(uv.y * 9.0 + uPhase + uOpening * 2.8);
+        float fold = sin(uv.y * 9.0 + uPhase + uOpening * 2.8 + uTime * 1.7);
         transformed.z += fold * 0.055 * freeEdge;
-        transformed.x += sin(uv.y * 4.5 + uPhase * 0.7 + uOpening) * 0.022 * freeEdge;
+        transformed.x += sin(uv.y * 4.5 + uPhase * 0.7 + uOpening + uTime * 0.8) * 0.022 * freeEdge;
         transformed.z += uOpening * freeEdge * 0.025;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed, 1.0);
       }
@@ -184,7 +186,7 @@ export function FirstLightLayer({ progressRef, qualityTier, reducedMotion }: Fir
     fogAlphaTexture.dispose();
   }, [bannerMaterials, detailGeometries, detailMaterials, fogAlphaTexture]);
 
-  useFrame(({ camera, pointer }) => {
+  useFrame(({ camera, clock, pointer }) => {
     const departure = smooth(range(progressRef.current, 0.044, 0.072));
     const opening = smooth(range(progressRef.current, 0.026, 0.092));
 
@@ -195,10 +197,18 @@ export function FirstLightLayer({ progressRef, qualityTier, reducedMotion }: Fir
 
     bannerMaterials.forEach((material) => {
       material.uniforms.uOpening.value = reducedMotion ? 0.42 : opening;
+      material.uniforms.uTime.value = reducedMotion ? 0 : clock.elapsedTime;
     });
 
+    const pointerIntent = reducedMotion ? 0 : clamp01(pointer.length() * 1.35);
     if (reducedMotion) {
       lightTarget.set(0, 5.4, 17.5);
+    } else if (pointerIntent < 0.08) {
+      lightTarget.set(
+        Math.sin(clock.elapsedTime * 0.24) * 4.6,
+        5.8 + Math.sin(clock.elapsedTime * 0.31) * 1.8,
+        17.35,
+      );
     } else {
       raycaster.setFromCamera(pointer, camera);
       if (raycaster.ray.intersectPlane(facadePlane, hitPoint)) {
@@ -211,8 +221,20 @@ export function FirstLightLayer({ progressRef, qualityTier, reducedMotion }: Fir
     }
     if (cursorLightRef.current) {
       cursorLightRef.current.position.copy(lightTarget);
-      const pointerIntent = reducedMotion ? 0 : clamp01(pointer.length() * 1.35);
-      cursorLightRef.current.intensity = (2.4 + pointerIntent * (8.8 + opening * 2.4)) * (1 - departure);
+      const idlePulse = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 1.1) * 0.9;
+      cursorLightRef.current.intensity = (7.2 + idlePulse + pointerIntent * (8.8 + opening * 2.4))
+        * (1 - departure);
+    }
+    if (fogRef.current && !reducedMotion) {
+      FOG_BANKS.forEach((transform, index) => {
+        const drift = Math.sin(clock.elapsedTime * (0.11 + index * 0.018) + index * 1.7) * (1.4 + index * 0.38);
+        const lift = Math.sin(clock.elapsedTime * 0.17 + index) * 0.1;
+        setInstanceTransform(fogRef.current, index, instanceTransform, {
+          ...transform,
+          position: [transform.position[0] + drift, transform.position[1] + lift, transform.position[2]],
+        });
+      });
+      markInstanceMatrixDirty(fogRef.current);
     }
     detailMaterials.fog.opacity = (qualityTier === 'cinematic' ? 0.105 : 0.068)
       * (reducedMotion ? 0.72 : 1)
@@ -244,8 +266,8 @@ export function FirstLightLayer({ progressRef, qualityTier, reducedMotion }: Fir
         ref={cursorLightRef}
         position={[0, 5.4, 17.4]}
         color="#b8cbc8"
-        intensity={2.4}
-        distance={13}
+        intensity={7.2}
+        distance={16}
         decay={2.15}
       />
     </group>
