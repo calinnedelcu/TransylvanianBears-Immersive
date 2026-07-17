@@ -1247,8 +1247,8 @@ function TrackedSubjects({
       const direction = index % 4 < 2 ? 1 : -1;
       const directedTravel = direction > 0 ? travel : 1 - travel;
       const x = pedestrian.cross
-        ? THREE.MathUtils.lerp(-3.25, 3.25, directedTravel)
-        : pedestrian.side * (4.45 + pedestrian.offset);
+        ? THREE.MathUtils.lerp(-3.05, 3.05, directedTravel)
+        : pedestrian.side * (2.75 + pedestrian.offset);
       const z = pedestrian.cross
         ? pedestrian.crossingZ + Math.sin(directedTravel * Math.PI) * 0.08
         : THREE.MathUtils.lerp(6, -49, directedTravel);
@@ -1940,8 +1940,8 @@ function CompactNexusCity({
       const direction = index % 4 < 2 ? 1 : -1;
       const directedTravel = direction > 0 ? travel : 1 - travel;
       const x = pedestrian.cross
-        ? THREE.MathUtils.lerp(-3.25, 3.25, directedTravel)
-        : pedestrian.side * (4.45 + pedestrian.offset);
+        ? THREE.MathUtils.lerp(-3.05, 3.05, directedTravel)
+        : pedestrian.side * (2.75 + pedestrian.offset);
       const z = pedestrian.cross
         ? pedestrian.crossingZ
         : THREE.MathUtils.lerp(6, -49, directedTravel);
