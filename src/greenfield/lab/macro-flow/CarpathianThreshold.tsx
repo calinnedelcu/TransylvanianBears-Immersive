@@ -266,6 +266,109 @@ function CarpathianBackdrop({ progressRef, qualityTier, reducedMotion }: Carpath
   );
 }
 
+type CinematicRainProps = Pick<CarpathianThresholdProps, 'progressRef' | 'qualityTier'>;
+
+function createRainGeometry(count: number) {
+  const geometry = new THREE.BufferGeometry();
+  const positions = new Float32Array(count * 2 * 3);
+  const speeds = new Float32Array(count * 2);
+  const phases = new Float32Array(count * 2);
+  const fades = new Float32Array(count * 2);
+
+  for (let index = 0; index < count; index += 1) {
+    const x = -23 + seeded(index + 2001) * 46;
+    const y = -1 + seeded(index + 2011) * 25;
+    const z = 7 + seeded(index + 2021) * 30;
+    const length = 0.24 + seeded(index + 2031) * 0.92;
+    const wind = 0.045 + seeded(index + 2041) * 0.09;
+    const speed = 7 + seeded(index + 2051) * 11;
+    const phase = seeded(index + 2061) * 24;
+    const fade = 0.16 + seeded(index + 2071) * 0.64;
+    const vertexOffset = index * 6;
+    const attributeOffset = index * 2;
+
+    positions.set([x, y, z, x - wind, y - length, z], vertexOffset);
+    speeds[attributeOffset] = speed;
+    speeds[attributeOffset + 1] = speed;
+    phases[attributeOffset] = phase;
+    phases[attributeOffset + 1] = phase;
+    fades[attributeOffset] = fade;
+    fades[attributeOffset + 1] = fade;
+  }
+
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('aSpeed', new THREE.BufferAttribute(speeds, 1));
+  geometry.setAttribute('aPhase', new THREE.BufferAttribute(phases, 1));
+  geometry.setAttribute('aFade', new THREE.BufferAttribute(fades, 1));
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function CinematicRain({ progressRef, qualityTier }: CinematicRainProps) {
+  const compact = useThree((state) => state.size.width <= 820);
+  const count = compact ? 150 : qualityTier === 'cinematic' ? 460 : 280;
+  const geometry = useMemo(() => createRainGeometry(count), [count]);
+  const material = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uOpacity: { value: 0 },
+    },
+    vertexShader: /* glsl */ `
+      uniform float uTime;
+      attribute float aSpeed;
+      attribute float aPhase;
+      attribute float aFade;
+      varying float vFade;
+
+      void main() {
+        vec3 transformed = position;
+        float cycle = 25.0;
+        float travel = mod(uTime * aSpeed + aPhase, cycle);
+        transformed.y -= travel;
+        transformed.x -= travel * 0.055;
+        if (transformed.y < -3.0) {
+          transformed.y += cycle;
+          transformed.x += cycle * 0.055;
+        }
+        vFade = aFade;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform float uOpacity;
+      varying float vFade;
+
+      void main() {
+        gl_FragColor = vec4(0.68, 0.79, 0.78, uOpacity * vFade);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
+    toneMapped: false,
+  }), []);
+
+  useEffect(() => () => {
+    geometry.dispose();
+    material.dispose();
+  }, [geometry, material]);
+
+  useFrame(({ clock }) => {
+    const departure = smooth(range(progressRef.current, 0.044, 0.072));
+    material.uniforms.uTime.value = clock.elapsedTime;
+    material.uniforms.uOpacity.value = (compact ? 0.28 : 0.38) * (1 - departure);
+  });
+
+  return (
+    <lineSegments
+      geometry={geometry}
+      material={material}
+      frustumCulled={false}
+      renderOrder={2}
+    />
+  );
+}
+
 function createWingShape(direction: -1 | 1) {
   const shape = new THREE.Shape();
   shape.moveTo(0, 0.08);
@@ -595,6 +698,9 @@ export function CarpathianThreshold({
         qualityTier={qualityTier}
         reducedMotion={reducedMotion}
       />
+      {!reducedMotion ? (
+        <CinematicRain progressRef={progressRef} qualityTier={qualityTier} />
+      ) : null}
       <group position={compact ? [-7.2, 13.15, 4.2] : [-9.3, 12.8, 4.2]} scale={compact ? 0.5 : 1}>
         <mesh position={[0, 0, -0.08]}>
           <circleGeometry args={[4.35, 48]} />

@@ -232,7 +232,6 @@ body.mf-lab-mode {
   transition: background-color 500ms ease;
 }
 
-.mf-world__grade::before,
 .mf-world__grade::after {
   content: '';
   position: absolute;
@@ -246,29 +245,12 @@ body.mf-lab-mode {
     linear-gradient(90deg, rgb(7 10 11 / 0.48), transparent 36%, transparent 78%, rgb(7 10 11 / 0.18));
 }
 
-.mf-lab[data-active-chapter='threshold'] .mf-world__grade::before {
-  inset: -18%;
-  background: repeating-linear-gradient(
-    104deg,
-    transparent 0 34px,
-    rgb(184 215 211 / 0.085) 34px 35px,
-    transparent 35px 88px
-  );
-  mask-image: linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent);
-  animation: mf-threshold-weather 1.15s linear infinite;
-}
-
 .mf-lab[data-active-chapter='threshold'] .mf-world__grade::after {
   inset: 0;
   background: #c5dcda;
   mix-blend-mode: screen;
   opacity: 0;
   animation: mf-threshold-lightning 11.8s linear infinite;
-}
-
-@keyframes mf-threshold-weather {
-  from { transform: translate3d(-2%, -5%, 0); }
-  to { transform: translate3d(4%, 9%, 0); }
 }
 
 @keyframes mf-threshold-lightning {
@@ -3705,7 +3687,6 @@ body.mf-lab-mode {
     animation: none;
   }
 
-  .mf-lab[data-active-chapter='threshold'] .mf-world__grade::before,
   .mf-lab[data-active-chapter='threshold'] .mf-world__grade::after {
     animation: none;
   }
