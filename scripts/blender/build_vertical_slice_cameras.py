@@ -177,13 +177,13 @@ DESKTOP_SPECS = (
         chapter_dir="01-threshold",
         asset_id="vs01.camera.desktop",
         tier="desktop",
-        positions=((18, 11.5, 38), (13, 10.2, 33), (7, 8.2, 27), (2.2, 6.4, 21), (0, 5.3, 16.5)),
-        targets=((-1.2, 6.8, 14.8), (-0.8, 6.5, 14.9), (0, 6.1, 15), (0, 5.2, 14.8), (0, 4.7, 14.2)),
-        fov_start=46,
+        positions=((8.4, 8.4, 31.5), (6.4, 7.5, 28.5), (3.5, 6.5, 24.5), (1.2, 5.8, 20.2), (0, 5.3, 16.5)),
+        targets=((-3.0, 5.9, 15.0), (-2.35, 5.65, 15.0), (-1.15, 5.4, 15.0), (-0.3, 5.1, 14.8), (0, 4.7, 14.2)),
+        fov_start=41,
         fov_end=43,
-        fov_breath=-1.2,
-        roll_peak=-0.7,
-        pace_bias=-0.6,
+        fov_breath=-0.8,
+        roll_peak=-0.38,
+        pace_bias=-0.82,
     ),
     CameraSpec(
         chapter="Field",
@@ -228,6 +228,22 @@ DESKTOP_SPECS = (
 
 
 def compact_spec(spec):
+    if spec.chapter == "Threshold":
+        # Mobile keeps the taller establishing composition; the desktop path is
+        # deliberately lower and closer to avoid presenting the citadel as a model viewer.
+        return CameraSpec(
+            chapter=spec.chapter,
+            chapter_dir=spec.chapter_dir,
+            asset_id=spec.asset_id.replace("desktop", "mobile"),
+            tier="mobile",
+            positions=((8.28, 11.85, 38), (5.98, 10.55, 33), (3.22, 8.55, 27), (1.012, 6.75, 21), (0, 5.65, 16.5)),
+            targets=((-0.504, 6.95, 14.8), (-0.336, 6.65, 14.9), (0, 6.25, 15), (0, 5.35, 14.8), (0, 4.85, 14.2)),
+            fov_start=56,
+            fov_end=53,
+            fov_breath=-0.66,
+            roll_peak=-0.245,
+            pace_bias=-0.432,
+        )
     return CameraSpec(
         chapter=spec.chapter,
         chapter_dir=spec.chapter_dir,

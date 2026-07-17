@@ -87,10 +87,12 @@ def surface_height(profile: str, u: float, v: float) -> float:
     fine = tiled_noise(u, v, 19, 8.3)
     if profile == "mineral":
         vein = 0.5 + 0.5 * math.sin(math.tau * (u * 2.0 + v * 3.0 + medium * 0.3))
-        return broad * 0.48 + medium * 0.3 + fine * 0.12 + vein * 0.1
+        bedding = abs(math.sin(math.tau * (v * 4.0 + broad * 0.08)))
+        return broad * 0.43 + medium * 0.3 + fine * 0.1 + vein * 0.12 + bedding * 0.05
     if profile == "plaster":
         sweep = 0.5 + 0.5 * math.sin(math.tau * (u * 2.0 + medium * 0.22))
-        return broad * 0.55 + medium * 0.25 + fine * 0.05 + sweep * 0.15
+        pitting = tiled_noise(u, v, 29, 15.2)
+        return broad * 0.5 + medium * 0.24 + fine * 0.05 + sweep * 0.13 + pitting * 0.08
     if profile == "timber":
         warp = tiled_noise(u, v, 4, 12.4) * 0.24 + math.sin(math.tau * v * 2.0) * 0.025
         grain = 0.5 + 0.5 * math.sin(math.tau * (u * 11.0 + warp))
@@ -150,8 +152,11 @@ def make_surface_maps(
             length = math.sqrt(nx * nx + ny * ny + nz * nz)
             normal_pixels.extend((nx / length * 0.5 + 0.5, ny / length * 0.5 + 0.5, nz / length * 0.5 + 0.5, 1.0))
 
-            local_roughness = max(0.04, min(1.0, roughness + (height - 0.5) * 0.12))
-            occlusion = max(0.68, min(1.0, 0.92 + (height - 0.5) * 0.16))
+            cavity = max(0.0, 0.54 - height)
+            runoff = max(0.0, tiled_noise(x / size, 0.37, 11, 42.0) - 0.48)
+            weathering = cavity * 0.18 + runoff * 0.08 if profile in {"mineral", "plaster"} else cavity * 0.08
+            local_roughness = max(0.04, min(1.0, roughness + (height - 0.5) * 0.12 + weathering))
+            occlusion = max(0.62, min(1.0, 0.93 + (height - 0.5) * 0.18 - cavity * 0.16))
             local_metallic = max(0.0, min(1.0, metallic - max(0.0, 0.48 - height) * 0.28))
             orm_pixels.extend((occlusion, local_roughness, local_metallic, 1.0))
 
@@ -165,6 +170,7 @@ def make_base_color_image(
     heights: list[float],
     low_color: str,
     high_color: str,
+    profile: str,
     size: int = 128,
 ) -> bpy.types.Image:
     low = linear_color(low_color)
@@ -176,8 +182,22 @@ def make_base_color_image(
         u = x / size
         v = y / size
         stain = tiled_noise(u, v, 5, 31.0)
-        blend = max(0.0, min(1.0, height * 0.78 + stain * 0.22))
+        runoff_channel = max(0.0, tiled_noise(u, 0.37, 11, 42.0) - 0.46) / 0.54
+        runoff_breakup = 0.35 + tiled_noise(u, v, 4, 51.0) * 0.65
+        runoff = runoff_channel * runoff_breakup
+        blend = height * 0.74 + stain * 0.2
+        if profile in {"mineral", "plaster"}:
+            blend -= runoff * (0.12 if profile == "plaster" else 0.08)
+        elif profile == "roof":
+            blend -= runoff * 0.06
+        elif profile == "metal":
+            blend += (stain - 0.5) * 0.16
+        blend = max(0.0, min(1.0, blend))
         channels = [low[channel] * (1.0 - blend) + high[channel] * blend for channel in range(3)]
+        if profile in {"mineral", "plaster"}:
+            damp = runoff * max(0.0, 0.58 - height)
+            channels = [channel * (1.0 - damp * 0.24) for channel in channels]
+            channels[1] *= 1.0 + damp * 0.025
         pixels.extend((*channels, 1.0))
     return make_generated_image(f"{name} BaseColor", size, pixels, "sRGB")
 
@@ -216,7 +236,7 @@ def build_texture_library() -> dict[str, dict[str, bpy.types.Image | float]]:
     for key, (profile, low, high, strength) in variants.items():
         heights, normal, orm = profiles[profile]
         library[key] = {
-            "base": make_base_color_image(f"First Light {key.title()}", heights, low, high),
+            "base": make_base_color_image(f"First Light {key.title()}", heights, low, high, profile),
             "normal": normal,
             "orm": orm,
             "normal_strength": strength,
@@ -244,6 +264,7 @@ def make_material(
 ) -> bpy.types.Material:
     material = bpy.data.materials.new(name)
     material.use_nodes = True
+    material.use_backface_culling = True
     material.diffuse_color = hex_color(color)
     node = material.node_tree.nodes.get("Principled BSDF")
     if node:
@@ -748,6 +769,71 @@ def wedge_instance(
     return source
 
 
+def hipped_cap(
+    name: str,
+    location: tuple[float, float, float],
+    width: float,
+    depth: float,
+    height: float,
+    material: bpy.types.Material,
+    rotation_z: float = 0.0,
+    top_scale: float = 0.58,
+) -> bpy.types.Object:
+    half_width = width / 2
+    half_depth = depth / 2
+    half_height = height / 2
+    top_width = half_width * top_scale
+    top_depth = half_depth * top_scale
+    vertices = [
+        (-half_width, -half_depth, -half_height),
+        (half_width, -half_depth, -half_height),
+        (half_width, half_depth, -half_height),
+        (-half_width, half_depth, -half_height),
+        (-top_width, -top_depth, half_height),
+        (top_width, -top_depth, half_height),
+        (top_width, top_depth, half_height),
+        (-top_width, top_depth, half_height),
+    ]
+    faces = [
+        (0, 3, 2, 1),
+        (4, 5, 6, 7),
+        (0, 1, 5, 4),
+        (1, 2, 6, 5),
+        (2, 3, 7, 6),
+        (3, 0, 4, 7),
+    ]
+    mesh = bpy.data.meshes.new(f"{name}Mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    obj.location = location
+    obj.rotation_euler[2] = rotation_z
+    bpy.context.collection.objects.link(obj)
+    assign_material(obj, material)
+    bevel_object(obj, min(0.025, height * 0.12), 1)
+    return obj
+
+
+def hipped_cap_instance(
+    modules: dict[str, bpy.types.Object],
+    key: str,
+    name: str,
+    location: tuple[float, float, float],
+    width: float,
+    depth: float,
+    height: float,
+    material: bpy.types.Material,
+    rotation_z: float = 0.0,
+    top_scale: float = 0.58,
+) -> bpy.types.Object:
+    source = modules.get(key)
+    if source:
+        return linked_copy(source, name, location, (0.0, 0.0, rotation_z))
+    source = hipped_cap(name, location, width, depth, height, material, rotation_z, top_scale)
+    modules[key] = source
+    return source
+
+
 def pointed_arch_ring(
     name: str,
     y: float,
@@ -815,54 +901,87 @@ def pointed_arch_ring(
     return obj
 
 
-def add_bear_relief(
-    modules: dict[str, bpy.types.Object],
-    key_prefix: str,
+def add_central_bear_crest(
     name: str,
     center: tuple[float, float, float],
     scale: float,
     backing_material: bpy.types.Material,
+    field_material: bpy.types.Material,
     relief_material: bpy.types.Material,
-    dark_material: bpy.types.Material,
 ) -> None:
     face_rotation = (math.pi / 2, 0.0, 0.0)
+    cylinder(
+        f"{name} medallion",
+        center,
+        0.72 * scale,
+        0.16 * scale,
+        20,
+        backing_material,
+        max(0.008, 0.018 * scale),
+        face_rotation,
+    )
+    cylinder(
+        f"{name} recessed field",
+        (center[0], center[1] - 0.1 * scale, center[2]),
+        0.58 * scale,
+        0.1 * scale,
+        20,
+        field_material,
+        max(0.006, 0.012 * scale),
+        face_rotation,
+    )
 
-    def disc(
-        component: str,
-        key: str,
-        offset_x: float,
-        offset_y: float,
-        offset_z: float,
-        radius: float,
-        depth: float,
-        vertices: int,
-        material: bpy.types.Material,
-    ) -> None:
-        cylinder_instance(
-            modules,
-            f"{key_prefix}-{key}",
-            f"{name} {component}",
-            (
-                center[0] + offset_x * scale,
-                center[1] - offset_y * scale,
-                center[2] + offset_z * scale,
-            ),
-            radius * scale,
-            depth * scale,
-            vertices,
-            material,
-            max(0.008, 0.018 * scale),
-            face_rotation,
-        )
+    head_points = [
+        (-0.34, -0.28), (-0.38, 0.04), (-0.3, 0.3), (-0.42, 0.5),
+        (-0.28, 0.67), (-0.12, 0.58), (0.0, 0.64), (0.12, 0.58),
+        (0.28, 0.67), (0.42, 0.5), (0.3, 0.3), (0.38, 0.04),
+        (0.34, -0.28), (0.16, -0.46), (0.0, -0.5), (-0.16, -0.46),
+    ]
+    profile_prism(
+        f"{name} relief",
+        [(x * scale, z * scale) for x, z in head_points],
+        0.085 * scale,
+        relief_material,
+        (center[0], center[1] - 0.19 * scale, center[2] - 0.03 * scale),
+        bevel=max(0.006, 0.012 * scale),
+    )
+    nose_points = [(-0.1, -0.09), (0.1, -0.09), (0.13, 0.01), (0.0, 0.09), (-0.13, 0.01)]
+    profile_prism(
+        f"{name} nose incision",
+        [(x * scale, z * scale) for x, z in nose_points],
+        0.045 * scale,
+        field_material,
+        (center[0], center[1] - 0.25 * scale, center[2] - 0.18 * scale),
+        bevel=max(0.004, 0.008 * scale),
+    )
 
-    disc("stone medallion", "backing", 0.0, 0.0, 0.0, 1.0, 0.18, 16, backing_material)
-    disc("dark field", "field", 0.0, 0.11, 0.0, 0.82, 0.12, 16, dark_material)
-    disc("head", "head", 0.0, 0.19, 0.04, 0.46, 0.11, 14, relief_material)
-    for side, label in ((-1, "left"), (1, "right")):
-        disc(f"{label} ear", "ear", side * 0.35, 0.2, 0.36, 0.19, 0.11, 12, relief_material)
-        disc(f"{label} eye", "eye", side * 0.16, 0.28, 0.08, 0.045, 0.09, 8, dark_material)
-    disc("muzzle", "muzzle", 0.0, 0.26, -0.16, 0.25, 0.1, 12, backing_material)
-    disc("nose", "nose", 0.0, 0.33, -0.12, 0.085, 0.08, 8, dark_material)
+
+def add_guardian_bear_relief(
+    name: str,
+    center: tuple[float, float, float],
+    side: int,
+    scale: float,
+    material: bpy.types.Material,
+) -> None:
+    canonical_points = [
+        (-0.2, -0.5), (0.02, -0.5), (0.08, -0.28), (0.26, -0.14),
+        (0.34, 0.04), (0.22, 0.1), (0.16, 0.3), (0.27, 0.42),
+        (0.16, 0.54), (0.06, 0.5), (-0.03, 0.58), (-0.16, 0.53),
+        (-0.22, 0.36), (-0.18, 0.16), (-0.3, -0.04), (-0.26, -0.22),
+        (-0.16, -0.28),
+    ]
+    facing = -side
+    points = [(x * facing * scale, z * scale) for x, z in canonical_points]
+    if facing > 0:
+        points.reverse()
+    profile_prism(
+        name,
+        points,
+        0.09,
+        material,
+        center,
+        bevel=0.012,
+    )
 
 
 def annular_segment(
@@ -1089,6 +1208,67 @@ def triangulate_textured_meshes() -> None:
         mesh.update()
 
 
+def consolidate_render_meshes() -> None:
+    def join_objects(objects: list[bpy.types.Object], name: str) -> bpy.types.Object:
+        bpy.ops.object.select_all(action="DESELECT")
+        for obj in objects:
+            obj.select_set(True)
+        bpy.context.view_layer.objects.active = objects[0]
+        bpy.ops.object.join()
+        joined = bpy.context.object
+        joined.name = name
+        joined.data.name = f"{name}Mesh"
+        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+        bpy.ops.object.material_slot_remove_unused()
+        return joined
+
+    bats = [obj for obj in bpy.context.scene.objects if obj.type == "MESH" and obj.name.startswith("Bat flight")]
+    if bats:
+        join_objects(bats, "Bat flight 1")
+
+    def is_ring_window_panel(name: str) -> bool:
+        return name.startswith("Window ") and name.removeprefix("Window ").isdigit()
+
+    drawcall_batch = [
+        obj
+        for obj in bpy.context.scene.objects
+        if obj.type == "MESH" and (
+            obj.name.startswith("Curtain buttress ")
+            or is_ring_window_panel(obj.name)
+            or obj.name.startswith("Workshop response ")
+            or obj.name.startswith("Workshop bay sill ")
+        )
+    ]
+    if drawcall_batch:
+        join_objects(drawcall_batch, "ENV_Threshold_DrawcallBatch")
+
+
+def add_asset_metadata() -> None:
+    root = bpy.data.objects.get("ENV_Threshold_DrawcallBatch")
+    if not root:
+        raise RuntimeError("Missing consolidated VS01 root mesh")
+    root.name = "VS01_Threshold_ROOT"
+    root.data.name = "VS01_Threshold_ROOTMesh"
+    root["assetContract"] = "VS01-threshold-v1"
+    root["assetId"] = "VS01"
+    root["anchorCoordinateSystem"] = "gltf-y-up"
+    root["HSP_Threshold_GatePivot"] = (0.0, 5.02, 15.62)
+    root["gatePivotSemanticId"] = "threshold.gate-pivot"
+    root["gatePivotRadiusMeters"] = 0.55
+    root["ANC_Threshold_BearCrest"] = (0.0, 10.95, 16.06)
+    root["bearCrestSemanticId"] = "threshold.identity.bear-crest"
+    root["ANC_Threshold_HandoffField"] = (0.0, 4.25, 12.5)
+    root["handoffSemanticId"] = "handoff.threshold-field"
+    root["handoffAspectRatio"] = "16:9"
+    root["handoffTargetChapter"] = "02-field"
+    root["nodeRole"] = "asset-root"
+    root["semanticId"] = "threshold.root"
+
+    for obj in list(bpy.context.scene.objects):
+        if obj.type == "MESH" and obj != root and obj.parent is None:
+            obj.parent = root
+
+
 def build_world() -> None:
     textures = build_texture_library()
     limestone = make_material("Limestone", "#756f62", 0.88, textures=textures["limestone"])
@@ -1101,6 +1281,7 @@ def build_world() -> None:
     brass = make_material("Oxidized brass", "#81724e", 0.38, metallic=0.72, textures=textures["brass"])
     polished_brass = make_material("Polished brass edge", "#b49d64", 0.28, metallic=0.82)
     aged_iron = make_material("Aged iron", "#171c1b", 0.46, metallic=0.76, textures=textures["iron"])
+    bat_iron = make_material("Bat silhouette", "#171c1b", 0.46, metallic=0.76)
     window = make_material("Occupied light", "#d6b56d", 0.32, emission="#e5bd6f", emission_strength=5.2)
     cyan = make_material("Signal anchor", "#67d8d2", 0.24, metallic=0.15, emission="#69e1dc", emission_strength=7.0)
     mountain_far = make_material("Mountain far", "#1d2728", 1.0)
@@ -1379,16 +1560,6 @@ def build_world() -> None:
             include_tracery=False,
         )
         cube(f"Gate brass line {label}", (side * 3.33, -15.76, 4.25), (0.11, 0.1, 6.75), brass, bevel=0.02)
-        add_bear_relief(
-            modules,
-            "guardian-bear",
-            f"Guardian bear {label}",
-            (tower_x, -15.86, 6.72),
-            0.47,
-            limestone_light,
-            brass,
-            timber,
-        )
 
     cube("Gate left pier", (-3.16, -14.15, 3.6), (1.55, 3.15, 7.2), limestone_light, bevel=0.085)
     cube("Gate right pier", (3.16, -14.15, 3.6), (1.55, 3.15, 7.2), limestone_light, bevel=0.085)
@@ -1425,45 +1596,70 @@ def build_world() -> None:
             limestone_light,
             math.pi,
         )
+        hipped_cap_instance(
+            modules,
+            "gate-buttress-setback-cap",
+            f"Gate buttress setback cap {'L' if side < 0 else 'R'}",
+            (side * 3.55, -15.48, 7.18),
+            0.76,
+            0.58,
+            0.24,
+            limestone,
+            math.pi,
+        )
+        cube_instance(
+            modules,
+            "gate-upper-buttress-stage",
+            f"Gate upper buttress stage {'L' if side < 0 else 'R'}",
+            (side * 3.55, -15.53, 8.5),
+            (0.52, 0.44, 2.34),
+            limestone_light,
+            bevel=0.035,
+        )
+        hipped_cap_instance(
+            modules,
+            "gate-upper-buttress-cap",
+            f"Gate upper buttress cap {'L' if side < 0 else 'R'}",
+            (side * 3.55, -15.55, 9.75),
+            0.76,
+            0.62,
+            0.24,
+            limestone,
+            math.pi,
+        )
     pointed_arch_ring("Gate arch", -14.15, 5.02, 2.42, 3.43, 3.25, 3.72, 3.16, limestone_light)
     cube("Gate upper beam", (0, -14.15, 9.2), (7.78, 3.15, 1.48), plaster, bevel=0.08)
+    cube("Gate frieze recessed bed", (0, -15.79, 9.2), (7.22, 0.18, 0.94), limestone, bevel=0.035)
+    cube("Gate frieze lower bearing course", (0, -15.87, 8.66), (7.58, 0.32, 0.2), limestone_light, bevel=0.025)
+    cube("Gate frieze upper drip course", (0, -15.86, 9.74), (7.92, 0.3, 0.2), limestone_light, bevel=0.025)
+    for side in (-1, 1):
+        label = "L" if side < 0 else "R"
+        for block_index, block_x in enumerate((1.0, 1.95, 2.9)):
+            cube_instance(
+                modules,
+                "gate-frieze-facing-block",
+                f"Gate frieze facing block {label}-{block_index + 1}",
+                (side * block_x, -15.93, 9.2),
+                (0.86, 0.18, 0.64),
+                limestone_light,
+                bevel=0.025,
+            )
+        add_guardian_bear_relief(
+            f"Guardian bear relief {label}",
+            (side * 1.95, -16.025, 9.18),
+            side,
+            0.6,
+            limestone,
+        )
+    profile_prism(
+        "Gate frieze keystone",
+        [(-0.5, 0.46), (0.5, 0.46), (0.36, -0.46), (-0.36, -0.46)],
+        0.24,
+        limestone_light,
+        (0.0, -15.97, 9.18),
+        bevel=0.025,
+    )
     cube("Gate shadow pocket", (0, -12.7, 4.25), (5.05, 0.32, 8.45), timber, bevel=0.04)
-
-    portcullis_bottom = 4.18
-    portcullis_height = 3.72
-    for bar_index in range(7):
-        bar_x = -1.95 + bar_index * 0.65
-        cube_instance(
-            modules,
-            "raised-portcullis-bar",
-            f"Portcullis bar {bar_index + 1}",
-            (bar_x, -15.62, portcullis_bottom + portcullis_height / 2),
-            (0.105, 0.14, portcullis_height),
-            aged_iron,
-            bevel=0.015,
-        )
-        cone_instance(
-            modules,
-            "raised-portcullis-tooth",
-            f"Portcullis tooth {bar_index + 1}",
-            (bar_x, -15.62, portcullis_bottom - 0.16),
-            0.14,
-            0.34,
-            8,
-            aged_iron,
-            0.025,
-            (math.pi, 0.0, 0.0),
-        )
-    for rail_index, rail_z in enumerate((5.72, 7.28)):
-        cube_instance(
-            modules,
-            "raised-portcullis-rail",
-            f"Portcullis cross rail {rail_index + 1}",
-            (0.0, -15.64, rail_z),
-            (4.15, 0.16, 0.13),
-            aged_iron,
-            bevel=0.018,
-        )
 
     gable_roof("Gatehouse steep roof", (0, -14.12, 9.82), 7.9, 3.72, 3.72, roof)
     gate_gable_points = [(-3.88, -1.84), (3.88, -1.84), (0.0, 1.84)]
@@ -1489,6 +1685,19 @@ def build_world() -> None:
             roof,
             -0.08,
         )
+        facade_beam(
+            modules,
+            "gate-gable-stone-coping",
+            f"Gate gable {label} stone coping",
+            (0.0, -15.94, 11.66),
+            0.0,
+            (side * 3.74, -1.76),
+            (side * 0.18, 1.63),
+            0.11,
+            0.16,
+            limestone_light,
+            -0.17,
+        )
         add_lancet_window(
             modules,
             "gate-clerestory-window",
@@ -1503,17 +1712,58 @@ def build_world() -> None:
             limestone_light,
             brass,
         )
-    add_bear_relief(
-        modules,
-        "central-bear-seal",
+    add_central_bear_crest(
         "Citadel bear seal",
         (0.0, -16.06, 10.95),
-        0.92,
+        0.78,
         limestone_light,
-        brass,
         timber,
+        limestone_light,
     )
-    cube("Gatehouse ridge cap", (0.0, -14.12, 13.5), (0.14, 3.85, 0.14), roof, bevel=0.025)
+    cylinder(
+        "Gatehouse ridge cap",
+        (0.0, -14.12, 13.54),
+        0.12,
+        3.96,
+        10,
+        roof,
+        bevel=0.018,
+        rotation=(math.pi / 2, 0.0, 0.0),
+    )
+    for side in (-1, 1):
+        label = "L" if side < 0 else "R"
+        cylinder_instance(
+            modules,
+            "gatehouse-eaves-gutter",
+            f"Gatehouse eaves gutter {label}",
+            (side * 3.94, -14.12, 9.82),
+            0.09,
+            3.96,
+            10,
+            aged_iron,
+            0.014,
+            (math.pi / 2, 0.0, 0.0),
+        )
+        cube_instance(
+            modules,
+            "gatehouse-conductor-head",
+            f"Gatehouse conductor head {label}",
+            (side * 3.86, -15.93, 9.64),
+            (0.24, 0.22, 0.3),
+            aged_iron,
+            bevel=0.025,
+        )
+        cylinder_instance(
+            modules,
+            "gatehouse-downspout",
+            f"Gatehouse downspout {label}",
+            (side * 3.86, -15.9, 5.34),
+            0.055,
+            8.45,
+            10,
+            aged_iron,
+            0.01,
+        )
     cube("Weather vane stem", (0.0, -14.12, 14.08), (0.055, 0.055, 1.22), brass, bevel=0.01)
     bat_points = [
         (-0.72, 0.0), (-0.45, 0.23), (-0.2, 0.08), (0.0, 0.26),
@@ -1529,7 +1779,7 @@ def build_world() -> None:
     )
     for name, location, scale, wing_lift in bat_flight:
         flight_points = [(x * scale, z * scale * wing_lift) for x, z in bat_points]
-        profile_prism(name, flight_points, 0.055, aged_iron, location, bevel=0.006)
+        profile_prism(name, flight_points, 0.055, bat_iron, location, bevel=0.006)
 
     cube("Workshop body", (0, 3.2, 2.5), (9.4, 7.2, 5.0), plaster, bevel=0.11)
     gable_roof("Workshop roof", (0, 3.2, 4.95), 10.15, 7.85, 3.62, roof)
@@ -1719,36 +1969,6 @@ def build_world() -> None:
 
     triangulate_textured_meshes()
 
-    # Metadata keeps the legacy runtime-facing representatives from being
-    # absorbed into broader material joins during glTF optimization.
-    for contract_index, node_name in enumerate((
-        "Approach stone 1",
-        "Far Carpathians",
-        "Gate arch",
-        "Gate brass line L",
-        "Gate left pier",
-        "Gate shadow pocket",
-        "Gate tower L",
-        "Gate tower roof L",
-        "Gate upper beam",
-        "Inhabited ring 00",
-        "Inhabited ring 01",
-        "Near ridge",
-        "Response anchor 1",
-        "Ring roof 00",
-        "Terrain",
-        "Tower slit L",
-    )):
-        obj = bpy.data.objects.get(node_name)
-        if obj:
-            obj.data = obj.data.copy()
-            obj.data.attributes.new(
-                name=f"_CONTRACT_{contract_index:02d}",
-                type="FLOAT",
-                domain="POINT",
-            )
-            obj["asset_contract"] = node_name
-
 
 def setup_lighting_and_camera() -> None:
     world = bpy.context.scene.world or bpy.data.worlds.new("Blue hour")
@@ -1842,6 +2062,8 @@ def main() -> None:
     clear_scene()
     build_world()
     add_box_uvs()
+    consolidate_render_meshes()
+    add_asset_metadata()
     setup_lighting_and_camera()
     configure_output()
     export_and_render()

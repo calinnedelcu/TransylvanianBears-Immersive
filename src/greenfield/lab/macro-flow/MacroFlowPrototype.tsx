@@ -624,7 +624,7 @@ function MacroFlowExperience() {
       data-renderer={macroWorldActive ? 'webgl' : 'editorial'}
       data-renderer-failure={rendererFailure ?? undefined}
     >
-      <a className="mf-skip" href={`#mf-${activeChapter}`}>Sari la capitolul activ</a>
+      <a className="mf-skip" href="#mf-proof">Sari la dovada proiectului</a>
 
       <div className="mf-world" aria-hidden="true">
         {macroWorldActive ? (
@@ -669,9 +669,14 @@ function MacroFlowExperience() {
           <button
             className="mf-system-control"
             type="button"
-            aria-label={`Calitate ${qualityMode === 'auto' ? `automată, ${qualityTier}` : qualityTier}. Schimbă nivelul.`}
-            title={`Calitate: ${qualityMode === 'auto' ? `auto / ${qualityTier}` : qualityTier}`}
+            aria-label={reducedMotion
+              ? 'Calitate editorială pentru mișcare redusă'
+              : `Calitate ${qualityMode === 'auto' ? `automată, ${qualityTier}` : qualityTier}. Schimbă nivelul.`}
+            title={reducedMotion
+              ? 'Calitate editorială / mișcare redusă'
+              : `Calitate: ${qualityMode === 'auto' ? `auto / ${qualityTier}` : qualityTier}`}
             data-tier={qualityTier}
+            disabled={reducedMotion}
             onClick={() => experienceActor.send({ type: 'CYCLE_QUALITY' })}
           >
             <Gauge aria-hidden="true" />
@@ -701,6 +706,8 @@ function MacroFlowExperience() {
             data-active={activeChapter === chapter.id || undefined}
             aria-current={activeChapter === chapter.id ? 'step' : undefined}
             aria-label={`${chapter.index}. ${chapter.label}`}
+            data-label={chapter.label}
+            title={`${chapter.index}. ${chapter.label}`}
           >
             <span>{chapter.index}</span>
             <i />
@@ -723,10 +730,10 @@ function MacroFlowExperience() {
       <section id="mf-field" className="mf-beat mf-beat--field" data-chapter="field">
         <div className="mf-copy mf-copy--side">
           <p className="mf-kicker">Project Nexus / synthetic field</p>
-          <h2>Camera intră în problemă, nu într-o galerie.</h2>
+          <h2>Un oraș construit ca instrument de cercetare.</h2>
           <p>
-            Strada, clădirile și semnalele devin materia datasetului. Același traseu va continua
-            după proiect; nu există portal de întoarcere.
+            Strada, clădirile și semnalele devin materia datasetului: 11 scenarii, aproximativ
+            9.500 de imagini și peste 140.000 de adnotări.
           </p>
         </div>
       </section>
@@ -746,8 +753,8 @@ function MacroFlowExperience() {
             <i /><i /><span>inspect</span>
           </div>
           <div className="mf-lens-knot__heading">
-            <p className="mf-kicker">Agency knot / Lens</p>
-            <h2>Aceeași scenă. Trei moduri de a o înțelege.</h2>
+            <p className="mf-kicker">Evidence lens / Project Nexus</p>
+            <h2>Trei suprafețe de evidență.</h2>
           </div>
           <div className="mf-lens-control" aria-label="Lens mode">
             {LENS_OPTIONS.map((option) => {
@@ -758,6 +765,7 @@ function MacroFlowExperience() {
                   type="button"
                   data-active={lensMode === option.id || undefined}
                   aria-pressed={lensMode === option.id}
+                  title={`${option.label}: ${option.description}`}
                   onClick={() => selectLens(option.id)}
                 >
                   <Icon aria-hidden="true" />
@@ -796,13 +804,16 @@ function MacroFlowExperience() {
             />
             <img
               className="mf-proof-handoff__image mf-proof-handoff__image--validation"
-              src="/assets/projects/project-nexus.webp"
+              src="/assets/projects/nexus-detection.webp"
               alt=""
-              width="589"
-              height="504"
+              width="1200"
+              height="900"
               decoding="async"
             />
-            <span>Synthetic field / real-world validation</span>
+            <div className="mf-proof-handoff__labels">
+              <span>Synthetic RGB / UE5 field</span>
+              <span>Detection export / separate frame</span>
+            </div>
           </div>
           <div className="mf-proof-handoff__frame">
             <i /><i /><i /><i />

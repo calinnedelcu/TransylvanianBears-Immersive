@@ -1,8 +1,9 @@
-import { PerformanceMonitor, useGLTF } from '@react-three/drei';
+import { Environment, Lightformer, PerformanceMonitor, useGLTF } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Bloom, EffectComposer, Noise, Vignette } from '@react-three/postprocessing';
 import {
   Suspense,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -16,6 +17,7 @@ import type { JourneyChapter } from '../../experience/chapters';
 import type { EvidenceCoreId } from '../../experience/evidenceCores';
 import type { QualityTier } from '../../experience/quality';
 import { CarpathianThreshold } from './CarpathianThreshold';
+import { CitadelIdentitySequence } from './CitadelIdentitySequence';
 import { BuriedActPackage } from './buried-act/BuriedActPackage';
 import { prepareBuriedActAssets } from './buried-act/buriedActAssets';
 import {
@@ -149,8 +151,6 @@ const FALLBACK_MATERIAL_COLORS: Record<string, string> = {
   'Mountain near': '#213532',
 };
 
-const LEGACY_WORLD_END = 0.8;
-
 function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
 }
@@ -175,10 +175,6 @@ function cameraProgress(progress: number) {
   if (progress < 0.77) return 0.97 + smooth(range(progress, 0.68, 0.77)) * 0.015;
   if (progress < 0.9) return 0.985 + smooth(range(progress, 0.77, 0.9)) * 0.01;
   return 0.995 + smooth(range(progress, 0.9, 1)) * 0.005;
-}
-
-function legacyProgress(progress: number) {
-  return clamp01(progress / LEGACY_WORLD_END);
 }
 
 function CameraDirector({
@@ -417,6 +413,22 @@ function WorldAtmosphere({
               vec3 high = vec3(0.018, 0.039, 0.047);
               vec3 color = mix(low, high, upper);
               color += vec3(0.038, 0.062, 0.058) * horizon;
+
+              float longitude = atan(vDirection.z, vDirection.x);
+              float cloudField = 0.5
+                + 0.24 * sin(longitude * 3.2 + vDirection.y * 15.0)
+                + 0.16 * sin(longitude * 7.4 - vDirection.y * 23.0)
+                + 0.1 * sin(longitude * 13.0 + vDirection.y * 41.0);
+              float cloudAltitude = smoothstep(-0.2, 0.12, vDirection.y)
+                * (1.0 - smoothstep(0.24, 0.62, vDirection.y));
+              float cloudVeil = smoothstep(0.54, 0.76, cloudField) * cloudAltitude;
+              color = mix(color, vec3(0.12, 0.17, 0.17), cloudVeil * 0.2);
+
+              float gateGlow = pow(
+                max(0.0, dot(normalize(vDirection), normalize(vec3(0.24, -0.08, -0.96)))),
+                8.0
+              ) * horizon;
+              color += vec3(0.12, 0.045, 0.022) * gateGlow;
               float moonAlignment = dot(normalize(vDirection), normalize(vec3(-0.18, 0.52, -0.84)));
               float moon = smoothstep(0.986, 0.994, moonAlignment);
               float moonHalo = smoothstep(0.94, 0.992, moonAlignment) * 0.13;
@@ -449,7 +461,8 @@ function FirstLightCitadel({
 }: Pick<MacroFlowSceneProps, 'progressRef' | 'qualityTier'>) {
   const rootRef = useRef<THREE.Group>(null);
   const viewportWidth = useThree((state) => state.size.width);
-  const modelUrl = viewportWidth <= 820 ? FIRST_LIGHT_MODEL_MOBILE : FIRST_LIGHT_MODEL_DESKTOP;
+  const compact = viewportWidth <= 820;
+  const modelUrl = compact ? FIRST_LIGHT_MODEL_MOBILE : FIRST_LIGHT_MODEL_DESKTOP;
   const { scene } = useGLTF(modelUrl, false, true);
   const model = useMemo(() => {
     const clone = scene.clone(true);
@@ -493,7 +506,16 @@ function FirstLightCitadel({
         );
         const fallbackColor = FALLBACK_MATERIAL_COLORS[material.name];
         if (!hasAuthoredPbrMaps && fallbackColor) material.color.set(fallbackColor);
-        material.envMapIntensity = structuralMaterial ? 0.52 : 0.4;
+        material.envMapIntensity = structuralMaterial ? (compact ? 0.52 : 0.42) : (compact ? 0.44 : 0.36);
+        if (compact && structuralMaterial) {
+          material.color.offsetHSL(0, -0.015, 0.035);
+          material.emissive.set('#101a19');
+          material.emissiveIntensity = Math.max(material.emissiveIntensity, 0.62);
+        }
+        if (compact && /brass|iron/i.test(material.name)) {
+          material.emissive.set('#24190d');
+          material.emissiveIntensity = Math.max(material.emissiveIntensity, 0.46);
+        }
         if (material.name === 'Occupied light') {
           material.color.set('#d9ba73');
           material.emissive.set('#e4b96c');
@@ -504,13 +526,17 @@ function FirstLightCitadel({
           material.emissive.set('#72d9d6');
           material.emissiveIntensity = Math.max(material.emissiveIntensity, 4.8);
         }
+        if (material.name === 'Worn stone path') {
+          material.emissive.set('#17211d');
+          material.emissiveIntensity = Math.max(material.emissiveIntensity, 0.34);
+        }
         material.needsUpdate = true;
         return material;
       });
       child.material = Array.isArray(child.material) ? tuned : tuned[0];
     });
     return clone;
-  }, [qualityTier, scene]);
+  }, [compact, qualityTier, scene]);
 
   useEffect(() => () => {
     const materials = new Set<THREE.Material>();
@@ -523,88 +549,16 @@ function FirstLightCitadel({
   }, [model]);
 
   useFrame(() => {
-    if (!rootRef.current) return;
-    const departure = smooth(range(progressRef.current, 0.055, 0.095));
-    rootRef.current.visible = departure < 0.995;
-    rootRef.current.position.y = -18 * departure;
-    rootRef.current.rotation.y = departure * -0.018;
+    const root = rootRef.current;
+    if (!root) return;
+    const departure = smooth(range(progressRef.current, 0.045, 0.072));
+    root.visible = departure < 0.995;
+    if (!root.visible) return;
+    root.position.y = -18 * departure;
+    root.rotation.y = departure * -0.018;
   });
 
   return <primitive ref={rootRef} object={model} />;
-}
-
-const APPROACH_SIGNAL = new THREE.CatmullRomCurve3([
-  new THREE.Vector3(-5.8, 0.32, 28),
-  new THREE.Vector3(-3.4, 0.38, 24),
-  new THREE.Vector3(1.7, 0.42, 21),
-  new THREE.Vector3(-1.1, 0.48, 18.2),
-  new THREE.Vector3(0, 0.72, 15.7),
-]);
-
-function ApproachSignal({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>) {
-  const rootRef = useRef<THREE.Group>(null);
-  const beadRef = useRef<THREE.InstancedMesh>(null);
-  const pulseRef = useRef<THREE.Mesh>(null);
-  const pulsePosition = useMemo(() => new THREE.Vector3(), []);
-  const beadTransform = useMemo(() => new THREE.Object3D(), []);
-  const inactiveColor = useMemo(() => new THREE.Color('#18312f'), []);
-  const activeColor = useMemo(() => new THREE.Color('#72d9d6'), []);
-  const currentColor = useMemo(() => new THREE.Color(), []);
-  const beadGeometry = useMemo(() => new THREE.OctahedronGeometry(0.085, 0), []);
-  const beadMaterial = useMemo(() => new THREE.MeshBasicMaterial({ color: '#ffffff' }), []);
-  const beadCount = 34;
-
-  useLayoutEffect(() => {
-    beadRef.current?.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  }, []);
-
-  useEffect(() => () => {
-    beadGeometry.dispose();
-    beadMaterial.dispose();
-  }, [beadGeometry, beadMaterial]);
-
-  useFrame(() => {
-    const reveal = smooth(range(legacyProgress(progressRef.current), 0.018, 0.09));
-    if (beadRef.current) {
-      for (let index = 0; index < beadCount; index += 1) {
-        const position = APPROACH_SIGNAL.getPoint(index / (beadCount - 1));
-        const threshold = index / (beadCount - 1);
-        const activation = 1 - smooth(range(threshold, reveal - 0.035, reveal + 0.015));
-        beadTransform.position.copy(position);
-        beadTransform.rotation.set(0, index * 0.31, 0);
-        beadTransform.scale.setScalar(0.52 + activation * 0.48);
-        beadTransform.updateMatrix();
-        beadRef.current.setMatrixAt(index, beadTransform.matrix);
-        currentColor.lerpColors(inactiveColor, activeColor, 0.18 + activation * 0.82);
-        beadRef.current.setColorAt(index, currentColor);
-      }
-      beadRef.current.instanceMatrix.needsUpdate = true;
-      if (beadRef.current.instanceColor) beadRef.current.instanceColor.needsUpdate = true;
-    }
-    if (!pulseRef.current) return;
-    APPROACH_SIGNAL.getPoint(reveal, pulsePosition);
-    pulseRef.current.position.copy(pulsePosition);
-    pulseRef.current.visible = reveal > 0.01 && reveal < 0.82;
-    if (rootRef.current) {
-      const departure = smooth(range(progressRef.current, 0.058, 0.098));
-      rootRef.current.visible = departure < 0.995;
-      rootRef.current.position.y = -18 * departure;
-    }
-  });
-
-  return (
-    <group ref={rootRef}>
-      <instancedMesh
-        ref={beadRef}
-        args={[beadGeometry, beadMaterial, beadCount]}
-        frustumCulled={false}
-      />
-      <mesh ref={pulseRef} visible={false}>
-        <sphereGeometry args={[0.105, 16, 10]} />
-        <meshStandardMaterial color="#9de6e1" emissive="#72d9d6" emissiveIntensity={4.8} roughness={0.14} />
-      </mesh>
-    </group>
-  );
 }
 
 function DescentLayers({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>) {
@@ -926,6 +880,57 @@ function PostEffects({ qualityTier }: Pick<MacroFlowSceneProps, 'qualityTier'>) 
   );
 }
 
+function WorldLookdevRig({
+  qualityTier,
+  showThreshold,
+  showNexus,
+}: Readonly<{
+  qualityTier: QualityTier;
+  showThreshold: boolean;
+  showNexus: boolean;
+}>) {
+  if (qualityTier !== 'cinematic' || (!showThreshold && !showNexus)) return null;
+
+  return (
+    <Environment resolution={128} frames={1} background={false} environmentIntensity={0.82}>
+      <group rotation={[0, showThreshold ? -0.28 : 0.18, 0]}>
+        <Lightformer
+          form="rect"
+          color={showThreshold ? '#c9d5d0' : '#8fe0dc'}
+          intensity={showThreshold ? 3.2 : 4.2}
+          position={[-7, 8, -5]}
+          rotation={[0, 0.62, 0]}
+          scale={[7, 3.5, 1]}
+        />
+        <Lightformer
+          form="rect"
+          color={showThreshold ? '#b86b45' : '#d5b263'}
+          intensity={showThreshold ? 4.6 : 3.4}
+          position={[8, 1.5, 2]}
+          rotation={[0, -1.1, 0]}
+          scale={[3.5, 6.5, 1]}
+        />
+        <Lightformer
+          form="ring"
+          color={showThreshold ? '#f1e3bd' : '#74d9d5'}
+          intensity={2.2}
+          position={[0, 9, -12]}
+          rotation={[Math.PI / 2, 0, 0]}
+          scale={3.5}
+        />
+        <Lightformer
+          form="rect"
+          color="#171e1d"
+          intensity={1.1}
+          position={[0, -5, 3]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          scale={[12, 8, 1]}
+        />
+      </group>
+    </Environment>
+  );
+}
+
 function RenderBudgetMonitor() {
   const gl = useThree((state) => state.gl);
   const frameRef = useRef(0);
@@ -942,9 +947,8 @@ function RenderBudgetMonitor() {
   useFrame(() => {
     frameRef.current += 1;
     gl.info.reset();
-    const shouldSample = frameRef.current % 12 === 0;
+    if (frameRef.current % 12 !== 0) return;
     queueMicrotask(() => {
-      if (!shouldSample) return;
       const root = document.querySelector<HTMLElement>('.mf-lab');
       if (!root) return;
       root.dataset.renderCalls = String(gl.info.render.calls);
@@ -991,11 +995,93 @@ function BuriedTransitionLight({
   return <pointLight ref={lightRef} position={[0, 4, -120]} intensity={0} distance={28} color="#d88538" />;
 }
 
-const THRESHOLD_CHAPTERS = new Set<JourneyChapter>(['threshold', 'field']);
 const NEXUS_CHAPTERS = new Set<JourneyChapter>(['field', 'lens', 'proof']);
 const SCHOOL_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
 const SCHOOL_CAMERA_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
 const BURIED_CHAPTERS = new Set<JourneyChapter>(['descent', 'lamp', 'build', 'infect']);
+const FIRST_ACT_HANDOFF_CHAPTERS = new Set<JourneyChapter>(['threshold', 'field', 'lens']);
+const THRESHOLD_HANDOFF_END = 0.074;
+const IDENTITY_HANDOFF_END = 0.142;
+const CONTINUITY_HANDOFF_END = 0.142;
+
+type FirstActPresence = {
+  threshold: boolean;
+  identity: boolean;
+  continuity: boolean;
+};
+
+function resolveFirstActPresence(
+  activeChapter: JourneyChapter,
+  progress: number,
+  compact: boolean,
+): FirstActPresence {
+  const carriesThresholdArtifacts = FIRST_ACT_HANDOFF_CHAPTERS.has(activeChapter);
+  const lensOwnsCompactFrame = compact && activeChapter === 'lens';
+  return {
+    threshold: activeChapter === 'threshold'
+      || (activeChapter === 'field' && progress < THRESHOLD_HANDOFF_END),
+    identity: carriesThresholdArtifacts
+      && !lensOwnsCompactFrame
+      && progress < IDENTITY_HANDOFF_END,
+    continuity: carriesThresholdArtifacts
+      && !lensOwnsCompactFrame
+      && progress < CONTINUITY_HANDOFF_END,
+  };
+}
+
+function sameFirstActPresence(left: FirstActPresence, right: FirstActPresence) {
+  return left.threshold === right.threshold
+    && left.identity === right.identity
+    && left.continuity === right.continuity;
+}
+
+function useFirstActLifecycle(
+  activeChapter: JourneyChapter,
+  progressRef: MutableRefObject<number>,
+  compact: boolean,
+) {
+  const [presence, setPresence] = useState<FirstActPresence>(() => (
+    resolveFirstActPresence(activeChapter, progressRef.current, compact)
+  ));
+  const presenceRef = useRef(presence);
+  const thresholdGroupRef = useRef<THREE.Group>(null);
+  const identityGroupRef = useRef<THREE.Group>(null);
+  const continuityGroupRef = useRef<THREE.Group>(null);
+
+  const commitPresence = useCallback((next: FirstActPresence) => {
+    const current = presenceRef.current;
+    if (sameFirstActPresence(current, next)) return;
+
+    if (current.threshold && !next.threshold && thresholdGroupRef.current) {
+      thresholdGroupRef.current.visible = false;
+    }
+    if (current.identity && !next.identity && identityGroupRef.current) {
+      identityGroupRef.current.visible = false;
+    }
+    if (current.continuity && !next.continuity && continuityGroupRef.current) {
+      continuityGroupRef.current.visible = false;
+    }
+
+    presenceRef.current = next;
+    setPresence(next);
+  }, []);
+
+  useLayoutEffect(() => {
+    commitPresence(resolveFirstActPresence(activeChapter, progressRef.current, compact));
+  }, [activeChapter, commitPresence, compact, progressRef]);
+
+  useFrame(() => {
+    if (!FIRST_ACT_HANDOFF_CHAPTERS.has(activeChapter)) return;
+    commitPresence(resolveFirstActPresence(activeChapter, progressRef.current, compact));
+  });
+
+  return {
+    presence,
+    thresholdGroupRef,
+    identityGroupRef,
+    continuityGroupRef,
+  };
+}
 
 type WorldProps = MacroFlowSceneProps & {
   authoredCameraCurves: VerticalSliceCameraCurves;
@@ -1026,10 +1112,14 @@ function World({
   buriedCameraCurve,
   onBuriedPixelHandoffRendered,
 }: WorldProps) {
-  const showThreshold = THRESHOLD_CHAPTERS.has(activeChapter);
+  const compact = useThree((state) => state.size.width <= 820);
+  const firstAct = useFirstActLifecycle(activeChapter, progressRef, compact);
+  const showThreshold = firstAct.presence.threshold;
   const showNexus = NEXUS_CHAPTERS.has(activeChapter);
   const showSchool = SCHOOL_CHAPTERS.has(activeChapter);
   const showBuried = BURIED_CHAPTERS.has(activeChapter);
+  const showHemisphere = !(showNexus && (compact || showThreshold));
+  const showNexusAccent = showNexus && (!showThreshold || compact);
 
   return (
     <>
@@ -1040,15 +1130,22 @@ function World({
         qualityTier={qualityTier}
         reducedMotion={reducedMotion}
       />
-      <hemisphereLight
-        intensity={showBuried ? 0.16 : showThreshold ? 0.62 : 0.38}
-        color={showBuried ? '#b8ac98' : showThreshold ? '#b8cecd' : '#b9cfcd'}
-        groundColor={showBuried ? '#130f0d' : showThreshold ? '#263029' : '#191b17'}
+      <WorldLookdevRig
+        qualityTier={qualityTier}
+        showThreshold={showThreshold}
+        showNexus={showNexus}
       />
+      {showHemisphere ? (
+        <hemisphereLight
+          intensity={showBuried ? 0.16 : showThreshold ? (compact ? 0.5 : 0.38) : 0.38}
+          color={showBuried ? '#b8ac98' : showThreshold ? '#b8cecd' : '#b9cfcd'}
+          groundColor={showBuried ? '#130f0d' : showThreshold ? '#263029' : '#191b17'}
+        />
+      ) : null}
       <directionalLight
-        castShadow={qualityTier === 'cinematic' && !showBuried}
-        position={showThreshold ? [-12, 19, 24] : [10, 18, 18]}
-        intensity={showBuried ? 0.58 : showThreshold ? 2.15 : 1.75}
+        castShadow={qualityTier === 'cinematic' && !showBuried && !showThreshold && !showNexus}
+        position={showThreshold ? [-18, 13, 10] : [10, 18, 18]}
+        intensity={showBuried ? 0.58 : showThreshold ? (compact ? 1.9 : 1.68) : 1.75}
         color={showBuried ? '#bbae98' : showThreshold ? '#d7e1dc' : '#dae3d9'}
         shadow-mapSize-width={qualityTier === 'cinematic' ? 1536 : 512}
         shadow-mapSize-height={qualityTier === 'cinematic' ? 1536 : 512}
@@ -1061,22 +1158,13 @@ function World({
         shadow-bias={-0.00035}
         shadow-normalBias={0.055}
       />
-      {showThreshold ? (
-        <directionalLight position={[14, 10, 28]} intensity={0.52} color="#789e9e" />
-      ) : null}
-      {showThreshold ? (
-        <>
-          <pointLight position={[-7, 7.5, 22]} intensity={20} distance={28} color="#c5a06e" />
-          <pointLight position={[0, 4.9, 15.5]} intensity={16} distance={18} color="#cf8251" />
-          <pointLight position={[-2.4, 10.8, 21]} intensity={13} distance={17} color="#abc3c0" />
-        </>
-      ) : null}
-      {showNexus ? (
-        <>
-          <pointLight position={[-3, 5.2, 1]} intensity={42} distance={28} color="#72d9d6" />
-          <pointLight position={[3, 4.4, -13]} intensity={34} distance={27} color="#d0ad68" />
-          <pointLight position={[0, 5, -33]} intensity={36} distance={24} color="#6fd8d6" />
-        </>
+      {showNexusAccent ? (
+        <pointLight
+          position={compact ? [0, 4.2, -8] : [-1, 5, -11]}
+          intensity={compact ? 26 : 38}
+          distance={compact ? 22 : 36}
+          color="#72d9d6"
+        />
       ) : null}
       {showSchool ? (
         <SchoolTransitionLights handoffProgressRef={descentHandoffProgressRef} />
@@ -1098,33 +1186,57 @@ function World({
         buriedCameraCurve={buriedCameraCurve}
       />
       <RenderBudgetMonitor />
-      <SystemContinuityRig
-        progressRef={progressRef}
-        qualityTier={qualityTier}
-        reducedMotion={reducedMotion}
-      />
-      {showThreshold ? (
-        <>
-          <FirstLightCitadel progressRef={progressRef} qualityTier={qualityTier} />
-          <FirstLightLayer
+      {firstAct.presence.continuity ? (
+        <group ref={firstAct.continuityGroupRef} visible>
+          <SystemContinuityRig
             progressRef={progressRef}
             qualityTier={qualityTier}
             reducedMotion={reducedMotion}
           />
-          <CarpathianThreshold progressRef={progressRef} qualityTier={qualityTier} reducedMotion={reducedMotion} />
-          <ApproachSignal progressRef={progressRef} />
-        </>
+        </group>
+      ) : null}
+      {showThreshold ? (
+        <group ref={firstAct.thresholdGroupRef} visible>
+          <FirstLightCitadel progressRef={progressRef} qualityTier={qualityTier} />
+          {!compact ? (
+            <FirstLightLayer
+              progressRef={progressRef}
+              qualityTier={qualityTier}
+              reducedMotion={reducedMotion}
+            />
+          ) : null}
+          {!compact || activeChapter === 'threshold' ? (
+            <CarpathianThreshold
+              progressRef={progressRef}
+              qualityTier={qualityTier}
+              reducedMotion={reducedMotion}
+              realtimeLightEnabled
+            />
+          ) : null}
+        </group>
+      ) : null}
+      {firstAct.presence.identity ? (
+        <group ref={firstAct.identityGroupRef} visible>
+          <CitadelIdentitySequence
+            progressRef={progressRef}
+            qualityTier={qualityTier}
+            reducedMotion={reducedMotion}
+          />
+        </group>
       ) : null}
       {showNexus ? (
-        <NexusActScene
-          progressRef={progressRef}
-          lensMode={lensMode}
-          lensPointerRef={lensPointerRef}
-          nexusFlightInputRef={nexusFlightInputRef}
-          collectedEvidenceCores={collectedEvidenceCores}
-          onCollectEvidenceCore={onCollectEvidenceCore}
-          qualityTier={qualityTier}
-        />
+        <group visible>
+          <NexusActScene
+            progressRef={progressRef}
+            lensMode={lensMode}
+            lensPointerRef={lensPointerRef}
+            nexusFlightInputRef={nexusFlightInputRef}
+            collectedEvidenceCores={collectedEvidenceCores}
+            onCollectEvidenceCore={onCollectEvidenceCore}
+            qualityTier={qualityTier}
+            compactLens={compact && activeChapter === 'lens'}
+          />
+        </group>
       ) : null}
       {showSchool ? (
         <SchoolActPackage
@@ -1158,7 +1270,7 @@ function World({
         <planeGeometry args={[36, 190]} />
         <meshStandardMaterial color="#101516" roughness={0.98} />
       </mesh>
-      <PostEffects qualityTier={qualityTier} />
+      {!compact ? <PostEffects qualityTier={qualityTier} /> : null}
     </>
   );
 }
@@ -1267,7 +1379,7 @@ export function MacroFlowScene(props: MacroFlowSceneProps) {
         gl={{ antialias: props.qualityTier !== 'cinematic', alpha: false, powerPreference: 'high-performance' }}
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
-          gl.toneMappingExposure = 0.78;
+          gl.toneMappingExposure = 0.86;
           gl.outputColorSpace = THREE.SRGBColorSpace;
         }}
         fallback={<VerticalSliceLoader unavailable />}

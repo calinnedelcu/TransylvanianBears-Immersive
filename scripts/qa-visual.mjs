@@ -4,15 +4,15 @@ import { chromium } from 'playwright';
 
 const baseUrl = process.env.QA_BASE_URL ?? 'http://127.0.0.1:4176';
 const outputDir = resolve(process.env.QA_OUTPUT_DIR ?? '/tmp/transylvanian-bears-qa');
-const errors = [];
+const errors = new Set();
 
 await mkdir(outputDir, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 
 function collectErrors(page, scope) {
-  page.on('pageerror', (error) => errors.push(`${scope}: pageerror: ${error.message}`));
+  page.on('pageerror', (error) => errors.add(`${scope}: pageerror: ${error.message}`));
   page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(`${scope}: console: ${message.text()}`);
+    if (message.type() === 'error') errors.add(`${scope}: console: ${message.text()}`);
   });
 }
 
@@ -21,7 +21,10 @@ async function waitForWorld(page) {
     const root = document.querySelector('.mf-lab');
     const world = document.querySelector('.mf-world');
     const loadingGate = world
-      ? Array.from(world.children).some((element) => element.classList.contains('mf-cinematic-loader'))
+      ? Array.from(world.children).some((element) => (
+          element.classList.contains('mf-cinematic-loader')
+          || element.classList.contains('mf-identity-loader')
+        ))
       : true;
     return !loadingGate
       && root?.getAttribute('data-camera-curves') === '4'
@@ -88,11 +91,30 @@ try {
   await waitForWorld(mobile);
   files.push(await capture(mobile, '09-opening-mobile'));
   await placeSectionTop(mobile, '#mf-lens', 0.45);
-  files.push(await capture(mobile, '10-nexus-mobile'));
+  await mobile.waitForTimeout(420);
+  files.push(await capture(mobile, '10-nexus-raw-mobile'));
+  await mobile.getByRole('button', { name: 'Segmentation Clasele devin suprafețe' }).click();
+  await mobile.waitForTimeout(220);
+  files.push(await capture(mobile, '11-nexus-segmentation-mobile'));
+  await mobile.getByRole('button', { name: 'Detection Semnalele devin limite' }).click();
+  await mobile.waitForTimeout(220);
+  files.push(await capture(mobile, '12-nexus-detection-mobile'));
+
+  await placeSectionTop(mobile, '#mf-proof', 0.5);
+  files.push(await capture(mobile, '13-proof-handoff-mobile'));
+  await placeSectionTop(mobile, '#mf-proof', 0);
+  files.push(await capture(mobile, '14-proof-detection-mobile'));
+  await mobile.getByRole('button', { name: 'Segmentare Export sintetic autentic' }).click();
+  await mobile.waitForTimeout(220);
+  files.push(await capture(mobile, '15-proof-segmentation-mobile'));
+  await mobile.getByRole('button', { name: 'Validare Cadru real autentic' }).click();
+  await mobile.waitForTimeout(220);
+  files.push(await capture(mobile, '16-proof-validation-mobile'));
   await mobile.close();
 } finally {
   await browser.close();
 }
 
-console.log(JSON.stringify({ outputDir, files, errors }, null, 2));
-if (errors.length > 0) process.exitCode = 1;
+const uniqueErrors = [...errors];
+console.log(JSON.stringify({ outputDir, files, errors: uniqueErrors }, null, 2));
+if (uniqueErrors.length > 0) process.exitCode = 1;

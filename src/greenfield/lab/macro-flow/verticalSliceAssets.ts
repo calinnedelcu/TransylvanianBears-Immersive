@@ -360,12 +360,12 @@ export const VERTICAL_SLICE_ASSETS = {
     stage: 'proxy',
     mimeType: 'model/gltf-binary',
     codec: 'meshopt-glb',
-    maxTransferBytes: 2.15 * MIB,
+    maxTransferBytes: 1.65 * MIB,
     fallbacks: [
-      { kind: 'url', url: '/assets/world/first-light-citadel.glb', mimeType: 'model/gltf-binary', codec: 'meshopt-glb' },
+      { kind: 'url', url: '/assets/world/first-light-citadel.desktop.glb', mimeType: 'model/gltf-binary', codec: 'meshopt-glb' },
       { kind: 'runtime', id: 'procedural-threshold' },
     ],
-    sourceRef: 'production/blender/vertical-slice/vs01_threshold.blend',
+    sourceRef: 'scripts/build-first-light-mobile.mjs',
   },
   thresholdSceneMobile: {
     id: 'vs01.scene.mobile',
@@ -378,10 +378,10 @@ export const VERTICAL_SLICE_ASSETS = {
     codec: 'meshopt-glb',
     maxTransferBytes: 1.02 * MIB,
     fallbacks: [
-      { kind: 'url', url: '/assets/world/first-light-citadel.glb', mimeType: 'model/gltf-binary', codec: 'meshopt-glb' },
+      { kind: 'url', url: '/assets/world/first-light-citadel.mobile.glb', mimeType: 'model/gltf-binary', codec: 'meshopt-glb' },
       { kind: 'runtime', id: 'procedural-threshold' },
     ],
-    sourceRef: 'production/blender/vertical-slice/vs01_threshold.blend',
+    sourceRef: 'scripts/build-first-light-mobile.mjs',
   },
   thresholdCameraDesktop: {
     id: 'vs01.camera.desktop',

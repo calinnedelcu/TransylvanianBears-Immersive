@@ -49,7 +49,15 @@ type LensTuning = {
   root: number;
   filterFrequency: number;
   pulseRate: number;
+  pulseDepth: number;
   evidenceRatio: number;
+  partials: readonly [number, number, number];
+  oscillatorLevels: readonly [number, number, number];
+  dataFrequency: number;
+  dataLevel: number;
+  cueNotes: readonly [number, number, number];
+  cueDuration: number;
+  cueScanFrequency: number;
 };
 
 type SoundGraph = {
@@ -61,11 +69,17 @@ type SoundGraph = {
   citadelPan: StereoPannerNode;
   thresholdFilter: BiquadFilterNode;
   thresholdPulse: OscillatorNode;
+  thresholdPulseDepth: GainNode;
   nexusFilter: BiquadFilterNode;
+  nexusNoiseFilter: BiquadFilterNode;
+  nexusNoiseLevel: GainNode;
   nexusPanner: PannerNode;
   nexusPulse: OscillatorNode;
+  nexusPulseDepth: GainNode;
   nexusOscillators: OscillatorNode[];
+  nexusOscillatorLevels: GainNode[];
   evidenceFilter: BiquadFilterNode;
+  evidenceNoiseFilter: BiquadFilterNode;
   evidenceOscillators: OscillatorNode[];
   noiseBuffers: Record<NoiseColor, AudioBuffer>;
   continuousSources: AudioScheduledSourceNode[];
@@ -84,7 +98,7 @@ const DEFAULT_STEM_LEVELS: Record<VerticalSliceStem, number> = {
 };
 
 const DEFAULT_CUE_POSITIONS: Record<VerticalSliceCue, VerticalSliceSoundPosition> = {
-  'threshold-open': { x: -1.4, y: 0.1, z: -2.8 },
+  'threshold-open': { x: 0, y: 0.1, z: -2.8 },
   'lens-lock': { x: 0.9, y: 0.35, z: -1.7 },
   'evidence-reveal': { x: 0, y: 0.2, z: -1.3 },
 };
@@ -92,23 +106,50 @@ const DEFAULT_CUE_POSITIONS: Record<VerticalSliceCue, VerticalSliceSoundPosition
 const LENS_TUNING: Record<VerticalSliceLensMode, LensTuning> = {
   raw: {
     root: 49,
-    filterFrequency: 480,
-    pulseRate: 0.11,
+    filterFrequency: 520,
+    pulseRate: 0.105,
+    pulseDepth: 0.034,
     evidenceRatio: 1,
+    partials: [1, 1.5, 2.01],
+    oscillatorLevels: [0.125, 0.035, 0.016],
+    dataFrequency: 960,
+    dataLevel: 0.028,
+    cueNotes: [4, 6, 8],
+    cueDuration: 0.62,
+    cueScanFrequency: 1120,
   },
   segmentation: {
     root: 55,
-    filterFrequency: 760,
-    pulseRate: 0.17,
+    filterFrequency: 880,
+    pulseRate: 0.165,
+    pulseDepth: 0.052,
     evidenceRatio: 1.125,
+    partials: [1, 1.6, 2.25],
+    oscillatorLevels: [0.1, 0.05, 0.026],
+    dataFrequency: 1720,
+    dataLevel: 0.048,
+    cueNotes: [6, 8, 10],
+    cueDuration: 0.68,
+    cueScanFrequency: 2100,
   },
   detection: {
     root: 61.74,
-    filterFrequency: 1040,
+    filterFrequency: 1260,
     pulseRate: 0.24,
+    pulseDepth: 0.07,
     evidenceRatio: 1.25,
+    partials: [1, 1.75, 2.5],
+    oscillatorLevels: [0.082, 0.046, 0.034],
+    dataFrequency: 2780,
+    dataLevel: 0.066,
+    cueNotes: [8, 12, 16],
+    cueDuration: 0.54,
+    cueScanFrequency: 3200,
   },
 };
+
+const LOCK_SEQUENCE_FREQUENCIES = [146.83, 164.81, 174.61, 196, 220, 246.94, 293.66] as const;
+const LOCK_SEQUENCE_TIMES = [0, 0.085, 0.18, 0.29, 0.415, 0.55, 0.7] as const;
 
 const NOISE_SEEDS: Record<NoiseColor, number> = {
   wind: 0x02f6e2b1,
@@ -452,8 +493,13 @@ export class VerticalSliceSoundscape {
     }
 
     const cueBus = trackNode(context.createGain());
-    cueBus.gain.value = 0.78;
+    cueBus.gain.value = 0.72;
     cueBus.connect(master);
+    const cueSpace = trackNode(context.createConvolver());
+    cueSpace.buffer = this.createStoneImpulse(context, 1.65);
+    const cueSpaceLevel = trackNode(context.createGain());
+    cueSpaceLevel.gain.value = 0.17;
+    cueBus.connect(cueSpace).connect(cueSpaceLevel).connect(master);
 
     const noiseBuffers: Record<NoiseColor, AudioBuffer> = {
       wind: this.createNoiseBuffer(context, 4.7, 'wind'),
@@ -537,17 +583,17 @@ export class VerticalSliceSoundscape {
     // Nexus: a spatial low drone with lens-dependent harmonics and data air.
     const nexusBody = trackNode(context.createGain());
     nexusBody.gain.value = 0.64;
-    const nexusOscillatorLevels = [0.12, 0.047, 0.026];
     const nexusOscillatorTypes: OscillatorType[] = ['triangle', 'sine', 'sine'];
-    const nexusRatios = [1, 1.5, 2.01];
-    const nexusOscillators = nexusRatios.map((ratio, index) => {
+    const nexusOscillatorLevels: GainNode[] = [];
+    const nexusOscillators = LENS_TUNING.raw.partials.map((ratio, index) => {
       const oscillator = trackSource(context.createOscillator());
       oscillator.type = nexusOscillatorTypes[index];
       oscillator.frequency.value = LENS_TUNING.raw.root * ratio;
       oscillator.detune.value = index === 1 ? 6 : index === 2 ? -8 : 0;
       const level = trackNode(context.createGain());
-      level.gain.value = nexusOscillatorLevels[index];
+      level.gain.value = LENS_TUNING.raw.oscillatorLevels[index];
       oscillator.connect(level).connect(nexusBody);
+      nexusOscillatorLevels.push(level);
       return oscillator;
     });
 
@@ -557,17 +603,17 @@ export class VerticalSliceSoundscape {
     nexusNoise.playbackRate.value = 0.73;
     const nexusNoiseFilter = trackNode(context.createBiquadFilter());
     nexusNoiseFilter.type = 'bandpass';
-    nexusNoiseFilter.frequency.value = 1180;
+    nexusNoiseFilter.frequency.value = LENS_TUNING.raw.dataFrequency;
     nexusNoiseFilter.Q.value = 1.2;
     const nexusNoiseLevel = trackNode(context.createGain());
-    nexusNoiseLevel.gain.value = 0.045;
+    nexusNoiseLevel.gain.value = LENS_TUNING.raw.dataLevel;
     nexusNoise.connect(nexusNoiseFilter).connect(nexusNoiseLevel).connect(nexusBody);
 
     const nexusPulse = trackSource(context.createOscillator());
     nexusPulse.type = 'sine';
     nexusPulse.frequency.value = LENS_TUNING.raw.pulseRate;
     const nexusPulseDepth = trackNode(context.createGain());
-    nexusPulseDepth.gain.value = 0.055;
+    nexusPulseDepth.gain.value = LENS_TUNING.raw.pulseDepth;
     nexusPulse.connect(nexusPulseDepth).connect(nexusBody.gain);
 
     const nexusFilter = trackNode(context.createBiquadFilter());
@@ -626,11 +672,17 @@ export class VerticalSliceSoundscape {
       citadelPan,
       thresholdFilter,
       thresholdPulse,
+      thresholdPulseDepth,
       nexusFilter,
+      nexusNoiseFilter,
+      nexusNoiseLevel,
       nexusPanner,
       nexusPulse,
+      nexusPulseDepth,
       nexusOscillators,
+      nexusOscillatorLevels,
       evidenceFilter,
+      evidenceNoiseFilter,
       evidenceOscillators,
       noiseBuffers,
       continuousSources,
@@ -646,12 +698,20 @@ export class VerticalSliceSoundscape {
     const movement = smoothstep(0.025, 0.9, speed);
     const tuning = LENS_TUNING[lensMode];
 
-    const citadelWeight = mix(1, 0.16, smoothstep(0.12, 0.43, progress));
-    const thresholdWeight = smoothstep(0.015, 0.1, progress)
-      * (1 - smoothstep(0.24, 0.37, progress));
-    const nexusWeight = smoothstep(0.2, 0.34, progress)
-      * mix(1, 0.35, smoothstep(0.78, 0.93, progress));
-    const evidenceWeight = smoothstep(0.7, 0.83, progress);
+    // The four chapters form one score: mountain air recedes into the lock,
+    // the lock releases into the corridor, and the corridor resolves on paper.
+    const approach = smoothstep(0.015, 0.235, progress);
+    const lockPressure = smoothstep(0.075, 0.225, progress)
+      * (1 - smoothstep(0.3, 0.46, progress));
+    const thresholdCrossing = smoothstep(0.22, 0.4, progress);
+    const corridorArrival = smoothstep(0.225, 0.37, progress);
+    const lensArrival = smoothstep(0.46, 0.62, progress);
+    const proofArrival = smoothstep(0.7, 0.84, progress);
+
+    const citadelWeight = mix(1, 0.14, smoothstep(0.18, 0.39, progress));
+    const thresholdWeight = lockPressure;
+    const nexusWeight = corridorArrival * mix(1, 0.54, proofArrival);
+    const evidenceWeight = proofArrival;
 
     moveParameter(
       this.graph.stems.citadel.gain,
@@ -684,36 +744,43 @@ export class VerticalSliceSoundscape {
 
     moveParameter(
       this.graph.citadelFilter.frequency,
-      420 + progress * 290 + movement * 720,
+      350 + approach * 330 + movement * 620,
       now,
       0.14,
       immediate,
     );
     moveParameter(
       this.graph.citadelPan.pan,
-      -0.14 + Math.sin(progress * Math.PI * 2) * 0.09,
+      mix(-0.18, 0.025, approach) + Math.sin(progress * Math.PI * 2) * 0.035,
       now,
       0.22,
       immediate,
     );
     moveParameter(
       this.graph.thresholdFilter.frequency,
-      105 + thresholdWeight * 95 + movement * 230,
+      108 + lockPressure * 155 + thresholdCrossing * 54 + movement * 190,
       now,
       0.12,
       immediate,
     );
     moveParameter(
       this.graph.thresholdPulse.frequency,
-      0.085 + thresholdWeight * 0.08,
+      0.072 + lockPressure * 0.105,
       now,
       0.2,
+      immediate,
+    );
+    moveParameter(
+      this.graph.thresholdPulseDepth.gain,
+      0.026 + lockPressure * 0.068,
+      now,
+      0.16,
       immediate,
     );
 
     moveParameter(
       this.graph.nexusFilter.frequency,
-      tuning.filterFrequency + movement * 340,
+      tuning.filterFrequency + lensArrival * 120 + movement * 300,
       now,
       0.17,
       immediate,
@@ -725,35 +792,63 @@ export class VerticalSliceSoundscape {
       0.22,
       immediate,
     );
-    const nexusRatios = [1, 1.5, 2.01];
+    const nexusOscillatorLevels = this.graph.nexusOscillatorLevels;
     this.graph.nexusOscillators.forEach((oscillator, index) => {
       moveParameter(
         oscillator.frequency,
-        tuning.root * nexusRatios[index],
+        tuning.root * tuning.partials[index],
         now,
-        0.24,
+        0.2,
+        immediate,
+      );
+      moveParameter(
+        nexusOscillatorLevels[index].gain,
+        tuning.oscillatorLevels[index] * mix(0.88, 1, lensArrival),
+        now,
+        0.18,
         immediate,
       );
     });
+    moveParameter(
+      this.graph.nexusNoiseFilter.frequency,
+      tuning.dataFrequency + movement * 420,
+      now,
+      0.13,
+      immediate,
+    );
+    moveParameter(
+      this.graph.nexusNoiseLevel.gain,
+      tuning.dataLevel * (0.72 + lensArrival * 0.28 + movement * 0.1),
+      now,
+      0.15,
+      immediate,
+    );
+    moveParameter(
+      this.graph.nexusPulseDepth.gain,
+      tuning.pulseDepth * (0.72 + corridorArrival * 0.28),
+      now,
+      0.18,
+      immediate,
+    );
 
-    const nexusTravel = clamp01((progress - 0.2) / 0.62);
+    const nexusTravel = clamp01((progress - 0.22) / 0.6);
     moveParameter(
       this.graph.nexusPanner.positionX,
-      Math.sin(nexusTravel * Math.PI * 1.65) * 1.8,
+      mix(-1.3, 0.9, nexusTravel) + Math.sin(nexusTravel * Math.PI) * 0.28,
       now,
       0.15,
       immediate,
     );
     moveParameter(
       this.graph.nexusPanner.positionY,
-      0.35 + Math.sin(nexusTravel * Math.PI) * 0.55,
+      0.28 + Math.sin(nexusTravel * Math.PI) * 0.34,
       now,
       0.18,
       immediate,
     );
     moveParameter(
       this.graph.nexusPanner.positionZ,
-      -2.8 + Math.cos(nexusTravel * Math.PI) * 0.85,
+      mix(-3.35, -1.75, nexusTravel),
       now,
       0.18,
       immediate,
@@ -766,6 +861,13 @@ export class VerticalSliceSoundscape {
       0.26,
       immediate,
     );
+    moveParameter(
+      this.graph.evidenceNoiseFilter.frequency,
+      2180 + evidenceWeight * 420 + (tuning.evidenceRatio - 1) * 980,
+      now,
+      0.24,
+      immediate,
+    );
     const evidenceFrequencies = [196, 293.66];
     this.graph.evidenceOscillators.forEach((oscillator, index) => {
       moveParameter(
@@ -776,6 +878,35 @@ export class VerticalSliceSoundscape {
         immediate,
       );
     });
+  }
+
+  private createStoneImpulse(context: AudioContext, seconds: number) {
+    const length = Math.max(2, Math.floor(context.sampleRate * seconds));
+    const buffer = context.createBuffer(2, length, context.sampleRate);
+
+    for (let channelIndex = 0; channelIndex < buffer.numberOfChannels; channelIndex += 1) {
+      const channel = buffer.getChannelData(channelIndex);
+      let seed = (NOISE_SEEDS.mechanical ^ (channelIndex * 0x45d9f3b)) >>> 0;
+      let low = 0;
+      for (let index = 0; index < length; index += 1) {
+        seed = (seed * 1664525 + 1013904223) >>> 0;
+        const white = (seed / 0xffffffff) * 2 - 1;
+        low = low * 0.86 + white * 0.14;
+        const air = white - low;
+        const remaining = 1 - index / (length - 1);
+        channel[index] = air * Math.pow(remaining, 2.75) * 0.34;
+      }
+
+      const reflectionTimes = [0.041, 0.073, 0.127, 0.211];
+      const reflectionLevels = [0.48, -0.31, 0.2, -0.12];
+      reflectionTimes.forEach((time, index) => {
+        const sample = Math.min(length - 1, Math.floor(time * context.sampleRate));
+        const stereoTrim = channelIndex === 0 ? 1 : 0.88 + index * 0.025;
+        channel[sample] = clamp(channel[sample] + reflectionLevels[index] * stereoTrim, -1, 1);
+      });
+    }
+
+    return buffer;
   }
 
   private createNoiseBuffer(context: AudioContext, seconds: number, color: NoiseColor) {
@@ -832,10 +963,12 @@ export class VerticalSliceSoundscape {
     const context = this.context!;
     const graph = this.graph!;
     const now = context.currentTime + 0.012;
-    const end = now + 1.45;
+    const releaseTime = now + 0.76;
+    const end = now + 1.92;
     const voice = context.createGain();
     voice.gain.setValueAtTime(MIN_GAIN, now);
-    voice.gain.exponentialRampToValueAtTime(0.105, now + 0.035);
+    voice.gain.exponentialRampToValueAtTime(0.086, now + 0.025);
+    voice.gain.setValueAtTime(0.082, releaseTime + 0.38);
     voice.gain.exponentialRampToValueAtTime(MIN_GAIN, end);
     const panner = context.createPanner();
     this.configurePanner(panner, position);
@@ -843,28 +976,50 @@ export class VerticalSliceSoundscape {
 
     const low = context.createOscillator();
     low.type = 'triangle';
-    low.frequency.setValueAtTime(51, now);
-    low.frequency.exponentialRampToValueAtTime(38, end);
+    low.frequency.setValueAtTime(55, now);
+    low.frequency.exponentialRampToValueAtTime(49, releaseTime);
+    low.frequency.exponentialRampToValueAtTime(36.71, end);
     const lowLevel = context.createGain();
-    lowLevel.gain.value = 0.58;
+    lowLevel.gain.setValueAtTime(MIN_GAIN, now);
+    lowLevel.gain.setValueAtTime(MIN_GAIN, releaseTime - 0.018);
+    lowLevel.gain.exponentialRampToValueAtTime(0.72, releaseTime + 0.055);
+    lowLevel.gain.exponentialRampToValueAtTime(0.46, releaseTime + 0.34);
+    lowLevel.gain.exponentialRampToValueAtTime(MIN_GAIN, end);
     low.connect(lowLevel).connect(voice);
 
     const metal = context.createOscillator();
-    metal.type = 'sine';
-    metal.frequency.setValueAtTime(196, now);
-    metal.frequency.exponentialRampToValueAtTime(146.83, end);
+    metal.type = 'triangle';
+    metal.frequency.setValueAtTime(LOCK_SEQUENCE_FREQUENCIES[0], now);
     const metalLevel = context.createGain();
-    metalLevel.gain.value = 0.095;
+    metalLevel.gain.setValueAtTime(MIN_GAIN, now);
+    LOCK_SEQUENCE_TIMES.forEach((offset, index) => {
+      const strike = now + offset;
+      metal.frequency.setValueAtTime(LOCK_SEQUENCE_FREQUENCIES[index], strike);
+      metalLevel.gain.setValueAtTime(MIN_GAIN, strike);
+      metalLevel.gain.linearRampToValueAtTime(0.44 + index * 0.035, strike + 0.008);
+      metalLevel.gain.exponentialRampToValueAtTime(MIN_GAIN, strike + 0.064);
+      panner.positionX.setValueAtTime(
+        clamp(position.x + mix(-1.25, 1.25, index / 6), -8, 8),
+        strike,
+      );
+    });
+    panner.positionX.linearRampToValueAtTime(clamp(position.x, -8, 8), releaseTime + 0.22);
     metal.connect(metalLevel).connect(voice);
 
     const friction = context.createBufferSource();
     friction.buffer = graph.noiseBuffers.mechanical;
-    friction.playbackRate.value = 0.72;
+    friction.playbackRate.value = 0.66;
     const frictionFilter = context.createBiquadFilter();
     frictionFilter.type = 'lowpass';
-    frictionFilter.frequency.value = 310;
+    frictionFilter.frequency.setValueAtTime(170, now);
+    frictionFilter.frequency.setValueAtTime(210, releaseTime - 0.02);
+    frictionFilter.frequency.exponentialRampToValueAtTime(720, releaseTime + 0.24);
+    frictionFilter.frequency.exponentialRampToValueAtTime(190, end);
     const frictionLevel = context.createGain();
-    frictionLevel.gain.value = 0.34;
+    frictionLevel.gain.setValueAtTime(MIN_GAIN, now);
+    frictionLevel.gain.setValueAtTime(MIN_GAIN, releaseTime - 0.028);
+    frictionLevel.gain.exponentialRampToValueAtTime(0.43, releaseTime + 0.13);
+    frictionLevel.gain.exponentialRampToValueAtTime(MIN_GAIN, end);
     friction.connect(frictionFilter).connect(frictionLevel).connect(voice);
 
     const sources: AudioScheduledSourceNode[] = [low, metal, friction];
@@ -882,7 +1037,7 @@ export class VerticalSliceSoundscape {
     this.registerOneShot(sources, nodes);
     low.start(now);
     metal.start(now);
-    friction.start(now, 0.38);
+    friction.start(now, 0.42);
     for (const source of sources) source.stop(end);
   }
 
@@ -891,38 +1046,54 @@ export class VerticalSliceSoundscape {
     const graph = this.graph!;
     const tuning = LENS_TUNING[this.parameters.lensMode];
     const now = context.currentTime + 0.008;
-    const end = now + 0.58;
+    const end = now + tuning.cueDuration;
     const voice = context.createGain();
     voice.gain.setValueAtTime(MIN_GAIN, now);
-    voice.gain.exponentialRampToValueAtTime(0.064, now + 0.012);
+    voice.gain.exponentialRampToValueAtTime(0.058, now + 0.012);
+    voice.gain.setValueAtTime(0.052, Math.max(now + 0.02, end - 0.15));
     voice.gain.exponentialRampToValueAtTime(MIN_GAIN, end);
     const panner = context.createPanner();
     this.configurePanner(panner, position);
+    panner.positionX.linearRampToValueAtTime(position.x * 0.28, end);
     voice.connect(panner).connect(graph.cueBus);
 
     const root = context.createOscillator();
     root.type = 'sine';
-    root.frequency.setValueAtTime(tuning.root * 8, now);
-    root.frequency.exponentialRampToValueAtTime(tuning.root * 10, now + 0.16);
+    root.frequency.setValueAtTime(tuning.root * tuning.cueNotes[0], now);
     const rootLevel = context.createGain();
-    rootLevel.gain.value = 0.75;
+    rootLevel.gain.setValueAtTime(MIN_GAIN, now);
+    const noteSpacing = tuning.cueDuration * 0.225;
+    tuning.cueNotes.forEach((ratio, index) => {
+      const onset = now + index * noteSpacing;
+      root.frequency.setValueAtTime(tuning.root * ratio, onset);
+      rootLevel.gain.setValueAtTime(MIN_GAIN, onset);
+      rootLevel.gain.linearRampToValueAtTime(0.72 - index * 0.11, onset + 0.008);
+      rootLevel.gain.exponentialRampToValueAtTime(MIN_GAIN, onset + noteSpacing * 0.78);
+    });
     root.connect(rootLevel).connect(voice);
 
     const partial = context.createOscillator();
     partial.type = 'triangle';
-    partial.frequency.value = tuning.root * 12;
+    partial.frequency.value = tuning.root * tuning.cueNotes[2] * 1.5;
     const partialLevel = context.createGain();
-    partialLevel.gain.value = 0.16;
+    partialLevel.gain.setValueAtTime(MIN_GAIN, now);
+    const finalOnset = now + noteSpacing * 2;
+    partialLevel.gain.setValueAtTime(MIN_GAIN, finalOnset);
+    partialLevel.gain.linearRampToValueAtTime(0.15, finalOnset + 0.006);
+    partialLevel.gain.exponentialRampToValueAtTime(MIN_GAIN, end);
     partial.connect(partialLevel).connect(voice);
 
     const scan = context.createBufferSource();
     scan.buffer = graph.noiseBuffers.digital;
     const scanFilter = context.createBiquadFilter();
     scanFilter.type = 'bandpass';
-    scanFilter.frequency.value = tuning.filterFrequency * 2.2;
-    scanFilter.Q.value = 2.8;
+    scanFilter.frequency.setValueAtTime(tuning.cueScanFrequency * 0.7, now);
+    scanFilter.frequency.exponentialRampToValueAtTime(tuning.cueScanFrequency * 1.18, end);
+    scanFilter.Q.value = this.parameters.lensMode === 'detection' ? 4.1 : 2.7;
     const scanLevel = context.createGain();
-    scanLevel.gain.value = 0.12;
+    scanLevel.gain.setValueAtTime(MIN_GAIN, now);
+    scanLevel.gain.exponentialRampToValueAtTime(0.12, now + 0.018);
+    scanLevel.gain.exponentialRampToValueAtTime(MIN_GAIN, end);
     scan.connect(scanFilter).connect(scanLevel).connect(voice);
 
     const sources: AudioScheduledSourceNode[] = [root, partial, scan];
@@ -947,26 +1118,31 @@ export class VerticalSliceSoundscape {
     const graph = this.graph!;
     const tuning = LENS_TUNING[this.parameters.lensMode];
     const now = context.currentTime + 0.012;
-    const end = now + 1.55;
+    const end = now + 1.36;
     const voice = context.createGain();
     voice.gain.setValueAtTime(MIN_GAIN, now);
-    voice.gain.exponentialRampToValueAtTime(0.052, now + 0.025);
+    voice.gain.exponentialRampToValueAtTime(0.048, now + 0.025);
     voice.gain.exponentialRampToValueAtTime(MIN_GAIN, end);
     const panner = context.createPanner();
     this.configurePanner(panner, position);
+    panner.positionZ.linearRampToValueAtTime(Math.min(-0.72, position.z + 0.42), end);
     voice.connect(panner).connect(graph.cueBus);
 
-    const frequencies = [196, 293.66, 440].map((frequency) => frequency * tuning.evidenceRatio);
-    const levels = [0.68, 0.22, 0.08];
+    const frequencies = [196, 293.66, 392].map((frequency) => frequency * tuning.evidenceRatio);
+    const levels = [0.7, 0.26, 0.11];
+    const onsets = [0, 0.13, 0.29];
     const oscillators = frequencies.map((frequency, index) => {
       const oscillator = context.createOscillator();
       oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(frequency, now);
+      const onset = now + onsets[index];
+      oscillator.frequency.setValueAtTime(frequency, onset);
       oscillator.frequency.exponentialRampToValueAtTime(frequency * 0.996, end);
       const level = context.createGain();
-      level.gain.value = levels[index];
+      level.gain.setValueAtTime(MIN_GAIN, onset);
+      level.gain.exponentialRampToValueAtTime(levels[index], onset + 0.024);
+      level.gain.exponentialRampToValueAtTime(MIN_GAIN, Math.min(end, onset + 0.78));
       oscillator.connect(level).connect(voice);
-      return { oscillator, level };
+      return { oscillator, level, onset };
     });
 
     const sources: AudioScheduledSourceNode[] = oscillators.map(({ oscillator }) => oscillator);
@@ -976,9 +1152,9 @@ export class VerticalSliceSoundscape {
       ...oscillators.flatMap(({ oscillator, level }) => [oscillator, level]),
     ];
     this.registerOneShot(sources, nodes);
-    for (const source of sources) {
-      source.start(now);
-      source.stop(end);
+    for (const { oscillator, onset } of oscillators) {
+      oscillator.start(onset);
+      oscillator.stop(end);
     }
   }
 

@@ -4,14 +4,82 @@ import { chromium } from 'playwright';
 import sharp from 'sharp';
 
 const baseUrl = process.env.QA_BASE_URL ?? 'http://127.0.0.1:4176';
-const report = { assets: {}, desktop: {}, mobile: {}, reduced: {}, routes: {}, errors: [] };
-const browser = await chromium.launch({ headless: true });
-const renderBudgets = {
-  desktopThreshold: { calls: 220, triangles: 320_000 },
-  desktopNexus: { calls: 115, triangles: 100_000 },
-  desktopDescent: { calls: 150, triangles: 100_000 },
-  mobileThreshold: { calls: 170, triangles: 150_000 },
+const MIB = 1024 * 1024;
+const textureGpuByteAttributes = [
+  'data-render-texture-gpu-bytes',
+  'data-texture-gpu-bytes',
+  'data-gpu-texture-bytes',
+];
+const verticalSliceRenderContracts = {
+  source: 'src/greenfield/lab/macro-flow/verticalSliceAssets.ts#VERTICAL_SLICE_BUDGETS',
+  slice: {
+    desktop: { calls: 70, triangles: 300_000, textureGpuBytes: 96 * MIB },
+    mobile: { calls: 40, triangles: 100_000, textureGpuBytes: 48 * MIB },
+  },
+  chapters: {
+    threshold: {
+      id: '01-threshold',
+      desktop: { calls: 70, triangles: 300_000, textureGpuBytes: 96 * MIB },
+      mobile: { calls: 40, triangles: 100_000, textureGpuBytes: 48 * MIB },
+    },
+    field: {
+      id: '02-field',
+      desktop: { calls: 58, triangles: 220_000, textureGpuBytes: 72 * MIB },
+      mobile: { calls: 30, triangles: 75_000, textureGpuBytes: 36 * MIB },
+    },
+    lens: {
+      id: '03-lens',
+      desktop: { calls: 18, triangles: 45_000, textureGpuBytes: 16 * MIB },
+      mobile: { calls: 12, triangles: 20_000, textureGpuBytes: 8 * MIB },
+    },
+    proof: {
+      id: '04-proof',
+      desktop: { calls: 24, triangles: 55_000, textureGpuBytes: 48 * MIB },
+      mobile: { calls: 18, triangles: 30_000, textureGpuBytes: 24 * MIB },
+    },
+  },
 };
+const report = {
+  assets: {},
+  desktop: {},
+  mobile: {},
+  reduced: {},
+  routes: {},
+  errors: [],
+  hardFailures: [],
+  warnings: [],
+  policy: {
+    performance: {
+      contractSource: verticalSliceRenderContracts.source,
+      hardFail: 'An exposed whole-frame metric exceeds the desktop/mobile slice ceiling.',
+      warning: 'An exposed metric exceeds its chapter budget but not the whole-slice ceiling, or cannot be measured.',
+      textureGpuByteAttributes,
+    },
+  },
+};
+const browser = await chromium.launch({ headless: true });
+const legacyRenderBudgets = {
+  desktopDescent: { calls: 150, triangles: 100_000 },
+};
+const warningKeys = new Set();
+const hardFailureKeys = new Set();
+
+function warn(scope, message, details, key = `${scope}:${message}`) {
+  if (warningKeys.has(key)) return;
+  warningKeys.add(key);
+  report.warnings.push({ scope, message, details });
+}
+
+function hardFail(scope, message, details, key = `${scope}:${message}`) {
+  if (hardFailureKeys.has(key)) return;
+  hardFailureKeys.add(key);
+  report.hardFailures.push({ scope, message, details });
+}
+
+function checkHard(condition, scope, message, details) {
+  if (!condition) hardFail(scope, message, details);
+  return condition;
+}
 
 async function signature(buffer) {
   const stats = await sharp(buffer).stats();
@@ -81,7 +149,9 @@ function validateCameraAssets() {
 }
 
 async function validateFirstLightAssets() {
-  const modelPath = 'public/assets/world/first-light-citadel.glb';
+  const sourceModelPath = 'public/assets/world/first-light-citadel.glb';
+  const desktopModelPath = 'public/assets/world/first-light-citadel.desktop.glb';
+  const mobileModelPath = 'public/assets/world/first-light-citadel.mobile.glb';
   const posterPath = 'public/assets/world/first-light-poster.webp';
   const nexusAerialPath = 'public/assets/projects/nexus-ue5-aerial.webp';
   const nexusSegmentationPath = 'public/assets/projects/nexus-segmentation.webp';
@@ -90,13 +160,18 @@ async function validateFirstLightAssets() {
   const nexusAerial = await sharp(nexusAerialPath).metadata();
   const nexusSegmentation = await sharp(nexusSegmentationPath).metadata();
   const nexusDetection = await sharp(nexusDetectionPath).metadata();
-  const modelBytes = statSync(modelPath).size;
+  const sourceModelBytes = statSync(sourceModelPath).size;
+  const desktopModelBytes = statSync(desktopModelPath).size;
+  const mobileModelBytes = statSync(mobileModelPath).size;
   const posterBytes = statSync(posterPath).size;
   const nexusAerialBytes = statSync(nexusAerialPath).size;
   const nexusSegmentationBytes = statSync(nexusSegmentationPath).size;
   const nexusDetectionBytes = statSync(nexusDetectionPath).size;
   return {
-    modelBytes,
+    modelBytes: desktopModelBytes,
+    sourceModelBytes,
+    desktopModelBytes,
+    mobileModelBytes,
     posterBytes,
     posterSize: [poster.width, poster.height],
     nexusAerialBytes,
@@ -105,7 +180,9 @@ async function validateFirstLightAssets() {
     nexusSegmentationSize: [nexusSegmentation.width, nexusSegmentation.height],
     nexusDetectionBytes,
     nexusDetectionSize: [nexusDetection.width, nexusDetection.height],
-    withinBudget: modelBytes <= 2.15 * 1024 * 1024 && posterBytes <= 360 * 1024,
+    withinBudget: desktopModelBytes <= 1.65 * 1024 * 1024
+      && mobileModelBytes <= 1.02 * 1024 * 1024
+      && posterBytes <= 360 * 1024,
     correctPosterFrame: poster.width === 1600 && poster.height === 900,
     authenticAerialReady: nexusAerialBytes <= 420 * 1024
       && nexusAerial.width === 1280
@@ -185,17 +262,180 @@ async function layoutState(page) {
   }));
 }
 
-async function renderStats(page) {
-  await page.waitForFunction(() => document.querySelector('.mf-lab')?.hasAttribute('data-render-calls'));
-  return page.locator('.mf-lab').evaluate((element) => ({
-    chapter: element.getAttribute('data-active-chapter'),
-    calls: Number(element.getAttribute('data-render-calls')),
-    triangles: Number(element.getAttribute('data-render-triangles')),
-  }));
+async function renderStats(page, expectedChapter, sampleCount = 3) {
+  let telemetryWaitTimedOut = false;
+  try {
+    await page.waitForFunction((chapter) => {
+      const root = document.querySelector('.mf-lab');
+      if (root?.getAttribute('data-active-chapter') !== chapter) return false;
+      return root.getAttribute('data-renderer') !== 'webgl'
+        || (root.hasAttribute('data-render-calls') && root.hasAttribute('data-render-triangles'));
+    }, expectedChapter, { timeout: 4_500 });
+  } catch {
+    telemetryWaitTimedOut = true;
+  }
+
+  const snapshots = [];
+  for (let index = 0; index < sampleCount; index += 1) {
+    if (index > 0) await page.waitForTimeout(240);
+    snapshots.push(await page.locator('.mf-lab').evaluate((element, textureAttributes) => {
+      const metric = (attribute) => {
+        const raw = element.getAttribute(attribute);
+        const value = raw === null ? null : Number(raw);
+        return {
+          attribute,
+          exposed: raw !== null && Number.isFinite(value) && value >= 0,
+          raw,
+          value,
+        };
+      };
+      const textureMetric = textureAttributes
+        .map((attribute) => metric(attribute))
+        .find((candidate) => candidate.raw !== null) ?? {
+        attribute: null,
+        exposed: false,
+        raw: null,
+        value: null,
+      };
+      return {
+        chapter: element.getAttribute('data-active-chapter'),
+        renderer: element.getAttribute('data-renderer'),
+        calls: metric('data-render-calls'),
+        triangles: metric('data-render-triangles'),
+        textureGpuBytes: textureMetric,
+      };
+    }, textureGpuByteAttributes));
+  }
+
+  const summarizeMetric = (name) => {
+    const valid = snapshots.map((snapshot) => snapshot[name]).filter((metric) => metric.exposed);
+    const invalid = snapshots
+      .map((snapshot) => snapshot[name])
+      .filter((metric) => metric.raw !== null && !metric.exposed);
+    if (valid.length === 0) {
+      return {
+        exposed: false,
+        value: null,
+        minimum: null,
+        attribute: invalid.at(-1)?.attribute ?? null,
+        invalidRaw: invalid.at(-1)?.raw ?? null,
+      };
+    }
+    const peak = valid.reduce((current, candidate) => (
+      candidate.value > current.value ? candidate : current
+    ));
+    return {
+      exposed: true,
+      value: peak.value,
+      minimum: Math.min(...valid.map((metric) => metric.value)),
+      attribute: peak.attribute,
+      invalidRaw: null,
+    };
+  };
+  const metrics = {
+    calls: summarizeMetric('calls'),
+    triangles: summarizeMetric('triangles'),
+    textureGpuBytes: summarizeMetric('textureGpuBytes'),
+  };
+  return {
+    expectedChapter,
+    chapter: snapshots.at(-1)?.chapter ?? null,
+    observedChapters: [...new Set(snapshots.map((snapshot) => snapshot.chapter))],
+    renderer: snapshots.at(-1)?.renderer ?? null,
+    sampleCount,
+    telemetryWaitTimedOut,
+    calls: metrics.calls.value,
+    triangles: metrics.triangles.value,
+    textureGpuBytes: metrics.textureGpuBytes.value,
+    metrics,
+  };
+}
+
+function assessVerticalSliceRender(stats, tier, chapter) {
+  const chapterContract = verticalSliceRenderContracts.chapters[chapter];
+  const chapterBudget = chapterContract[tier];
+  const sliceBudget = verticalSliceRenderContracts.slice[tier];
+  const scope = `${tier}:${chapterContract.id}`;
+  const metricLabels = {
+    calls: 'Draw calls',
+    triangles: 'Visible triangles',
+    textureGpuBytes: 'Texture GPU bytes',
+  };
+  let verdict = 'pass';
+
+  stats.contract = {
+    chapter: chapterBudget,
+    wholeSlice: sliceBudget,
+    source: verticalSliceRenderContracts.source,
+  };
+  stats.withinChapterBudget = true;
+  stats.withinSliceBudget = true;
+
+  if (stats.chapter !== chapter) {
+    verdict = 'hard-fail';
+    hardFail(scope, 'Render telemetry was sampled in the wrong chapter', {
+      expected: chapter,
+      observed: stats.observedChapters,
+    });
+  }
+  if (stats.renderer !== 'webgl') {
+    verdict = verdict === 'hard-fail' ? verdict : 'warning';
+    warn(scope, 'WebGL render telemetry is unavailable for this chapter', {
+      renderer: stats.renderer,
+      telemetryWaitTimedOut: stats.telemetryWaitTimedOut,
+    });
+  }
+
+  for (const [name, metric] of Object.entries(stats.metrics)) {
+    const chapterLimit = chapterBudget[name];
+    const sliceLimit = sliceBudget[name];
+    metric.chapterLimit = chapterLimit;
+    metric.sliceLimit = sliceLimit;
+    metric.withinChapterBudget = metric.exposed ? metric.value <= chapterLimit : null;
+    metric.withinSliceBudget = metric.exposed ? metric.value <= sliceLimit : null;
+
+    if (!metric.exposed) {
+      verdict = verdict === 'hard-fail' ? verdict : 'warning';
+      warn(
+        scope,
+        `${metricLabels[name]} telemetry is not exposed; no budget verdict was made`,
+        { attribute: metric.attribute, invalidRaw: metric.invalidRaw },
+        name === 'textureGpuBytes' ? `${tier}:${name}:not-exposed` : `${scope}:${name}:not-exposed`,
+      );
+      continue;
+    }
+
+    if (metric.value > sliceLimit) {
+      stats.withinSliceBudget = false;
+      stats.withinChapterBudget = false;
+      verdict = 'hard-fail';
+      hardFail(scope, `${metricLabels[name]} exceeded the whole-slice hard ceiling`, {
+        value: metric.value,
+        chapterLimit,
+        sliceLimit,
+        attribute: metric.attribute,
+      });
+    } else if (metric.value > chapterLimit) {
+      stats.withinChapterBudget = false;
+      verdict = verdict === 'hard-fail' ? verdict : 'warning';
+      warn(scope, `${metricLabels[name]} exceeded the chapter budget`, {
+        value: metric.value,
+        chapterLimit,
+        sliceLimit,
+        attribute: metric.attribute,
+      });
+    }
+  }
+
+  stats.verdict = verdict;
+  return stats;
 }
 
 function withinRenderBudget(stats, budget) {
-  return stats.calls <= budget.calls && stats.triangles <= budget.triangles;
+  return stats.metrics.calls.exposed
+    && stats.metrics.triangles.exposed
+    && stats.calls <= budget.calls
+    && stats.triangles <= budget.triangles;
 }
 
 try {
@@ -222,14 +462,22 @@ try {
     report.desktop.audioEnabled = await desktop.getByRole('button', { name: 'Oprește sunetul ambiental' }).count();
   }
   report.desktop.cameraCurves = Number(await desktop.locator('.mf-lab').getAttribute('data-camera-curves'));
-  report.desktop.thresholdRender = await renderStats(desktop);
-  report.desktop.thresholdRender.withinBudget = withinRenderBudget(
-    report.desktop.thresholdRender,
-    renderBudgets.desktopThreshold,
+  report.desktop.verticalSliceRender = {};
+  report.desktop.verticalSliceRender.threshold = assessVerticalSliceRender(
+    await renderStats(desktop, 'threshold'),
+    'desktop',
+    'threshold',
   );
   await desktop.waitForTimeout(300);
   report.desktop.firstCanvas = await signature(await desktop.screenshot());
   report.desktop.thresholdFilled = report.desktop.firstCanvas.entropy >= 3.5;
+
+  await moveWithin(desktop, '.mf-beat--field', 0.45);
+  report.desktop.verticalSliceRender.field = assessVerticalSliceRender(
+    await renderStats(desktop, 'field'),
+    'desktop',
+    'field',
+  );
 
   await moveWithin(desktop, '.mf-beat--lens', 0.45);
   const lensKnot = desktop.locator('.mf-lens-knot');
@@ -249,10 +497,10 @@ try {
     await desktop.locator('.mf-lab').getAttribute('data-evidence-cores'),
   );
   report.desktop.nexusEvidenceHud = await desktop.locator('.mf-evidence-cores [data-collected]').count();
-  report.desktop.nexusRender = await renderStats(desktop);
-  report.desktop.nexusRender.withinBudget = withinRenderBudget(
-    report.desktop.nexusRender,
-    renderBudgets.desktopNexus,
+  report.desktop.verticalSliceRender.lens = assessVerticalSliceRender(
+    await renderStats(desktop, 'lens'),
+    'desktop',
+    'lens',
   );
 
   await placeSectionTop(desktop, '#mf-proof', 0.5);
@@ -275,6 +523,11 @@ try {
     ),
     clearsAtProof: stableProof?.visible === false,
   };
+  report.desktop.verticalSliceRender.proof = assessVerticalSliceRender(
+    await renderStats(desktop, 'proof'),
+    'desktop',
+    'proof',
+  );
 
   await moveWithin(desktop, '.mf-beat--descent', 0.7);
   await desktop.waitForFunction(() => document.querySelector('.mf-lab')?.getAttribute('data-active-chapter') === 'descent');
@@ -283,10 +536,10 @@ try {
     await desktop.locator('.mf-world canvas').screenshot(),
   );
   report.desktop.descentFilled = report.desktop.descentCanvas.entropy >= 4;
-  report.desktop.descentRender = await renderStats(desktop);
+  report.desktop.descentRender = await renderStats(desktop, 'descent');
   report.desktop.descentRender.withinBudget = withinRenderBudget(
     report.desktop.descentRender,
-    renderBudgets.desktopDescent,
+    legacyRenderBudgets.desktopDescent,
   );
 
   await moveWithin(desktop, '.bh-evidence-passage', 0.5);
@@ -342,20 +595,67 @@ try {
   }));
   await desktop.close();
 
-  const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
+  const mobile = await browser.newPage({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 1,
+    isMobile: true,
+    hasTouch: true,
+  });
   collectErrors(mobile, 'mobile');
   await mobile.goto(baseUrl, { waitUntil: 'networkidle' });
   await mobile.waitForTimeout(1_200);
   await mobile.waitForFunction(() => document.querySelector('.mf-lab')?.getAttribute('data-camera-curves') === '4');
   report.mobile.cameraCurves = Number(await mobile.locator('.mf-lab').getAttribute('data-camera-curves'));
-  report.mobile.thresholdRender = await renderStats(mobile);
-  report.mobile.thresholdRender.withinBudget = withinRenderBudget(
-    report.mobile.thresholdRender,
-    renderBudgets.mobileThreshold,
+  report.mobile.verticalSliceRender = {};
+  report.mobile.verticalSliceRender.threshold = assessVerticalSliceRender(
+    await renderStats(mobile, 'threshold'),
+    'mobile',
+    'threshold',
   );
   await mobile.waitForTimeout(300);
   report.mobile.firstCanvas = await signature(await mobile.screenshot());
   report.mobile.thresholdFilled = report.mobile.firstCanvas.entropy >= 3.2;
+
+  await moveWithin(mobile, '.mf-beat--field', 0.45);
+  report.mobile.verticalSliceRender.field = assessVerticalSliceRender(
+    await renderStats(mobile, 'field'),
+    'mobile',
+    'field',
+  );
+
+  await moveWithin(mobile, '.mf-beat--lens', 0.45);
+  const mobileLensKnot = mobile.locator('.mf-lens-knot');
+  await mobileLensKnot.waitFor({ state: 'visible' });
+  const mobileLensControls = mobile.locator('.mf-lens-control button');
+  const mobileLensModes = [await mobile.locator('.mf-lab').getAttribute('data-lens')];
+  await mobileLensControls.nth(1).tap();
+  await mobile.waitForFunction(() => document.querySelector('.mf-lab')?.getAttribute('data-lens') === 'segmentation');
+  mobileLensModes.push(await mobile.locator('.mf-lab').getAttribute('data-lens'));
+  await mobileLensControls.nth(2).tap();
+  await mobile.waitForFunction(() => document.querySelector('.mf-lab')?.getAttribute('data-lens') === 'detection');
+  mobileLensModes.push(await mobile.locator('.mf-lab').getAttribute('data-lens'));
+  await mobile.waitForTimeout(400);
+  const mobileLensCanvas = await signature(await mobile.locator('.mf-world canvas').screenshot());
+  report.mobile.lens = {
+    visible: await mobileLensKnot.isVisible(),
+    controlCount: await mobileLensControls.count(),
+    modes: mobileLensModes,
+    canvas: mobileLensCanvas,
+    filled: mobileLensCanvas.entropy >= 3.2,
+  };
+  report.mobile.verticalSliceRender.lens = assessVerticalSliceRender(
+    await renderStats(mobile, 'lens'),
+    'mobile',
+    'lens',
+  );
+
+  await placeSectionTop(mobile, '#mf-proof', 0);
+  report.mobile.verticalSliceRender.proof = assessVerticalSliceRender(
+    await renderStats(mobile, 'proof'),
+    'mobile',
+    'proof',
+  );
+
   await moveWithin(mobile, '.ix-journey', 0.72);
   report.mobile.infect = {
     active: await mobile.locator('.ix-nodes button[data-active] strong').textContent(),
@@ -388,44 +688,97 @@ try {
     };
   });
   await reducedContext.close();
+} catch (error) {
+  hardFail('suite', 'QA execution aborted before all checks completed', {
+    message: error instanceof Error ? error.message : String(error),
+  });
 } finally {
   await browser.close();
 }
 
-console.log(JSON.stringify(report, null, 2));
+checkHard(report.errors.length === 0, 'runtime', 'Page or console errors were reported', report.errors);
+for (const tier of ['desktop', 'mobile']) {
+  const camera = report.assets.cameraCurves?.[tier];
+  checkHard(camera?.valid === true, `camera:${tier}`, 'Camera curve schema or samples are invalid', camera);
+  checkHard(camera?.continuous === true, `camera:${tier}`, 'Camera continuity failed between chapters 01-04', camera);
+  checkHard(camera?.paced === true, `camera:${tier}`, 'Camera curves lost their authored pacing', camera);
+  checkHard(camera?.withinBudget === true, `camera:${tier}`, 'Camera curve files exceeded 40 KiB', camera);
+}
 
-const failed = report.errors.length > 0
-  || Object.values(report.assets.cameraCurves).some((tier) => (
-    !tier.valid || !tier.continuous || !tier.paced || !tier.withinBudget
-  ))
-  || !report.assets.firstLight.withinBudget
-  || !report.assets.firstLight.correctPosterFrame
-  || !report.assets.firstLight.authenticAerialReady
-  || !report.assets.firstLight.authenticLensExportsReady
-  || report.desktop.layout?.scrollWidth !== report.desktop.layout?.width
-  || report.mobile.layout?.scrollWidth !== report.mobile.layout?.width
-  || report.desktop.layout?.brokenImages.length > 0
-  || report.mobile.layout?.brokenImages.length > 0
-  || report.desktop.cameraCurves !== 4
-  || report.mobile.cameraCurves !== 4
-  || !report.desktop.thresholdRender?.withinBudget
-  || !report.desktop.nexusRender?.withinBudget
-  || !report.desktop.descentRender?.withinBudget
-  || !report.mobile.thresholdRender?.withinBudget
-  || !report.mobile.thresholdFilled
-  || report.desktop.nexusEvidenceCores !== 3
-  || report.desktop.nexusEvidenceHud !== 3
-  || !report.desktop.proofHandoff?.reversible
-  || !report.desktop.proofHandoff?.clearsAtProof
-  || !report.desktop.thresholdFilled
-  || !report.desktop.descentFilled
-  || !report.desktop.evidenceMoved
-  || !report.mobile.evidenceMoved;
+const firstLight = report.assets.firstLight;
+checkHard(firstLight?.withinBudget === true, 'assets:first-light', 'First-light model or poster exceeded its transfer budget', firstLight);
+checkHard(firstLight?.correctPosterFrame === true, 'assets:first-light', 'First-light poster dimensions are incorrect', firstLight);
+checkHard(firstLight?.authenticAerialReady === true, 'assets:nexus', 'Nexus aerial evidence asset is not production-ready', firstLight);
+checkHard(firstLight?.authenticLensExportsReady === true, 'assets:nexus', 'Nexus Lens exports are not production-ready', firstLight);
+
+checkHard(
+  report.desktop.layout?.scrollWidth === report.desktop.layout?.width,
+  'desktop:layout',
+  'Horizontal overflow detected',
+  report.desktop.layout,
+);
+checkHard(
+  report.mobile.layout?.scrollWidth === report.mobile.layout?.width,
+  'mobile:layout',
+  'Horizontal overflow detected',
+  report.mobile.layout,
+);
+checkHard(
+  report.desktop.layout?.brokenImages.length === 0,
+  'desktop:assets',
+  'Broken images detected',
+  report.desktop.layout?.brokenImages,
+);
+checkHard(
+  report.mobile.layout?.brokenImages.length === 0,
+  'mobile:assets',
+  'Broken images detected',
+  report.mobile.layout?.brokenImages,
+);
+checkHard(report.desktop.cameraCurves === 4, 'desktop:camera', 'Runtime did not load all four camera curves', report.desktop.cameraCurves);
+checkHard(report.mobile.cameraCurves === 4, 'mobile:camera', 'Runtime did not load all four camera curves', report.mobile.cameraCurves);
+checkHard(report.desktop.descentRender?.withinBudget === true, 'desktop:descent', 'Existing descent render budget failed', report.desktop.descentRender);
+checkHard(report.desktop.thresholdFilled === true, 'desktop:threshold', 'Threshold canvas entropy is too low', report.desktop.firstCanvas);
+checkHard(report.desktop.descentFilled === true, 'desktop:descent', 'Descent canvas entropy is too low', report.desktop.descentCanvas);
+checkHard(report.mobile.thresholdFilled === true, 'mobile:threshold', 'Threshold canvas entropy is too low', report.mobile.firstCanvas);
+checkHard(report.mobile.lens?.filled === true, 'mobile:03-lens', 'Lens canvas entropy is too low', report.mobile.lens?.canvas);
+checkHard(report.mobile.lens?.visible === true, 'mobile:03-lens', 'Lens did not become visible', report.mobile.lens);
+checkHard(report.mobile.lens?.controlCount === 3, 'mobile:03-lens', 'Lens does not expose all three mode controls', report.mobile.lens);
+checkHard(
+  JSON.stringify(report.mobile.lens?.modes) === JSON.stringify(['raw', 'segmentation', 'detection']),
+  'mobile:03-lens',
+  'Lens modes did not respond to touch in order',
+  report.mobile.lens?.modes,
+);
+checkHard(report.desktop.nexusEvidenceCores === 3, 'desktop:03-lens', 'Not all Nexus evidence cores were collected', report.desktop.nexusEvidenceCores);
+checkHard(report.desktop.nexusEvidenceHud === 3, 'desktop:03-lens', 'Evidence core HUD is incomplete', report.desktop.nexusEvidenceHud);
+checkHard(report.desktop.proofHandoff?.reversible === true, 'desktop:04-proof', 'Proof handoff is not reversible', report.desktop.proofHandoff);
+checkHard(report.desktop.proofHandoff?.clearsAtProof === true, 'desktop:04-proof', 'Proof handoff does not clear at the proof section', report.desktop.proofHandoff);
+checkHard(report.desktop.evidenceMoved === true, 'desktop:evidence-weave', 'Evidence canvas did not advance', {
+  map: report.desktop.evidenceMap,
+  dawn: report.desktop.evidenceDawn,
+});
+checkHard(report.mobile.evidenceMoved === true, 'mobile:evidence-weave', 'Evidence canvas did not advance', {
+  map: report.mobile.evidenceMap,
+  dawn: report.mobile.evidenceDawn,
+});
 
 const deepLink = report.routes['/#mf-lens'];
-if (
+checkHard(
   deepLink?.chapter !== 'lens'
-  || Math.abs(deepLink.targetTop - deepLink.scrollPaddingTop) > 2
-) process.exitCode = 1;
+    ? false
+    : Math.abs(deepLink.targetTop - deepLink.scrollPaddingTop) <= 2,
+  'route:/#mf-lens',
+  'Lens deep link did not restore the chapter at the scroll-padding offset',
+  deepLink,
+);
 
-if (failed) process.exitCode = 1;
+report.summary = {
+  baseUrl,
+  status: report.hardFailures.length === 0 ? 'passed' : 'failed',
+  hardFailCount: report.hardFailures.length,
+  warningCount: report.warnings.length,
+};
+console.log(JSON.stringify(report, null, 2));
+
+if (report.hardFailures.length > 0) process.exitCode = 1;

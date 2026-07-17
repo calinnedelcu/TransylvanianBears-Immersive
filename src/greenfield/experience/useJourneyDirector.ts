@@ -79,6 +79,7 @@ export function useJourneyDirector({
       const proofFrame = proofHandoff?.querySelector<HTMLElement>('.mf-proof-handoff__frame');
       const proofFieldImage = proofPaper?.querySelector<HTMLElement>('.mf-proof-handoff__image--field');
       const proofValidationImage = proofPaper?.querySelector<HTMLElement>('.mf-proof-handoff__image--validation');
+      const lensKnot = root.querySelector<HTMLElement>('.mf-lens-knot');
       const traceKnot = root.querySelector<HTMLElement>('.mf-trace-knot');
       const schoolBridge = root.querySelector<HTMLElement>('.mf-school-bridge');
       const schoolBridgeCopy = schoolBridge?.querySelector<HTMLElement>('.mf-school-bridge__copy');
@@ -89,14 +90,13 @@ export function useJourneyDirector({
       if (threshold && thresholdCopy && !reducedMotion) {
         gsap.to(thresholdCopy, {
           opacity: 0,
-          y: -44,
-          scale: 0.975,
-          filter: 'blur(5px)',
+          y: -24,
+          scale: 1,
           ease: 'none',
           scrollTrigger: {
             trigger: threshold,
-            start: '22% top',
-            end: '52% top',
+            start: '38% top',
+            end: '74% top',
             scrub: true,
           },
         });
@@ -109,8 +109,10 @@ export function useJourneyDirector({
         && proofFrame
         && proofFieldImage
         && proofValidationImage
+        && lensKnot
         && !reducedMotion
       ) {
+        const compactProofHandoff = window.matchMedia('(max-width: 820px)').matches;
         const handoffTimeline = gsap.timeline({
           scrollTrigger: {
             trigger: proof,
@@ -122,61 +124,72 @@ export function useJourneyDirector({
         });
 
         handoffTimeline
+          .fromTo(lensKnot, {
+            autoAlpha: 1,
+            y: 0,
+          }, {
+            autoAlpha: 0,
+            y: -20,
+            duration: 0.18,
+            ease: 'none',
+          }, 0)
           .fromTo(proofHandoff, {
             autoAlpha: 0,
           }, {
             autoAlpha: 1,
-            duration: 0.12,
+            duration: 0.1,
             ease: 'none',
-          })
+          }, 0.14)
           .fromTo(proofFrame, {
-            width: '18vmin',
+            width: '26vmin',
             height: '18vmin',
-            borderRadius: '50%',
-            rotate: -2,
-          }, {
-            width: '86vw',
-            height: '78vh',
             borderRadius: '0%',
             rotate: 0,
-            duration: 0.72,
+          }, {
+            width: '100vw',
+            height: '100dvh',
+            borderRadius: '0%',
+            rotate: 0,
+            duration: 0.44,
             ease: 'power2.inOut',
-          }, 0)
+          }, 0.16)
           .fromTo(proofPaper, {
-            clipPath: 'inset(46% 46% round 50%)',
+            clipPath: 'inset(41% 37% round 0%)',
           }, {
             clipPath: 'inset(0% 0% round 0%)',
-            duration: 0.82,
+            duration: 0.44,
             ease: 'power2.inOut',
-          }, 0.02)
-          .fromTo(proofFieldImage, {
-            opacity: 1,
-            scale: 1,
-          }, {
-            opacity: 0,
-            scale: 1.045,
-            duration: 0.4,
-            ease: 'power1.inOut',
-          }, 0.34)
+          }, 0.16)
           .fromTo(proofValidationImage, {
-            opacity: 0,
-            scale: 1.06,
+            opacity: 1,
+            scale: 1,
+            clipPath: compactProofHandoff
+              ? 'inset(0% 100% 0% 0%)'
+              : 'inset(0% 50% 0% 50%)',
           }, {
             opacity: 1,
             scale: 1,
-            duration: 0.46,
-            ease: 'power2.out',
-          }, 0.38)
+            clipPath: 'inset(0% 0% 0% 0%)',
+            duration: 0.24,
+            ease: 'power2.inOut',
+          }, 0.5)
+          .fromTo(proofFieldImage, {
+            width: '100%',
+          }, {
+            width: compactProofHandoff ? '100%' : '55%',
+            duration: 0.24,
+            ease: 'power2.inOut',
+          }, 0.5)
           .to(proofFrame, {
             opacity: 0,
             duration: 0.16,
             ease: 'none',
-          }, 0.74)
+          }, 0.78)
           .to(proofHandoff, {
             autoAlpha: 0,
             duration: 0.12,
             ease: 'none',
-          }, 0.86);
+          }, 0.88);
       }
 
       if (traceKnot && schoolBridge && schoolBridgeCopy && !reducedMotion) {
