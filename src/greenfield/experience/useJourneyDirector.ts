@@ -5,11 +5,15 @@ import { isJourneyChapter, type JourneyChapter } from './chapters';
 
 gsap.registerPlugin(ScrollTrigger);
 
+const HASH_RESTORE_MAX_ATTEMPTS = 8;
+const HASH_RESTORE_TOLERANCE_PX = 2;
+
 export type JourneyTelemetry = {
   journeyProgressRef: MutableRefObject<number>;
   worldProgressRef: MutableRefObject<number>;
   sliceProgressRef: MutableRefObject<number>;
   schoolActProgressRef: MutableRefObject<number>;
+  buriedActProgressRef: MutableRefObject<number>;
   schoolEntranceHandoffProgressRef: MutableRefObject<number>;
   descentHandoffProgressRef: MutableRefObject<number>;
   velocityRef: MutableRefObject<number>;
@@ -23,6 +27,7 @@ type JourneyDirectorOptions = {
   onProgress?: (progress: number, velocity: number) => void;
   onSliceProgress?: (progress: number, velocity: number) => void;
   onSchoolActProgress?: (progress: number, velocity: number) => void;
+  onBuriedActProgress?: (progress: number, velocity: number) => void;
 };
 
 export function useJourneyDirector({
@@ -32,11 +37,13 @@ export function useJourneyDirector({
   onProgress,
   onSliceProgress,
   onSchoolActProgress,
+  onBuriedActProgress,
 }: JourneyDirectorOptions): JourneyTelemetry {
   const journeyProgressRef = useRef(0);
   const worldProgressRef = useRef(0);
   const sliceProgressRef = useRef(0);
   const schoolActProgressRef = useRef(0);
+  const buriedActProgressRef = useRef(0);
   const schoolEntranceHandoffProgressRef = useRef(0);
   const descentHandoffProgressRef = useRef(0);
   const velocityRef = useRef(0);
@@ -46,12 +53,22 @@ export function useJourneyDirector({
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
+    let directedChapter = root.dataset.activeChapter;
+    const publishChapter = (chapter: JourneyChapter) => {
+      if (directedChapter === chapter) return;
+      directedChapter = chapter;
+      onChapterChange(chapter);
+    };
 
     const context = gsap.context(() => {
       const worldEnd = root.querySelector<HTMLElement>('#mf-infect');
       const sliceEnd = root.querySelector<HTMLElement>('#mf-passage');
       const schoolActStart = root.querySelector<HTMLElement>('#mf-passage');
       const schoolActEnd = root.querySelector<HTMLElement>('#mf-descent');
+      const buriedActStart = root.querySelector<HTMLElement>('#mf-descent');
+      const buriedLamp = root.querySelector<HTMLElement>('#mf-lamp');
+      const buriedBuild = root.querySelector<HTMLElement>('#mf-build');
+      const buriedActEnd = root.querySelector<HTMLElement>('#mf-infect');
       const descentHandoffStart = root.querySelector<HTMLElement>('#mf-descent');
       const descentHandoffEnd = root.querySelector<HTMLElement>('#mf-lamp');
       const threshold = root.querySelector<HTMLElement>('#mf-threshold');
@@ -274,16 +291,45 @@ export function useJourneyDirector({
         });
       }
 
+      if (buriedActStart && buriedActEnd) {
+        ScrollTrigger.create({
+          id: 'journey-buried-act',
+          trigger: buriedActStart,
+          start: 'top top',
+          endTrigger: buriedActEnd,
+          end: 'top top',
+          onUpdate: (self) => {
+            const progress = remapBuriedActProgress(
+              self.progress,
+              buriedActStart,
+              buriedLamp,
+              buriedBuild,
+              buriedActEnd,
+            );
+            buriedActProgressRef.current = progress;
+            root.dataset.buriedActProgress = progress.toFixed(4);
+            onBuriedActProgress?.(progress, velocityRef.current);
+          },
+        });
+      }
+
       root.querySelectorAll<HTMLElement>('[data-chapter]').forEach((element) => {
         const chapter = element.dataset.chapter;
         if (!isJourneyChapter(chapter)) return;
+        if (!element.hasAttribute('tabindex')) element.tabIndex = -1;
 
         ScrollTrigger.create({
           trigger: element,
           start: 'top 46%',
           end: 'bottom 46%',
-          onEnter: () => onChapterChange(chapter),
-          onEnterBack: () => onChapterChange(chapter),
+          onEnter: () => publishChapter(chapter),
+          onEnterBack: () => publishChapter(chapter),
+          onRefresh: (self) => {
+            if (self.isActive) publishChapter(chapter);
+          },
+          onUpdate: (self) => {
+            if (self.isActive) publishChapter(chapter);
+          },
         });
       });
     }, root);
@@ -294,30 +340,69 @@ export function useJourneyDirector({
       const targetId = decodeURIComponent(window.location.hash.slice(1));
       const target = document.getElementById(targetId);
       if (target && root.contains(target)) {
-        hashRestoreFrame = window.requestAnimationFrame(() => {
+        const targetChapter = target.dataset.chapter;
+        const expectedHash = `#${targetId}`;
+        let hashRestoreAttempt = 0;
+        const restoreHash = () => {
+          if (window.location.hash !== expectedHash) {
+            initialHashRestoredRef.current = true;
+            return;
+          }
+          hashRestoreAttempt += 1;
           ScrollTrigger.refresh();
           const scrollPadding = Number.parseFloat(
             getComputedStyle(document.documentElement).scrollPaddingTop,
           ) || 0;
-          const top = window.scrollY + target.getBoundingClientRect().top - scrollPadding;
-          window.scrollTo({ top, behavior: 'auto' });
+          const offset = target.getBoundingClientRect().top - scrollPadding;
+          if (Math.abs(offset) > HASH_RESTORE_TOLERANCE_PX) {
+            window.scrollTo({ top: window.scrollY + offset, behavior: 'auto' });
+          }
           ScrollTrigger.update();
-          initialHashRestoredRef.current = true;
-        });
+
+          if (isJourneyChapter(targetChapter) && root.dataset.activeChapter !== targetChapter) {
+            publishChapter(targetChapter);
+          }
+
+          hashRestoreFrame = window.requestAnimationFrame(() => {
+            if (window.location.hash !== expectedHash) {
+              initialHashRestoredRef.current = true;
+              return;
+            }
+            const verifiedScrollPadding = Number.parseFloat(
+              getComputedStyle(document.documentElement).scrollPaddingTop,
+            ) || 0;
+            const verifiedOffset = target.getBoundingClientRect().top - verifiedScrollPadding;
+            const chapterRestored = !isJourneyChapter(targetChapter)
+              || root.dataset.activeChapter === targetChapter;
+            if (
+              (Math.abs(verifiedOffset) <= HASH_RESTORE_TOLERANCE_PX && chapterRestored)
+              || hashRestoreAttempt >= HASH_RESTORE_MAX_ATTEMPTS
+            ) {
+              if (!target.hasAttribute('tabindex')) target.tabIndex = -1;
+              target.focus({ preventScroll: true });
+              initialHashRestoredRef.current = true;
+              return;
+            }
+            hashRestoreFrame = window.requestAnimationFrame(restoreHash);
+          });
+        };
+        hashRestoreFrame = window.requestAnimationFrame(restoreHash);
       }
     }
     return () => {
       window.cancelAnimationFrame(hashRestoreFrame);
       context.revert();
       root.style.removeProperty('--mf-progress');
+      delete root.dataset.buriedActProgress;
     };
-  }, [onChapterChange, onProgress, onSchoolActProgress, onSliceProgress, reducedMotion, rootRef]);
+  }, [onBuriedActProgress, onChapterChange, onProgress, onSchoolActProgress, onSliceProgress, reducedMotion, rootRef]);
 
   return {
     journeyProgressRef,
     worldProgressRef,
     sliceProgressRef,
     schoolActProgressRef,
+    buriedActProgressRef,
     schoolEntranceHandoffProgressRef,
     descentHandoffProgressRef,
     velocityRef,
@@ -327,4 +412,31 @@ export function useJourneyDirector({
 
 function dampSigned(current: number, target: number, amount: number) {
   return current + (target - current) * amount;
+}
+
+function remapBuriedActProgress(
+  rawProgress: number,
+  start: HTMLElement,
+  lamp: HTMLElement | null,
+  build: HTMLElement | null,
+  end: HTMLElement,
+) {
+  if (!lamp || !build) return rawProgress;
+
+  const totalDistance = end.offsetTop - start.offsetTop;
+  if (totalDistance <= 0) return rawProgress;
+
+  const lampBoundary = (lamp.offsetTop - start.offsetTop) / totalDistance;
+  const buildBoundary = (build.offsetTop - start.offsetTop) / totalDistance;
+  const segment = (value: number, from: number, to: number) => (
+    Math.max(0, Math.min(1, (value - from) / Math.max(0.0001, to - from)))
+  );
+
+  if (rawProgress < lampBoundary) {
+    return segment(rawProgress, 0, lampBoundary) * 0.18;
+  }
+  if (rawProgress < buildBoundary) {
+    return 0.18 + segment(rawProgress, lampBoundary, buildBoundary) * 0.43;
+  }
+  return 0.61 + segment(rawProgress, buildBoundary, 1) * 0.39;
 }

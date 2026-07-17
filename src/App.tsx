@@ -21,6 +21,7 @@ function ScrollToTop() {
 
     const move = () => {
       if (hash) {
+        if (window.location.hash !== hash) return;
         const target = document.getElementById(hash.slice(1));
         if (!target && window.performance.now() < deadline) {
           frame = window.requestAnimationFrame(move);
@@ -30,6 +31,7 @@ function ScrollToTop() {
           scrollToTarget(target);
           [240, 820].forEach((delay) => {
             confirmations.push(window.setTimeout(() => {
+              if (window.location.hash !== hash) return;
               const currentTarget = document.getElementById(hash.slice(1));
               if (!currentTarget) return;
               const scrollPaddingTop = Number.parseFloat(

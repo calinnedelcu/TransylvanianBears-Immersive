@@ -485,7 +485,7 @@
 
   .ix-nodes {
     right: 42px;
-    bottom: 198px;
+    bottom: calc(var(--mf-mobile-rail-clearance, 65px) + 180px);
     left: 18px;
     width: auto;
   }
@@ -502,7 +502,7 @@
 
   .ix-readout {
     right: 42px;
-    bottom: 72px;
+    bottom: calc(var(--mf-mobile-rail-clearance, 65px) + 54px);
     left: 18px;
     width: auto;
     gap: 7px;
@@ -519,9 +519,14 @@
 
   .ix-progress {
     right: 42px;
-    bottom: 18px;
+    bottom: var(--mf-mobile-rail-clearance, 65px);
     left: 18px;
     width: auto;
+  }
+
+  .ix-progress a {
+    width: 44px;
+    height: 44px;
   }
 
   .ix-proof {
@@ -566,7 +571,7 @@
   }
 
   .ix-proof__footer a {
-    min-height: 42px;
+    min-height: 44px;
   }
 
   .ix-handoff {

@@ -93,7 +93,7 @@ echipă, personal, colaborare sau arhivă istorică.
 | --- | --- | --- | --- |
 | Project Nexus, locul 1 | premiu de echipă | prezentare publică și site vechi | Numele oficial complet al concursului trebuie normalizat. |
 | Aegis, locul 2 la Skills for the Future | premiu de echipă | articol JA România și site vechi | Program DB Global Technology x Junior Achievement România. |
-| The Buried Hands, locul 2 la RDGA x Tudor Vianu Game Jam 2026 | premiu de echipă | build public și site vechi | Trebuie obținută pagina oficială a clasamentului sau diploma. |
+| The Buried Hands, locul 2 la Game Jam Vianu 2026 | premiu de echipă | verificat în clipul oficial RGDA | Clasarea apare la 01:37, înaintea segmentului proiectului. |
 | Infect.exe, locul 19 general | rezultat internațional | verificat pe itch.io | A mai obținut locul 8 la temă și locul 14 la artă, din 56 de înscrieri. |
 | Evaluarea riscului de automatizare, locul 1 | premiu de echipă | confirmat de utilizator | Lipsește concursul, data, categoria și dovada. |
 | SchoolMate, mențiune la Hardcore Entrepreneur 6 | premiu de echipă | confirmat de utilizator | Trebuie obținută formularea oficială și dovada. |

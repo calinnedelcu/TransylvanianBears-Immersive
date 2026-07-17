@@ -16,6 +16,13 @@ import type { JourneyChapter } from '../../experience/chapters';
 import type { EvidenceCoreId } from '../../experience/evidenceCores';
 import type { QualityTier } from '../../experience/quality';
 import { CarpathianThreshold } from './CarpathianThreshold';
+import { BuriedActPackage } from './buried-act/BuriedActPackage';
+import { prepareBuriedActAssets } from './buried-act/buriedActAssets';
+import {
+  sampleBuriedActCamera,
+  useBuriedActCamera,
+  type BuriedActCameraCurve,
+} from './buried-act/buriedActCamera';
 import { FirstLightLayer } from './FirstLightLayer';
 import { NexusActScene } from './NexusActScene';
 import { SystemContinuityRig } from './SystemContinuityRig';
@@ -41,6 +48,7 @@ type MacroFlowSceneProps = {
   activeChapter: JourneyChapter;
   progressRef: MutableRefObject<number>;
   schoolActProgressRef: MutableRefObject<number>;
+  buriedActProgressRef: MutableRefObject<number>;
   schoolEntranceHandoffProgressRef: MutableRefObject<number>;
   descentHandoffProgressRef: MutableRefObject<number>;
   lensPointerRef: MutableRefObject<LensPointerState>;
@@ -50,12 +58,14 @@ type MacroFlowSceneProps = {
   onCollectEvidenceCore: (core: EvidenceCoreId) => void;
   traceProgress: number;
   traceOutcome: MacroTraceOutcome;
-  buriedDiscoveries: number;
+  lampRaised: boolean;
   reducedMotion: boolean;
   qualityTier: QualityTier;
   velocityRef: MutableRefObject<number>;
   onPerformanceFactor: (factor: number) => void;
   onPerformanceFallback: () => void;
+  onRendererFailure: () => void;
+  onBuriedPixelHandoffRendered: () => void;
 };
 
 const CAMERA_PATH = new THREE.CatmullRomCurve3([
@@ -98,6 +108,26 @@ const MOBILE_CAMERA_PATH = new THREE.CatmullRomCurve3([
   new THREE.Vector3(0, 7.2, -99),
   new THREE.Vector3(0.7, 4.8, -112),
   new THREE.Vector3(0, 3.8, -128),
+]);
+
+const BURIED_FALLBACK_CAMERA_PATH = new THREE.CatmullRomCurve3([
+  new THREE.Vector3(0, 3.8, -120),
+  new THREE.Vector3(-0.7, 2.9, -134),
+  new THREE.Vector3(-2.5, 1.7, -149),
+  new THREE.Vector3(2.6, 1.4, -158),
+  new THREE.Vector3(-1.8, 1.8, -170),
+  new THREE.Vector3(1.3, 1.2, -183),
+  new THREE.Vector3(0, -0.45, -191.85),
+]);
+
+const BURIED_FALLBACK_TARGET_PATH = new THREE.CatmullRomCurve3([
+  new THREE.Vector3(0, 1.65, -128),
+  new THREE.Vector3(0, 1.5, -143),
+  new THREE.Vector3(-2.8, 1.1, -153),
+  new THREE.Vector3(2.8, 0.9, -162),
+  new THREE.Vector3(-2.1, 1.3, -174),
+  new THREE.Vector3(0, 0.2, -188),
+  new THREE.Vector3(0, -0.52, -195.35),
 ]);
 
 function resolvedAssetUrl(assetId: 'thresholdSceneDesktop' | 'thresholdSceneMobile', fallback: string) {
@@ -155,6 +185,7 @@ function CameraDirector({
   activeChapter,
   progressRef,
   schoolActProgressRef,
+  buriedActProgressRef,
   schoolEntranceHandoffProgressRef,
   descentHandoffProgressRef,
   reducedMotion,
@@ -162,9 +193,11 @@ function CameraDirector({
   velocityRef,
   authoredCurves,
   schoolCameraCurve,
-}: Pick<MacroFlowSceneProps, 'activeChapter' | 'progressRef' | 'schoolActProgressRef' | 'schoolEntranceHandoffProgressRef' | 'descentHandoffProgressRef' | 'reducedMotion' | 'qualityTier' | 'velocityRef'> & {
+  buriedCameraCurve,
+}: Pick<MacroFlowSceneProps, 'activeChapter' | 'progressRef' | 'schoolActProgressRef' | 'buriedActProgressRef' | 'schoolEntranceHandoffProgressRef' | 'descentHandoffProgressRef' | 'reducedMotion' | 'qualityTier' | 'velocityRef'> & {
   authoredCurves: VerticalSliceCameraCurves;
   schoolCameraCurve: SchoolActCameraCurve | null;
+  buriedCameraCurve: BuriedActCameraCurve | null;
 }) {
   const targetPosition = useMemo(() => new THREE.Vector3(), []);
   const lookTarget = useMemo(() => new THREE.Vector3(), []);
@@ -172,7 +205,11 @@ function CameraDirector({
   const genericLookTarget = useMemo(() => new THREE.Vector3(), []);
   const schoolPosition = useMemo(() => new THREE.Vector3(), []);
   const schoolLookTarget = useMemo(() => new THREE.Vector3(), []);
+  const buriedPosition = useMemo(() => new THREE.Vector3(), []);
+  const buriedLookTarget = useMemo(() => new THREE.Vector3(), []);
   const orientation = useMemo(() => new THREE.PerspectiveCamera(), []);
+  const firstFrameRef = useRef(true);
+  const previousBuriedProgressRef = useRef<number | null>(null);
   useEffect(() => {
     const root = document.querySelector<HTMLElement>('.mf-lab');
     if (!root) return;
@@ -195,7 +232,15 @@ function CameraDirector({
           schoolLookTarget,
         )
       : null;
-    const directedCamera = schoolCamera ?? authoredCamera;
+    const isBuriedChapter = BURIED_CHAPTERS.has(activeChapter);
+    const buriedCamera = isBuriedChapter
+      ? sampleBuriedActCamera(
+          buriedCameraCurve,
+          buriedActProgressRef.current,
+          buriedPosition,
+          buriedLookTarget,
+        )
+      : null;
     const schoolFocus = smooth(range(worldProgress, 0.365, 0.43))
       * (1 - smooth(range(worldProgress, 0.445, 0.505)));
     const compact = size.width <= 820;
@@ -203,8 +248,39 @@ function CameraDirector({
     const genericRoll = THREE.MathUtils.clamp(-velocityRef.current * 0.012, -0.018, 0.018);
     let directedFov = authoredCamera?.fovDegrees;
     let directedRoll = authoredCamera?.rollRadians;
+    let hasDirectedCamera = Boolean(authoredCamera);
 
-    if (schoolCamera) {
+    if (isBuriedChapter) {
+      if (buriedCamera) {
+        targetPosition.copy(buriedPosition);
+        lookTarget.copy(buriedLookTarget);
+        directedFov = buriedCamera.fovDegrees;
+        directedRoll = buriedCamera.rollRadians;
+      } else {
+        const fallbackProgress = clamp01(buriedActProgressRef.current);
+        BURIED_FALLBACK_CAMERA_PATH.getPoint(fallbackProgress, targetPosition);
+        BURIED_FALLBACK_TARGET_PATH.getPoint(fallbackProgress, lookTarget);
+        directedFov = THREE.MathUtils.lerp(compact ? 60 : 50, compact ? 54 : 42, fallbackProgress);
+        directedRoll = 0;
+      }
+      hasDirectedCamera = true;
+
+      if (activeChapter === 'descent' && schoolCamera) {
+        const handoff = smooth(range(descentHandoffProgressRef.current, 0, 0.2));
+        targetPosition.lerpVectors(schoolPosition, targetPosition, handoff);
+        lookTarget.lerpVectors(schoolLookTarget, lookTarget, handoff);
+        directedFov = THREE.MathUtils.lerp(
+          schoolCamera.fovDegrees,
+          directedFov,
+          handoff,
+        );
+        directedRoll = THREE.MathUtils.lerp(
+          schoolCamera.rollRadians,
+          directedRoll,
+          handoff,
+        );
+      }
+    } else if (schoolCamera) {
       const entranceHandoff = activeChapter === 'passage'
         ? smooth(clamp01(schoolEntranceHandoffProgressRef.current))
         : 1;
@@ -227,9 +303,10 @@ function CameraDirector({
         directedFov = schoolCamera.fovDegrees;
         directedRoll = schoolCamera.rollRadians;
       }
+      hasDirectedCamera = true;
     }
 
-    if (!directedCamera || activeChapter === 'descent') {
+    if (!hasDirectedCamera) {
       const progress = cameraProgress(worldProgress);
       const lookDistance = THREE.MathUtils.lerp(0.11, 0.035, schoolFocus);
       const lookAhead = Math.min(1, progress + lookDistance);
@@ -239,25 +316,28 @@ function CameraDirector({
       genericLookTarget.x += schoolFocus * (compact ? 0.72 : 1.65);
       genericLookTarget.y -= schoolFocus * (compact ? 3.1 : 4.35);
 
-      if (!directedCamera) {
-        targetPosition.copy(genericPosition);
-        lookTarget.copy(genericLookTarget);
-      } else {
-        const handoff = smooth(clamp01(descentHandoffProgressRef.current));
-        targetPosition.lerp(genericPosition, handoff);
-        lookTarget.lerp(genericLookTarget, handoff);
-        directedFov = THREE.MathUtils.lerp(directedCamera.fovDegrees, genericFov, handoff);
-        directedRoll = THREE.MathUtils.lerp(directedCamera.rollRadians, genericRoll, handoff);
-      }
+      targetPosition.copy(genericPosition);
+      lookTarget.copy(genericLookTarget);
+      directedFov = genericFov;
+      directedRoll = genericRoll;
     }
 
-    const parallax = reducedMotion ? 0 : qualityTier === 'cinematic' ? 0.42 : 0.16;
+    const parallax = reducedMotion || isBuriedChapter
+      ? 0
+      : qualityTier === 'cinematic'
+        ? 0.42
+        : 0.16;
     targetPosition.x += pointer.x * parallax;
     targetPosition.y += pointer.y * parallax * 0.35;
     lookTarget.x += pointer.x * parallax * 0.55;
     lookTarget.y += pointer.y * parallax * 0.24;
 
-    const damping = reducedMotion ? 1 : 1 - Math.exp(-delta * 5.4);
+    const buriedProgress = buriedActProgressRef.current;
+    const buriedProgressJump = isBuriedChapter
+      && previousBuriedProgressRef.current !== null
+      && Math.abs(buriedProgress - previousBuriedProgressRef.current) >= 0.08;
+    const applyImmediately = firstFrameRef.current || reducedMotion || buriedProgressJump;
+    const damping = applyImmediately ? 1 : 1 - Math.exp(-delta * 5.4);
     camera.position.lerp(targetPosition, damping);
 
     orientation.position.copy(camera.position);
@@ -268,14 +348,14 @@ function CameraDirector({
     camera.quaternion.slerp(orientation.quaternion, damping);
 
     if (camera instanceof THREE.PerspectiveCamera) {
-      camera.fov = THREE.MathUtils.damp(
-        camera.fov,
-        directedFov ?? genericFov,
-        4.5,
-        delta,
-      );
+      const nextFov = directedFov ?? genericFov;
+      camera.fov = applyImmediately
+        ? nextFov
+        : THREE.MathUtils.damp(camera.fov, nextFov, 4.5, delta);
       camera.updateProjectionMatrix();
     }
+    firstFrameRef.current = false;
+    previousBuriedProgressRef.current = isBuriedChapter ? buriedProgress : null;
   });
 
   return null;
@@ -770,7 +850,10 @@ const CHAMBER_DEPTHS = [-108, -114, -120, -126];
 function BuriedChamber({
   progressRef,
   buriedDiscoveries,
-}: Pick<MacroFlowSceneProps, 'progressRef' | 'buriedDiscoveries'>) {
+}: {
+  progressRef: MutableRefObject<number>;
+  buriedDiscoveries: number;
+}) {
   const rootRef = useRef<THREE.Group>(null);
   const lampRefs = useRef<Array<THREE.MeshStandardMaterial | null>>([]);
 
@@ -912,17 +995,19 @@ const THRESHOLD_CHAPTERS = new Set<JourneyChapter>(['threshold', 'field']);
 const NEXUS_CHAPTERS = new Set<JourneyChapter>(['field', 'lens', 'proof']);
 const SCHOOL_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
 const SCHOOL_CAMERA_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
-const BURIED_CHAPTERS = new Set<JourneyChapter>(['descent', 'lamp', 'build']);
+const BURIED_CHAPTERS = new Set<JourneyChapter>(['descent', 'lamp', 'build', 'infect']);
 
 type WorldProps = MacroFlowSceneProps & {
   authoredCameraCurves: VerticalSliceCameraCurves;
   schoolCameraCurve: SchoolActCameraCurve | null;
+  buriedCameraCurve: BuriedActCameraCurve | null;
 };
 
 function World({
   activeChapter,
   progressRef,
   schoolActProgressRef,
+  buriedActProgressRef,
   schoolEntranceHandoffProgressRef,
   descentHandoffProgressRef,
   lensPointerRef,
@@ -932,12 +1017,14 @@ function World({
   onCollectEvidenceCore,
   traceProgress,
   traceOutcome,
-  buriedDiscoveries,
+  lampRaised,
   reducedMotion,
   qualityTier,
   velocityRef,
   authoredCameraCurves,
   schoolCameraCurve,
+  buriedCameraCurve,
+  onBuriedPixelHandoffRendered,
 }: WorldProps) {
   const showThreshold = THRESHOLD_CHAPTERS.has(activeChapter);
   const showNexus = NEXUS_CHAPTERS.has(activeChapter);
@@ -946,23 +1033,23 @@ function World({
 
   return (
     <>
-      <color attach="background" args={['#071011']} />
-      <fog attach="fog" args={['#0a1719', 26, 94]} />
+      <color attach="background" args={[showBuried ? '#070707' : '#071011']} />
+      <fog attach="fog" args={[showBuried ? '#0b0908' : '#0a1719', showBuried ? 12 : 26, showBuried ? 70 : 94]} />
       <WorldAtmosphere
         progressRef={progressRef}
         qualityTier={qualityTier}
         reducedMotion={reducedMotion}
       />
       <hemisphereLight
-        intensity={showThreshold ? 0.62 : 0.38}
-        color={showThreshold ? '#b8cecd' : '#b9cfcd'}
-        groundColor={showThreshold ? '#263029' : '#191b17'}
+        intensity={showBuried ? 0.16 : showThreshold ? 0.62 : 0.38}
+        color={showBuried ? '#b8ac98' : showThreshold ? '#b8cecd' : '#b9cfcd'}
+        groundColor={showBuried ? '#130f0d' : showThreshold ? '#263029' : '#191b17'}
       />
       <directionalLight
-        castShadow={qualityTier === 'cinematic'}
+        castShadow={qualityTier === 'cinematic' && !showBuried}
         position={showThreshold ? [-12, 19, 24] : [10, 18, 18]}
-        intensity={showThreshold ? 2.15 : 1.75}
-        color={showThreshold ? '#d7e1dc' : '#dae3d9'}
+        intensity={showBuried ? 0.58 : showThreshold ? 2.15 : 1.75}
+        color={showBuried ? '#bbae98' : showThreshold ? '#d7e1dc' : '#dae3d9'}
         shadow-mapSize-width={qualityTier === 'cinematic' ? 1536 : 512}
         shadow-mapSize-height={qualityTier === 'cinematic' ? 1536 : 512}
         shadow-camera-near={2}
@@ -1000,6 +1087,7 @@ function World({
         activeChapter={activeChapter}
         progressRef={progressRef}
         schoolActProgressRef={schoolActProgressRef}
+        buriedActProgressRef={buriedActProgressRef}
         schoolEntranceHandoffProgressRef={schoolEntranceHandoffProgressRef}
         descentHandoffProgressRef={descentHandoffProgressRef}
         reducedMotion={reducedMotion}
@@ -1007,6 +1095,7 @@ function World({
         velocityRef={velocityRef}
         authoredCurves={authoredCameraCurves}
         schoolCameraCurve={schoolCameraCurve}
+        buriedCameraCurve={buriedCameraCurve}
       />
       <RenderBudgetMonitor />
       <SystemContinuityRig
@@ -1047,14 +1136,25 @@ function World({
         />
       ) : null}
       {showBuried ? (
+        <Suspense fallback={null}>
+          <BuriedActPackage
+            localProgressRef={buriedActProgressRef}
+            lampRaised={lampRaised}
+            qualityTier={qualityTier}
+            reducedMotion={reducedMotion}
+            onPixelHandoffRendered={onBuriedPixelHandoffRendered}
+          />
+        </Suspense>
+      ) : null}
+      {showBuried && qualityTier === 'editorial' ? (
         <>
           <DescentVault progressRef={progressRef} qualityTier={qualityTier} />
           <DescentLayers progressRef={progressRef} />
-          <BuriedChamber progressRef={progressRef} buriedDiscoveries={buriedDiscoveries} />
+          <BuriedChamber progressRef={progressRef} buriedDiscoveries={lampRaised ? 3 : 0} />
         </>
       ) : null}
 
-      <mesh position={[0, -0.08, -56]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh visible={!showBuried} position={[0, -0.08, -56]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[36, 190]} />
         <meshStandardMaterial color="#101516" roughness={0.98} />
       </mesh>
@@ -1063,13 +1163,47 @@ function World({
   );
 }
 
+function WebGLContextGuard({
+  onPerformanceFallback,
+  onRendererFailure,
+}: Pick<MacroFlowSceneProps, 'onPerformanceFallback' | 'onRendererFailure'>) {
+  const canvas = useThree((state) => state.gl.domElement);
+  const contextLostHandledRef = useRef(false);
+
+  useEffect(() => {
+    const handleContextLost = (event: Event) => {
+      event.preventDefault();
+      if (contextLostHandledRef.current) return;
+
+      contextLostHandledRef.current = true;
+      onPerformanceFallback();
+      onRendererFailure();
+    };
+    const handleContextRestored = () => {
+      contextLostHandledRef.current = false;
+    };
+
+    canvas.addEventListener('webglcontextlost', handleContextLost);
+    canvas.addEventListener('webglcontextrestored', handleContextRestored);
+    return () => {
+      canvas.removeEventListener('webglcontextlost', handleContextLost);
+      canvas.removeEventListener('webglcontextrestored', handleContextRestored);
+    };
+  }, [canvas, onPerformanceFallback, onRendererFailure]);
+
+  return null;
+}
+
 export function MacroFlowScene(props: MacroFlowSceneProps) {
   const [compact, setCompact] = useState(() => window.innerWidth <= 820);
   const [schoolCompact, setSchoolCompact] = useState(() => window.innerWidth <= 840);
   const authoredCameraCurves = useVerticalSliceCameraCurves(compact);
   const schoolCamera = useSchoolActCamera(schoolCompact);
+  const buriedCamera = useBuriedActCamera(compact);
+  const buriedCameraSettled = buriedCamera.ready || buriedCamera.error !== null;
   const cameraReady = Object.keys(authoredCameraCurves).length === 4
-    && (schoolCamera.ready || schoolCamera.error !== null);
+    && (schoolCamera.ready || schoolCamera.error !== null)
+    && (!BURIED_CHAPTERS.has(props.activeChapter) || buriedCameraSettled);
   const dpr: [number, number] | number = props.qualityTier === 'cinematic' ? [1, 1.5] : 1;
 
   useEffect(() => {
@@ -1080,6 +1214,19 @@ export function MacroFlowScene(props: MacroFlowSceneProps) {
     window.addEventListener('resize', onResize, { passive: true });
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  useEffect(() => {
+    if (
+      props.activeChapter === 'schoolmate'
+      || BURIED_CHAPTERS.has(props.activeChapter)
+    ) {
+      const root = document.querySelector<HTMLElement>('.mf-lab');
+      if (root && root.dataset.buriedActModel !== 'ready') {
+        root.dataset.buriedActModel = 'loading';
+      }
+      prepareBuriedActAssets();
+    }
+  }, [props.activeChapter]);
 
   useEffect(() => {
     const root = document.querySelector<HTMLElement>('.mf-lab');
@@ -1093,6 +1240,21 @@ export function MacroFlowScene(props: MacroFlowSceneProps) {
       delete root.dataset.schoolActCamera;
     };
   }, [schoolCamera.error, schoolCamera.ready]);
+
+  useEffect(() => {
+    const root = document.querySelector<HTMLElement>('.mf-lab');
+    if (!root) return undefined;
+    root.dataset.buriedActCameraVariant = buriedCamera.variant;
+    root.dataset.buriedActCamera = buriedCamera.ready
+      ? 'ready'
+      : buriedCamera.error
+        ? 'fallback'
+        : 'loading';
+    return () => {
+      delete root.dataset.buriedActCamera;
+      delete root.dataset.buriedActCameraVariant;
+    };
+  }, [buriedCamera.error, buriedCamera.ready, buriedCamera.variant]);
 
   return (
     <>
@@ -1110,6 +1272,10 @@ export function MacroFlowScene(props: MacroFlowSceneProps) {
         }}
         fallback={<VerticalSliceLoader unavailable />}
       >
+        <WebGLContextGuard
+          onPerformanceFallback={props.onPerformanceFallback}
+          onRendererFailure={props.onRendererFailure}
+        />
         <PerformanceMonitor
           flipflops={3}
           onChange={({ factor }) => props.onPerformanceFactor(factor)}
@@ -1120,6 +1286,7 @@ export function MacroFlowScene(props: MacroFlowSceneProps) {
               {...props}
               authoredCameraCurves={authoredCameraCurves}
               schoolCameraCurve={schoolCamera.curve}
+              buriedCameraCurve={buriedCamera.curve}
             />
           </Suspense>
         </PerformanceMonitor>

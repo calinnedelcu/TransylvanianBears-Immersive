@@ -156,6 +156,7 @@ export default function InfectInterlude() {
   const imagesRef = useRef<Partial<Record<InfectStage, HTMLImageElement>>>({});
   const pointerRef = useRef({ x: 0.5, y: 0.5, active: false });
   const journeyProgressRef = useRef(0);
+  const drawStaticFrameRef = useRef<(() => void) | null>(null);
   const scrollFrameRef = useRef(0);
   const lastStageIndexRef = useRef(0);
   const [activeStage, setActiveStage] = useState<InfectStage>('gpu');
@@ -181,6 +182,7 @@ export default function InfectInterlude() {
     journeyProgressRef.current = progress;
     journey.style.setProperty('--ix-route-progress', progress.toFixed(4));
     journey.style.setProperty('--ix-stage-progress', ((progress * STAGES.length) % 1).toFixed(4));
+    drawStaticFrameRef.current?.();
 
     if (nextStageIndex !== lastStageIndexRef.current) {
       lastStageIndexRef.current = nextStageIndex;
@@ -214,10 +216,16 @@ export default function InfectInterlude() {
     STAGES.forEach((item) => {
       const image = new Image();
       image.decoding = 'async';
+      image.onload = () => drawStaticFrameRef.current?.();
       image.src = item.image;
       imagesRef.current[item.id] = image;
     });
-    return () => { imagesRef.current = {}; };
+    return () => {
+      Object.values(imagesRef.current).forEach((image) => {
+        if (image) image.onload = null;
+      });
+      imagesRef.current = {};
+    };
   }, []);
 
   useEffect(() => {
@@ -304,12 +312,24 @@ export default function InfectInterlude() {
         context.fillRect(0, scanY, CANVAS_WIDTH, 1);
       }
 
-      animationFrame = window.requestAnimationFrame(drawFrame);
     };
 
-    animationFrame = window.requestAnimationFrame(drawFrame);
+    const animate = (time: number) => {
+      drawFrame(time);
+      if (!disposed) animationFrame = window.requestAnimationFrame(animate);
+    };
+    const drawStaticFrame = () => drawFrame(0);
+
+    if (reducedMotion) {
+      drawStaticFrameRef.current = drawStaticFrame;
+      drawStaticFrame();
+    } else {
+      animationFrame = window.requestAnimationFrame(animate);
+    }
+
     return () => {
       disposed = true;
+      if (drawStaticFrameRef.current === drawStaticFrame) drawStaticFrameRef.current = null;
       window.cancelAnimationFrame(animationFrame);
     };
   }, [nearViewport, reducedMotion]);
@@ -335,7 +355,11 @@ export default function InfectInterlude() {
     const slotProgress = Math.min(0.96, index / STAGES.length + 0.035);
     const target = sectionTop + slotProgress * travel;
     if (lenis) {
-      lenis.scrollTo(target, { duration: reducedMotion ? 0 : 0.95, force: true });
+      if (reducedMotion) {
+        lenis.scrollTo(target, { immediate: true, force: true });
+      } else {
+        lenis.scrollTo(target, { duration: 0.95, force: true });
+      }
     } else {
       window.scrollTo({ top: target, behavior: reducedMotion ? 'auto' : 'smooth' });
     }

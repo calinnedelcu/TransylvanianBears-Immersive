@@ -212,9 +212,9 @@ conturul unei mâini.
 
 ### 06. Imagine / The Buried Hands — 58-70% / 180vh
 
-**Cadru:** camera coboară într-o lume de joc inspirată strict din art direction-ul și
-asset-urile reale ale proiectului. Materialele observatorului devin decor, UI și
-regulă de gameplay; nu proiectăm un trailer paralel care nu există în build.
+**Cadru:** camera coboară într-o interpretare web inspirată din art direction-ul și
+galeria publică a proiectului. Scena 3D este material editorial al site-ului, iar
+capturile proiectului rămân dovada autentică; nu pretindem că mediul este exportat din joc.
 
 **Beat-uri:**
 
@@ -259,8 +259,8 @@ formulării oficiale.
 oamenii lor. Nu există raft de cupe. Fiecare rezultat are o stare vizuală pentru
 `verified`, `source pending` sau `milestone`.
 
-**Conținut prioritar:** Project Nexus, Skills for the Future, RDGA x Tudor Vianu Game
-Jam 2026, Chronos CTF, Hardcore Entrepreneur 6, 1-BIT JAM 7 și premiile de cercetare.
+**Conținut prioritar:** Project Nexus, Skills for the Future, RDGA x Tudor Vianu
+Game Jam 2026, Chronos CTF, Hardcore Entrepreneur 6, 1-BIT JAM 7 și premiile de cercetare.
 Internshipul Deutsche Bank este milestone și se afișează separat după clarificarea
 participanților.
 

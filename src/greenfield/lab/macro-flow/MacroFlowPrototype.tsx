@@ -19,6 +19,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -27,7 +28,12 @@ import {
 } from 'react';
 import { usePrefersReducedMotion } from '../../../hooks/usePrefersReducedMotion';
 import { ViewTransitionLink } from '../../components/ViewTransitionLink';
-import { JOURNEY_CHAPTERS, chapterTone, type JourneyChapter } from '../../experience/chapters';
+import {
+  JOURNEY_CHAPTERS,
+  chapterIndex,
+  chapterTone,
+  type JourneyChapter,
+} from '../../experience/chapters';
 import { ExperienceProvider } from '../../experience/ExperienceProvider';
 import { useAmbientAudio } from '../../experience/audio/useAmbientAudio';
 import { EVIDENCE_CORE_BY_LENS, type EvidenceCoreId } from '../../experience/evidenceCores';
@@ -42,6 +48,10 @@ import ResearchCrossing from './ResearchCrossing';
 import EvidenceWeave from './EvidenceWeave';
 import { NexusProofInspector } from './NexusProofInspector';
 import BuriedGameplayTheater from './BuriedGameplayTheater';
+import {
+  BuriedActSoundscape,
+  type BuriedLampFocus,
+} from './buried-act/BuriedActSoundscape';
 import { VerticalSliceSoundscape } from './VerticalSliceSoundscape';
 import { VerticalSliceLoader } from './VerticalSliceLoader';
 import { SchoolActOverlay } from './school-act/SchoolActOverlay';
@@ -52,7 +62,7 @@ import './macro-flow.css';
 
 const MacroFlowScene = lazy(() => import('./MacroFlowScene').then((module) => ({ default: module.MacroFlowScene })));
 
-type WorldErrorBoundaryProps = { children: ReactNode };
+type WorldErrorBoundaryProps = { children: ReactNode; onError: () => void };
 type WorldErrorBoundaryState = { failed: boolean };
 
 class WorldErrorBoundary extends Component<WorldErrorBoundaryProps, WorldErrorBoundaryState> {
@@ -64,6 +74,7 @@ class WorldErrorBoundary extends Component<WorldErrorBoundaryProps, WorldErrorBo
 
   componentDidCatch(error: Error) {
     console.warn('Immersive renderer unavailable; continuing with the editorial route.', error);
+    this.props.onError();
   }
 
   render() {
@@ -82,37 +93,56 @@ function supportsWebGL() {
 }
 
 type BuriedRule = 'oil' | 'mechanism' | 'mercury';
+type MacroSoundAct = 'vertical' | 'school' | 'buried';
+
+const INFECT_CHAPTER_INDEX = chapterIndex('infect');
+
+function soundActForChapter(chapter: JourneyChapter): MacroSoundAct | null {
+  switch (chapter) {
+    case 'threshold':
+    case 'field':
+    case 'lens':
+    case 'proof':
+      return 'vertical';
+    case 'passage':
+    case 'access':
+    case 'schoolmate':
+      return 'school';
+    case 'descent':
+    case 'lamp':
+    case 'build':
+      return 'buried';
+    default:
+      return null;
+  }
+}
 
 const BURIED_RULES: Array<{
   id: BuriedRule;
   label: string;
   short: string;
   detail: string;
-  position: { left: string; top: string };
   icon: typeof Flame;
 }> = [
   {
     id: 'oil',
-    label: 'Lumina este o resursă',
+    label: 'Lampa are combustibil',
     short: 'Ulei',
-    detail: 'Lampa consumă ulei, iar lumina amplificată îl consumă mai repede.',
-    position: { left: '21%', top: '75%' },
+    detail: 'Lampa consumă ulei. Jocul oferă separat o comandă pentru mai multă lumină.',
     icon: Flame,
   },
   {
     id: 'mechanism',
-    label: 'Cunoașterea deschide traseul',
+    label: 'Vaza închide circuitul',
     short: 'Mecanism',
-    detail: 'Nu lupți cu mausoleul. Îi citești scripeții, capcanele și obiectele construite chiar de tine.',
-    position: { left: '50%', top: '34%' },
+    detail: 'Umpli o vază cu mercur și o aduci înapoi la mecanism.',
     icon: Cog,
   },
   {
     id: 'mercury',
-    label: 'Mediul este amenințarea',
+    label: 'Expunerea este măsurată',
     short: 'Vapori',
-    detail: 'Mercurul nu este decor: expunerea schimbă ruta și obligă folosirea măștii.',
-    position: { left: '72%', top: '72%' },
+    detail: 'Masca protejează de vapori, iar HUD-ul urmărește nivelul lor.',
     icon: Wind,
   },
 ];
@@ -130,11 +160,22 @@ const LENS_OPTIONS: Array<{
 
 function MacroFlowExperience() {
   const rootRef = useRef<HTMLElement>(null);
+  const railRef = useRef<HTMLElement>(null);
   const sharedAudioContextRef = useRef<AudioContext | null>(null);
   const verticalSoundscapeRef = useRef<VerticalSliceSoundscape | null>(null);
   const schoolSoundscapeRef = useRef<SchoolActSoundscape | null>(null);
+  const buriedSoundscapeRef = useRef<BuriedActSoundscape | null>(null);
   const verticalSoundParametersRef = useRef({ progress: 0, velocity: 0, lensMode: 'raw' as MacroLensMode });
   const schoolSoundParametersRef = useRef({ progress: 0, scanProgress: 0, velocity: 0 });
+  const buriedSoundParametersRef = useRef({
+    progress: 0,
+    velocity: 0,
+    lamp: { x: -0.82, y: 0.1, active: false, focus: 'oil' as BuriedLampFocus },
+  });
+  const buriedFocusRef = useRef<BuriedLampFocus>('oil');
+  const buriedEvidenceCueRef = useRef(0);
+  const buriedPixelCueRef = useRef(false);
+  const lampRaisedRef = useRef(false);
   const schoolActStatusRef = useRef<SchoolActStatus>('idle');
   const previousSchoolActStatusRef = useRef<SchoolActStatus>('idle');
   const schoolRequestCueRef = useRef(false);
@@ -143,7 +184,24 @@ function MacroFlowExperience() {
   const nexusFlightInputRef = useRef<NexusFlightInput>({ x: 0, y: 0, active: false });
   const reducedMotion = usePrefersReducedMotion();
   const [webglAvailable] = useState(supportsWebGL);
+  const [rendererFailure, setRendererFailure] = useState<'render-error' | 'context-lost' | null>(null);
+  const directInfectEntryRef = useRef(window.location.hash === '#mf-infect');
+  const directInfectChapterReachedRef = useRef(false);
+  const [buriedHandoffComplete, setBuriedHandoffComplete] = useState(
+    () => directInfectEntryRef.current,
+  );
+  const handleRendererError = useCallback(() => setRendererFailure('render-error'), []);
+  const handleRendererContextLost = useCallback(() => setRendererFailure('context-lost'), []);
+  const handleBuriedPixelHandoffRendered = useCallback(() => {
+    setBuriedHandoffComplete(true);
+  }, []);
   const experienceActor = useExperienceActorRef();
+  const handlePerformanceFactor = useCallback((factor: number) => {
+    experienceActor.send({ type: 'QUALITY_SAMPLE', factor });
+  }, [experienceActor]);
+  const handlePerformanceFallback = useCallback(() => {
+    experienceActor.send({ type: 'QUALITY_FALLBACK' });
+  }, [experienceActor]);
   const activeChapter = useExperienceSelector((state) => state.context.activeChapter);
   const lensMode = useExperienceSelector((state) => state.context.lensMode);
   const qualityTier = useExperienceSelector((state) => effectiveQuality(state.context));
@@ -169,8 +227,11 @@ function MacroFlowExperience() {
     }
   }, [activeChapter, resolveSchoolAct]);
 
-  const [buriedRules, setBuriedRules] = useState<Set<BuriedRule>>(() => new Set());
+  const [lampRaisedByUser, setLampRaisedByUser] = useState(false);
+  const [lampAutoRaised, setLampAutoRaised] = useState(false);
   const [activeBuriedRule, setActiveBuriedRule] = useState<BuriedRule>('oil');
+  const lampRaised = lampRaisedByUser || lampAutoRaised;
+  lampRaisedRef.current = lampRaised;
 
   const getSharedAudioContext = useCallback(() => {
     if (sharedAudioContextRef.current) return sharedAudioContextRef.current;
@@ -207,6 +268,31 @@ function MacroFlowExperience() {
     return schoolSoundscapeRef.current;
   }, [getSharedAudioContext, reducedMotion]);
 
+  const getBuriedSoundscape = useCallback(() => {
+    const context = getSharedAudioContext();
+    if (!context) return null;
+    buriedSoundscapeRef.current ??= new BuriedActSoundscape({
+      audioContext: context,
+      reducedMotion,
+      masterLevel: 0.34,
+    });
+    buriedSoundscapeRef.current.update(buriedSoundParametersRef.current);
+    return buriedSoundscapeRef.current;
+  }, [getSharedAudioContext, reducedMotion]);
+
+  const getChapterSoundscape = useCallback((chapter: JourneyChapter) => {
+    switch (soundActForChapter(chapter)) {
+      case 'vertical':
+        return getVerticalSoundscape();
+      case 'school':
+        return getSchoolSoundscape();
+      case 'buried':
+        return getBuriedSoundscape();
+      default:
+        return null;
+    }
+  }, [getBuriedSoundscape, getSchoolSoundscape, getVerticalSoundscape]);
+
   const enableAudio = useCallback(() => experienceActor.send({ type: 'AUDIO_ENABLED' }), [experienceActor]);
   const muteAudio = useCallback(() => experienceActor.send({ type: 'AUDIO_MUTED' }), [experienceActor]);
   const {
@@ -242,22 +328,21 @@ function MacroFlowExperience() {
     });
   }, [experienceActor]);
   const toggleComposedAudio = useCallback(async () => {
-    const soundscape = getVerticalSoundscape();
-    const schoolSoundscape = getSchoolSoundscape();
     if (audioEnabled) {
-      soundscape?.mute();
-      schoolSoundscape?.mute();
+      verticalSoundscapeRef.current?.mute();
+      schoolSoundscapeRef.current?.mute();
+      buriedSoundscapeRef.current?.mute();
       await toggleAmbientAudio();
       return;
     }
 
-    const [ambientStarted, verticalStarted, schoolStarted] = await Promise.all([
+    const soundscape = getChapterSoundscape(activeChapter);
+    const [ambientStarted, actStarted] = await Promise.all([
       toggleAmbientAudio(),
       soundscape?.resume() ?? Promise.resolve(false),
-      schoolSoundscape?.resume() ?? Promise.resolve(false),
     ]);
-    if ((verticalStarted || schoolStarted) && !ambientStarted) enableAudio();
-  }, [audioEnabled, enableAudio, getSchoolSoundscape, getVerticalSoundscape, toggleAmbientAudio]);
+    if (actStarted && !ambientStarted) enableAudio();
+  }, [activeChapter, audioEnabled, enableAudio, getChapterSoundscape, toggleAmbientAudio]);
   const onJourneyProgress = useCallback((progress: number, velocity: number) => {
     updateAudio(progress, velocity);
   }, [updateAudio]);
@@ -285,9 +370,61 @@ function MacroFlowExperience() {
       schoolSoundscapeRef.current?.trigger('request-resolved');
     }
   }, [resetSchoolAct, resolveSchoolAct]);
+  const onBuriedActProgress = useCallback((progress: number, velocity: number) => {
+    if (progress < 0.999) setBuriedHandoffComplete(false);
+    if (progress >= 0.37) setLampAutoRaised(true);
+    else if (progress <= 0.27) setLampAutoRaised(false);
+
+    if (progress <= 0.08) setLampRaisedByUser(false);
+    const nextRule: BuriedRule = progress < 0.4
+      ? 'oil'
+      : progress < 0.51
+        ? 'mechanism'
+        : 'mercury';
+    setActiveBuriedRule(nextRule);
+
+    const nextFocus = nextRule as BuriedLampFocus;
+    const lampX = nextFocus === 'oil' ? -0.82 : nextFocus === 'mechanism' ? 0.12 : 0.84;
+    buriedSoundParametersRef.current = {
+      progress,
+      velocity,
+      lamp: {
+        x: lampX,
+        y: nextFocus === 'mechanism' ? 0.44 : 0.08,
+        active: lampRaisedRef.current || progress >= 0.37,
+        focus: nextFocus,
+      },
+    };
+    buriedSoundscapeRef.current?.update(buriedSoundParametersRef.current);
+
+    if (nextFocus !== buriedFocusRef.current && progress >= 0.29) {
+      buriedFocusRef.current = nextFocus;
+      buriedSoundscapeRef.current?.trigger('lamp-focus');
+      if (nextFocus === 'mechanism') buriedSoundscapeRef.current?.trigger('mechanism-wake');
+    }
+
+    const evidenceThresholds = [0.58, 0.69, 0.79];
+    while (
+      buriedEvidenceCueRef.current < evidenceThresholds.length
+      && progress >= evidenceThresholds[buriedEvidenceCueRef.current]
+    ) {
+      buriedSoundscapeRef.current?.trigger('evidence-reveal');
+      buriedEvidenceCueRef.current += 1;
+    }
+    if (progress >= 0.95 && !buriedPixelCueRef.current) {
+      buriedPixelCueRef.current = true;
+      buriedSoundscapeRef.current?.trigger('pixel-compress');
+    }
+    if (progress <= 0.08) {
+      buriedFocusRef.current = 'oil';
+      buriedEvidenceCueRef.current = 0;
+      buriedPixelCueRef.current = false;
+    }
+  }, []);
   const {
     worldProgressRef: progressRef,
     schoolActProgressRef,
+    buriedActProgressRef,
     schoolEntranceHandoffProgressRef,
     descentHandoffProgressRef,
     velocityRef,
@@ -298,7 +435,39 @@ function MacroFlowExperience() {
     onProgress: onJourneyProgress,
     onSliceProgress,
     onSchoolActProgress,
+    onBuriedActProgress,
   });
+
+  useLayoutEffect(() => {
+    if (activeChapter === 'infect') {
+      if (directInfectEntryRef.current) {
+        directInfectChapterReachedRef.current = true;
+        setBuriedHandoffComplete(true);
+      }
+      return;
+    }
+
+    if (chapterIndex(activeChapter) >= INFECT_CHAPTER_INDEX) return;
+    if (directInfectEntryRef.current && !directInfectChapterReachedRef.current) return;
+
+    directInfectEntryRef.current = false;
+    setBuriedHandoffComplete(false);
+  }, [activeChapter]);
+
+  useLayoutEffect(() => {
+    const rail = railRef.current;
+    const active = rail?.querySelector<HTMLAnchorElement>('a[data-active]');
+    if (!rail || !active || rail.scrollWidth <= rail.clientWidth) return undefined;
+
+    const frame = window.requestAnimationFrame(() => {
+      const centeredLeft = active.offsetLeft - (rail.clientWidth - active.offsetWidth) * 0.5;
+      rail.scrollTo({
+        left: Math.max(0, Math.min(centeredLeft, rail.scrollWidth - rail.clientWidth)),
+        behavior: reducedMotion ? 'auto' : 'smooth',
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeChapter, reducedMotion]);
 
   useGreenfieldMode({
     title: 'Transylvanian Bears — Produse, jocuri și cercetare aplicată',
@@ -320,23 +489,18 @@ function MacroFlowExperience() {
     runSchoolScan();
   }, [audioEnabled, canStartSchoolScan, getSchoolSoundscape, reducedMotion, runSchoolScan]);
 
-  const revealBuriedRule = useCallback((rule: BuriedRule) => {
-    setActiveBuriedRule(rule);
-    setBuriedRules((current) => {
-      if (current.has(rule)) return current;
-      const next = new Set(current);
-      next.add(rule);
-      return next;
-    });
-  }, []);
+  const raiseLamp = useCallback(() => {
+    setLampRaisedByUser(true);
+    lampRaisedRef.current = true;
+    buriedSoundParametersRef.current.lamp.active = true;
+    if (!audioEnabled || soundActForChapter(activeChapter) !== 'buried') return;
 
-  const moveLamp = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * 100;
-    const y = ((event.clientY - rect.top) / rect.height) * 100;
-    event.currentTarget.style.setProperty('--mf-lamp-x', `${x.toFixed(2)}%`);
-    event.currentTarget.style.setProperty('--mf-lamp-y', `${y.toFixed(2)}%`);
-  }, []);
+    const soundscape = getBuriedSoundscape();
+    soundscape?.updateLamp({ active: true });
+    void soundscape?.resume().then((started) => {
+      if (started) soundscape.trigger('lamp-focus');
+    });
+  }, [activeChapter, audioEnabled, getBuriedSoundscape]);
 
   const moveLens = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     const compact = window.innerWidth <= 820;
@@ -402,14 +566,19 @@ function MacroFlowExperience() {
   useEffect(() => {
     verticalSoundscapeRef.current?.setReducedMotion(reducedMotion);
     schoolSoundscapeRef.current?.setReducedMotion(reducedMotion);
+    buriedSoundscapeRef.current?.setReducedMotion(reducedMotion);
   }, [reducedMotion]);
 
   useEffect(() => {
-    if (!audioEnabled) {
-      verticalSoundscapeRef.current?.mute();
-      schoolSoundscapeRef.current?.mute();
-    }
-  }, [audioEnabled]);
+    const activeSoundAct = soundActForChapter(activeChapter);
+    if (!audioEnabled || activeSoundAct !== 'vertical') verticalSoundscapeRef.current?.mute();
+    if (!audioEnabled || activeSoundAct !== 'school') schoolSoundscapeRef.current?.mute();
+    if (!audioEnabled || activeSoundAct !== 'buried') buriedSoundscapeRef.current?.mute();
+    if (!audioEnabled) return;
+
+    const soundscape = getChapterSoundscape(activeChapter);
+    if (soundscape?.status !== 'running') void soundscape?.resume();
+  }, [activeChapter, audioEnabled, getChapterSoundscape]);
 
   useEffect(() => {
     schoolSoundParametersRef.current.scanProgress = schoolAct.progress;
@@ -427,14 +596,17 @@ function MacroFlowExperience() {
   useEffect(() => () => {
     verticalSoundscapeRef.current?.dispose();
     schoolSoundscapeRef.current?.dispose();
+    buriedSoundscapeRef.current?.dispose();
     const context = sharedAudioContextRef.current;
     sharedAudioContextRef.current = null;
     if (context && context.state !== 'closed') void context.close();
   }, []);
 
   const macroWorldActive = webglAvailable
+    && rendererFailure === null
     && qualityTier !== 'editorial'
-    && activeChapter !== 'infect'
+    && !directInfectEntryRef.current
+    && !(activeChapter === 'infect' && buriedHandoffComplete)
     && activeChapter !== 'research'
     && activeChapter !== 'evidence-weave'
     && activeChapter !== 'final-return'
@@ -450,17 +622,19 @@ function MacroFlowExperience() {
       data-evidence-cores={evidenceCores.length}
       data-trace-outcome={schoolAct.status}
       data-renderer={macroWorldActive ? 'webgl' : 'editorial'}
+      data-renderer-failure={rendererFailure ?? undefined}
     >
-      <a className="mf-skip" href="#mf-proof">Sari la dovada proiectului</a>
+      <a className="mf-skip" href={`#mf-${activeChapter}`}>Sari la capitolul activ</a>
 
       <div className="mf-world" aria-hidden="true">
         {macroWorldActive ? (
-          <WorldErrorBoundary>
+          <WorldErrorBoundary onError={handleRendererError}>
             <Suspense fallback={<VerticalSliceLoader />}>
               <MacroFlowScene
                 activeChapter={activeChapter}
                 progressRef={progressRef}
                 schoolActProgressRef={schoolActProgressRef}
+                buriedActProgressRef={buriedActProgressRef}
                 schoolEntranceHandoffProgressRef={schoolEntranceHandoffProgressRef}
                 descentHandoffProgressRef={descentHandoffProgressRef}
                 lensPointerRef={lensPointerRef}
@@ -470,12 +644,14 @@ function MacroFlowExperience() {
                 onCollectEvidenceCore={collectEvidenceCore}
                 traceProgress={schoolAct.progress}
                 traceOutcome={schoolAct.status}
-                buriedDiscoveries={buriedRules.size}
+                lampRaised={lampRaised}
                 reducedMotion={reducedMotion}
                 qualityTier={qualityTier}
                 velocityRef={velocityRef}
-                onPerformanceFactor={(factor) => experienceActor.send({ type: 'QUALITY_SAMPLE', factor })}
-                onPerformanceFallback={() => experienceActor.send({ type: 'QUALITY_FALLBACK' })}
+                onPerformanceFactor={handlePerformanceFactor}
+                onPerformanceFallback={handlePerformanceFallback}
+                onRendererFailure={handleRendererContextLost}
+                onBuriedPixelHandoffRendered={handleBuriedPixelHandoffRendered}
               />
             </Suspense>
           </WorldErrorBoundary>
@@ -517,12 +693,13 @@ function MacroFlowExperience() {
         </div>
       </header>
 
-      <nav className="mf-rail" aria-label="Macro flow chapters">
+      <nav ref={railRef} className="mf-rail" aria-label="Macro flow chapters">
         {JOURNEY_CHAPTERS.map((chapter) => (
           <a
             key={chapter.id}
             href={`#mf-${chapter.id}`}
             data-active={activeChapter === chapter.id || undefined}
+            aria-current={activeChapter === chapter.id ? 'step' : undefined}
             aria-label={`${chapter.index}. ${chapter.label}`}
           >
             <span>{chapter.index}</span>
@@ -699,14 +876,14 @@ function MacroFlowExperience() {
 
       <section id="mf-descent" className="mf-beat mf-beat--descent" data-chapter="descent">
         <div className="mf-copy mf-copy--descent">
-          <p className="mf-kicker">Continuity rule / Aegis → The Buried Hands</p>
-          <h2>Regula devine lume.</h2>
+          <p className="mf-kicker">Continuity rule / SchoolMate → The Buried Hands</p>
+          <h2>Mausoleul se închide.</h2>
           <p>
-            Planul validat se pliază în straturi minerale. În următorul capitol, protecția nu mai
-            este o permisiune de acces; devine regula spațiului prin care trebuie să supraviețuiești.
+            În premisa jocului, plasată în anul 210 î.Hr., un meșteșugar rămâne prins în mausoleul lui Qin Shi Huang când
+            începe sigilarea complexului. Are unelte, cunoaște mecanismele și dispune de puțin ulei.
           </p>
           <div className="mf-next-beat">
-            <span>Coboară în regulă</span>
+            <span>Coboară în mausoleu</span>
             <strong>Rule Descent / The Buried Hands <ArrowDown aria-hidden="true" /></strong>
           </div>
         </div>
@@ -715,64 +892,76 @@ function MacroFlowExperience() {
       <section id="mf-lamp" className="mf-lamp-chamber" data-chapter="lamp">
         <div
           className="mf-lamp-chamber__stage"
-          onPointerMove={moveLamp}
-          data-complete={buriedRules.size === BURIED_RULES.length || undefined}
+          data-lamp-raised={lampRaised || undefined}
         >
-          <img
-            className="mf-lamp-chamber__base"
-            src="/assets/projects/buried-hands/mechanism.webp"
-            alt="Mecanism cu scripeți, lampă și vas pentru mercur în The Buried Hands"
-            width="1916"
-            height="1004"
-            loading="lazy"
-            decoding="async"
-          />
-          <div className="mf-lamp-chamber__reveal" aria-hidden="true">
-            <img src="/assets/projects/buried-hands/mechanism.webp" alt="" width="1916" height="1004" loading="lazy" decoding="async" />
-          </div>
+          <figure className="mf-lamp-chamber__fallback-media">
+            <picture style={{ display: 'contents' }}>
+              <source
+                media="(max-width: 820px)"
+                srcSet="/assets/projects/buried-hands/mobile/mechanism.webp"
+              />
+              <img
+                src="/assets/projects/buried-hands/mechanism.webp"
+                alt="Mecanism cu scripeți, lampă și vas pentru mercur în The Buried Hands"
+                width="1916"
+                height="1004"
+                loading="lazy"
+                decoding="async"
+              />
+            </picture>
+          </figure>
           <div className="mf-lamp-chamber__shade" aria-hidden="true" />
 
           <header className="mf-lamp-head">
-            <p className="mf-kicker">Imagine / lamp chamber</p>
-            <h2>Nu ai armură.<br />Ai lumină.</h2>
-            <p>Mișcă lumina prin cadru și inspectează cele trei reguli ale încăperii.</p>
+            <p className="mf-kicker">Interpretare web / reguli documentate</p>
+            <h2>Lumina dezvăluie dovezile.</h2>
+            <p>Scena 3D aparține site-ului; informațiile provin din pagina și capturile publice ale jocului.</p>
           </header>
 
-          <div className="mf-rule-hotspots" aria-label="Regulile încăperii">
-            {BURIED_RULES.map((rule, index) => {
-              const Icon = rule.icon;
-              const found = buriedRules.has(rule.id);
-              return (
-                <button
-                  key={rule.id}
-                  type="button"
-                  style={rule.position}
-                  data-active={activeBuriedRule === rule.id || undefined}
-                  data-found={found || undefined}
-                  onClick={() => revealBuriedRule(rule.id)}
-                  onFocus={() => revealBuriedRule(rule.id)}
-                  aria-label={`${index + 1}. ${rule.label}`}
-                >
-                  <span><Icon aria-hidden="true" /></span>
-                  <strong>{rule.short}</strong>
-                </button>
-              );
-            })}
+          <div className="mf-lamp-command-panel">
+            <button
+              className="mf-lamp-command"
+              type="button"
+              aria-label={lampRaised ? 'Lampa este ridicată' : 'Ridică lampa'}
+              aria-disabled={lampRaised}
+              onClick={lampRaised ? undefined : raiseLamp}
+            >
+              <Flame aria-hidden="true" />
+              <span>
+                <strong>{lampRaised ? 'Lampa este ridicată' : 'Ridică lampa'}</strong>
+                <small role="status" aria-live="polite">{lampRaised ? 'Traseul este acum lizibil' : 'O singură acțiune, fără rută alternativă'}</small>
+              </span>
+            </button>
+
+            <ol className="mf-rule-sequence" aria-label="Sistemele revelate de lampă">
+              {BURIED_RULES.map((rule, index) => {
+                const Icon = rule.icon;
+                return (
+                  <li key={rule.id} data-active={activeBuriedRule === rule.id || undefined}>
+                    <span>0{index + 1}</span>
+                    <Icon aria-hidden="true" />
+                    <strong>{rule.short}</strong>
+                  </li>
+                );
+              })}
+            </ol>
           </div>
 
           <aside className="mf-rule-readout" aria-live="polite">
-            {BURIED_RULES.map((rule, index) => (
-              <div key={rule.id} hidden={activeBuriedRule !== rule.id}>
-                <span>0{index + 1} / regulă observată</span>
-                <strong>{rule.label}</strong>
-                <p>{rule.detail}</p>
-              </div>
-            ))}
+            {BURIED_RULES.map((rule, index) => {
+              return (
+                <div key={rule.id} hidden={activeBuriedRule !== rule.id}>
+                  <span>0{index + 1} / sistem observat</span>
+                  <strong>{rule.label}</strong>
+                  <p>{rule.detail}</p>
+                </div>
+              );
+            })}
           </aside>
 
           <div className="mf-lamp-progress">
-            <span>{buriedRules.size.toString().padStart(2, '0')} / 03 reguli</span>
-            <div aria-hidden="true"><i style={{ width: `${(buriedRules.size / BURIED_RULES.length) * 100}%` }} /></div>
+            <span>Traseu luminat / {BURIED_RULES.find((rule) => rule.id === activeBuriedRule)?.short}</span>
+            <div aria-hidden="true"><i data-focus={activeBuriedRule} /></div>
             <a href="#mf-build">Vezi build-ul <ArrowDown aria-hidden="true" /></a>
           </div>
         </div>
@@ -783,39 +972,48 @@ function MacroFlowExperience() {
           <header className="mf-build-head">
             <div>
               <p className="mf-kicker">Authentic gameplay / public build</p>
-              <h2>Lumea nu este fundal.<br />Este sistem.</h2>
+              <h2>Regulile apar<br />în gameplay.</h2>
             </div>
             <p>
-              Un stealth-puzzle plasat în anul 210 î.Hr. Jucătorul supraviețuiește prin
-              observație, lumină, unelte și înțelegerea mecanismelor.
+              The Buried Hands este un joc 3D descărcabil pentru Windows. Pagina proiectului
+              listează Godot 4.6, GDScript, Jolt Physics și Forward+.
             </p>
           </header>
 
           <BuriedGameplayTheater />
 
-          <dl id="mf-build-metrics" className="mf-build-metrics">
-            <div><dt>Engine</dt><dd>Godot 4.6</dd></div>
-            <div><dt>Physics</dt><dd>Jolt</dd></div>
-            <div><dt>Platform</dt><dd>Windows</dd></div>
-            <div><dt>Jam result</dt><dd>Locul 2<span>team-confirmed</span></dd></div>
-          </dl>
-
-          <footer className="mf-build-footer">
-            <div>
-              <span>Premisă</span>
-              <strong>Un meșteșugar, nu un războinic.</strong>
+          <div className="mf-build-record">
+            <div className="mf-build-record__label">
+              <span>Build record / source-checked</span>
+              <p>Capturile provin din galeria publică a proiectului. Scena 3D și soundscape-ul sunt reconstrucții create pentru acest website.</p>
             </div>
-            <nav aria-label="The Buried Hands links">
-              <a href="https://juggypuggy.itch.io/the-buried-hands" target="_blank" rel="noreferrer">Joacă pe itch.io <span aria-hidden="true">↗</span></a>
-              <a href="https://www.youtube.com/watch?v=RGyx2NxUYr8" target="_blank" rel="noreferrer">Vezi trailerul <span aria-hidden="true">↗</span></a>
-              <a href="https://itch.io/jam/game-jam-vianu-2026/rate/4585325" target="_blank" rel="noreferrer">Jam submission <span aria-hidden="true">↗</span></a>
-            </nav>
-          </footer>
+
+            <dl id="mf-build-metrics" className="mf-build-metrics">
+              <div><dt>Engine</dt><dd>Godot 4.6</dd></div>
+              <div><dt>Physics</dt><dd>Jolt</dd></div>
+              <div><dt>Platform</dt><dd>Windows</dd></div>
+              <div><dt>Event</dt><dd>Vianu<span>Game Jam 2026</span></dd></div>
+            </dl>
+
+            <footer className="mf-build-footer">
+              <div>
+                <span>Premisă</span>
+                <strong>Un meșteșugar prins în timpul sigilării mausoleului.</strong>
+              </div>
+              <nav aria-label="The Buried Hands links">
+                <a href="https://juggypuggy.itch.io/the-buried-hands" target="_blank" rel="noreferrer">Descarcă jocul <span aria-hidden="true">↗</span></a>
+                <a href="https://www.youtube.com/watch?v=RGyx2NxUYr8" target="_blank" rel="noreferrer">Vezi gameplay-ul <span aria-hidden="true">↗</span></a>
+                <a href="https://itch.io/jam/game-jam-vianu-2026/rate/4585325" target="_blank" rel="noreferrer">Jam submission <span aria-hidden="true">↗</span></a>
+              </nav>
+            </footer>
+          </div>
 
           <div className="mf-pixel-handoff">
-            <span>Continuity / The Buried Hands → Infect.exe</span>
-            <strong>Lumina se contractă într-un pixel.</strong>
-            <i aria-hidden="true" />
+            <div className="mf-pixel-handoff__stage">
+              <span>Continuity / The Buried Hands → Infect.exe</span>
+              <strong>Lumina se contractă într-un pixel.</strong>
+              <i aria-hidden="true" />
+            </div>
           </div>
         </div>
       </section>

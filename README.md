@@ -59,13 +59,16 @@ npm run build:vertical-slice
 npm run lint
 npm run build
 npm run qa:immersive
+npm run qa:school-act
+npm run qa:buried-act
 npm run qa:visual
 npm audit --omit=dev
 ```
 
-`build:vertical-slice` regenerates the Blender citadel, its poster, and the separately
-authored desktop/mobile camera curves for chapters 01-04. Camera JSON is schema-checked,
-budget-checked, and verified for exact chapter handoffs by `qa:immersive`.
+`build:vertical-slice` regenerates the Blender citadel, its poster, the separately
+authored desktop/mobile camera curves for chapters 01-04, and the complete Buried
+Hands package for chapters 08-10. Camera JSON and runtime assets are schema-checked,
+budget-checked, and verified for exact chapter handoffs by the QA suites.
 
 `qa:visual` records the authored opening, all three Nexus lens modes, the Lens-to-Proof
 handoff, the three authentic proof frames, and the mobile opening/Nexus states in

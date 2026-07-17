@@ -189,9 +189,10 @@ face produsul să pară un concept, nu un build.
 
 ### 06. The Buried Hands
 
-**Alegere desktop:** gameplay real într-un plane mare; câteva fragmente de environment
-realtime numai dacă provin din asset-urile proiectului și se pot exporta. Pentru un
-moment exact de gameplay comparăm video cu o image sequence de maximum 60-90 cadre.
+**Alegere desktop:** capturi publice autentice în plane-uri mari, integrate într-un
+mausoleu 3D creat explicit pentru website și etichetat ca interpretare. Asset-urile
+jocului sunt folosite numai dacă sunt furnizate și licențiate separat. Pentru un moment
+exact de gameplay comparăm video cu o image sequence de maximum 60-90 cadre.
 
 **De ce:** gameplay-ul este dovada. O secvență pre-randată este acceptată numai dacă
 fiecare cadru provine din build și costul total trece bugetul.

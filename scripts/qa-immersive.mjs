@@ -279,7 +279,9 @@ try {
   await moveWithin(desktop, '.mf-beat--descent', 0.7);
   await desktop.waitForFunction(() => document.querySelector('.mf-lab')?.getAttribute('data-active-chapter') === 'descent');
   await desktop.waitForTimeout(1_200);
-  report.desktop.descentCanvas = await signature(await desktop.screenshot());
+  report.desktop.descentCanvas = await signature(
+    await desktop.locator('.mf-world canvas').screenshot(),
+  );
   report.desktop.descentFilled = report.desktop.descentCanvas.entropy >= 4;
   report.desktop.descentRender = await renderStats(desktop);
   report.desktop.descentRender.withinBudget = withinRenderBudget(
@@ -287,12 +289,12 @@ try {
     renderBudgets.desktopDescent,
   );
 
-  await moveWithin(desktop, '.bh-theater', 0.5);
-  await desktop.getByRole('button', { name: 'II. Mercurul schimbă traseul.' }).click();
+  await moveWithin(desktop, '.bh-evidence-passage', 0.5);
+  await desktop.getByRole('button', { name: 'III. Vaporii limitează expunerea.' }).click();
   await desktop.waitForTimeout(900);
   report.desktop.buried = {
-    active: await desktop.locator('.bh-theater__route button[data-active] strong').textContent(),
-    readout: await desktop.locator('.bh-theater__readout h3').textContent(),
+    active: await desktop.locator('.bh-evidence-passage__route button[data-active] strong').textContent(),
+    readout: await desktop.locator('.bh-evidence-passage__readout h3').textContent(),
   };
 
   await moveWithin(desktop, '.ix-journey', 0.72);

@@ -560,7 +560,7 @@ export const PROJECTS: ProjectDefinition[] = [
         index: '02',
         label: 'Systems',
         title: 'Lumina, pașii și mecanismele devin aceeași problemă.',
-        body: 'Lampa are resurse limitate, gărzile pot detecta pașii, iar capcanele și vaporii de mercur schimbă traseul. Fiecare sistem trebuie demonstrat din build în versiunea finală.',
+        body: 'Lampa are resurse limitate, gărzile aud pașii, iar capcanele și vaporii de mercur definesc pericole distincte. Fiecare sistem trebuie demonstrat prin material public al proiectului.',
         asset: placeholderAsset(
           'buried-hands-system-triptych',
           'evidence',
@@ -576,7 +576,7 @@ export const PROJECTS: ProjectDefinition[] = [
         label: 'Build',
         title: 'Un joc public trebuie să poată fi jucat, nu doar descris.',
         body: 'Studiul de caz se încheie cu build-ul public de pe itch.io, creditele complete și o listă onestă de limitări observate după game jam.',
-        note: 'Creditele pe rol și dovada clasării vor fi adăugate înainte de publicarea finală.',
+        note: 'Creditele pe rol rămân de completat; clasarea pe locul 2 este verificată în materialul oficial RGDA.',
       },
     ],
     links: [{ label: 'Joacă pe itch.io', href: 'https://juggypuggy.itch.io/the-buried-hands', kind: 'build' }],
@@ -806,11 +806,12 @@ export const ARCHIVE: ArchiveEntry[] = [
   {
     id: 'buried-hands-game-jam',
     year: 2026,
-    title: 'RDGA x Tudor Vianu Game Jam / The Buried Hands',
+    title: 'Game Jam Vianu 2026 / The Buried Hands',
     result: 'Locul 2',
-    evidence: 'team-confirmed',
+    evidence: 'verified',
     kind: 'award',
     projectId: 'the-buried-hands',
+    note: 'Clasare confirmată în clipul oficial RGDA al evenimentului.',
   },
   {
     id: 'automation-risk-first-place',
