@@ -447,7 +447,10 @@ try {
   await desktop.waitForFunction(() => {
     const world = document.querySelector('.mf-world');
     const loadingGate = world
-      ? Array.from(world.children).some((element) => element.classList.contains('mf-cinematic-loader'))
+      ? Array.from(world.children).some((element) => (
+          element.classList.contains('mf-cinematic-loader')
+          || element.classList.contains('mf-gate-loader')
+        ))
       : true;
     return !loadingGate
       && document.querySelector('.mf-lab')?.getAttribute('data-camera-curves') === '4';

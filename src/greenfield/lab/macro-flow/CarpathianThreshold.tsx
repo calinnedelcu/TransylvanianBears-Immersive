@@ -104,6 +104,158 @@ function markInstanceMatrixDirty(mesh: THREE.InstancedMesh | null) {
   if (mesh) mesh.instanceMatrix.needsUpdate = true;
 }
 
+function createRidgeShape(seedOffset: number, width: number, height: number) {
+  const shape = new THREE.Shape();
+  shape.moveTo(-width / 2, -4);
+  for (let index = 0; index <= 44; index += 1) {
+    const phase = index / 44;
+    const x = -width / 2 + phase * width;
+    const broadRange = Math.sin(phase * Math.PI * 3.1 + seedOffset * 0.03) * 0.19;
+    const secondaryRange = Math.sin(phase * Math.PI * 8.4 + seedOffset * 0.11) * 0.09;
+    const peak = 0.48 + broadRange + secondaryRange + seeded(seedOffset + index) * 0.17;
+    shape.lineTo(x, peak * height);
+  }
+  shape.lineTo(width / 2, -4);
+  shape.closePath();
+  return shape;
+}
+
+function CarpathianBackdrop({ progressRef, qualityTier, reducedMotion }: CarpathianThresholdProps) {
+  const compact = useThree((state) => state.size.width <= 820);
+  const rootRef = useRef<THREE.Group>(null);
+  const treeRef = useRef<THREE.InstancedMesh>(null);
+  const towerRef = useRef<THREE.InstancedMesh>(null);
+  const roofRef = useRef<THREE.InstancedMesh>(null);
+  const lightRef = useRef<THREE.InstancedMesh>(null);
+  const mistRef = useRef<THREE.InstancedMesh>(null);
+  const scratch = useMemo(() => new THREE.Object3D(), []);
+  const treeCount = compact ? 34 : qualityTier === 'cinematic' ? 74 : 52;
+  const towerCount = compact ? 5 : 9;
+  const lightCount = compact ? 12 : 26;
+  const ridges = useMemo(() => [
+    createRidgeShape(131, 56, 8.5),
+    createRidgeShape(271, 60, 6.4),
+    createRidgeShape(419, 64, 4.9),
+  ], []);
+  const geometries = useMemo(() => ({
+    tree: new THREE.ConeGeometry(0.72, 3.4, 6),
+    tower: new THREE.BoxGeometry(1, 1, 1),
+    roof: new THREE.ConeGeometry(0.72, 1.8, 4),
+    light: new THREE.PlaneGeometry(1, 1),
+    mist: new THREE.PlaneGeometry(1, 1),
+  }), []);
+  const materials = useMemo(() => ({
+    tree: new THREE.MeshBasicMaterial({ color: '#091412', fog: true }),
+    tower: new THREE.MeshBasicMaterial({ color: '#101817', fog: true }),
+    roof: new THREE.MeshBasicMaterial({ color: '#090d0d', fog: true }),
+    light: new THREE.MeshBasicMaterial({
+      color: '#d6a86a',
+      transparent: true,
+      opacity: 0.82,
+      depthWrite: false,
+      toneMapped: false,
+    }),
+    mist: new THREE.MeshBasicMaterial({
+      color: '#6f918d',
+      transparent: true,
+      opacity: 0.075,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    }),
+  }), []);
+
+  useLayoutEffect(() => {
+    for (let index = 0; index < treeCount; index += 1) {
+      const depthBand = index % 3;
+      const x = -25 + seeded(index + 901) * 50;
+      const scale = 0.72 + seeded(index + 941) * 1.28;
+      setInstanceTransform(
+        treeRef.current,
+        index,
+        scratch,
+        [x, 2.05 + depthBand * 0.34, 8.6 + depthBand * 1.12],
+        [scale, scale * (1.08 + seeded(index + 951) * 0.34), scale],
+        [0, seeded(index + 961) * Math.PI, 0],
+      );
+    }
+
+    for (let index = 0; index < towerCount; index += 1) {
+      const side = index % 2 === 0 ? -1 : 1;
+      const x = side * (9.5 + Math.floor(index / 2) * 2.7);
+      const height = 1.8 + seeded(index + 1001) * 2.8;
+      setInstanceTransform(towerRef.current, index, scratch, [x, height / 2 + 1.5, 8.15], [0.9, height, 0.82]);
+      setInstanceTransform(roofRef.current, index, scratch, [x, height + 2.36, 8.15], [1, 1, 1], [0, Math.PI / 4, 0]);
+    }
+
+    for (let index = 0; index < lightCount; index += 1) {
+      const x = -20 + seeded(index + 1081) * 40;
+      const y = 2.8 + seeded(index + 1091) * 4.8;
+      setInstanceTransform(
+        lightRef.current,
+        index,
+        scratch,
+        [x, y, 8.65 + seeded(index + 1101) * 0.9],
+        [0.1 + seeded(index + 1111) * 0.1, 0.16 + seeded(index + 1121) * 0.16, 1],
+      );
+    }
+
+    for (let index = 0; index < 4; index += 1) {
+      setInstanceTransform(
+        mistRef.current,
+        index,
+        scratch,
+        [-12 + index * 8, 3.1 + index * 0.35, 10.8 + index * 0.42],
+        [12 + index * 2.4, 2.8 + index * 0.7, 1],
+        [0, 0, -0.06 + index * 0.035],
+      );
+    }
+
+    [treeRef.current, towerRef.current, roofRef.current, lightRef.current, mistRef.current]
+      .forEach(markInstanceMatrixDirty);
+  }, [lightCount, scratch, towerCount, treeCount]);
+
+  useEffect(() => () => {
+    Object.values(geometries).forEach((geometry) => geometry.dispose());
+    Object.values(materials).forEach((material) => material.dispose());
+  }, [geometries, materials]);
+
+  useFrame(({ clock }) => {
+    const departure = smooth(range(progressRef.current, 0.044, 0.076));
+    const root = rootRef.current;
+    if (!root) return;
+    root.visible = departure < 0.995;
+    if (!root.visible) return;
+    root.position.y = -departure * 4.8;
+    root.position.x = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.08) * 0.24;
+    materials.mist.opacity = (compact ? 0.055 : 0.075)
+      * (0.86 + Math.sin(clock.elapsedTime * 0.22) * 0.14)
+      * (1 - departure);
+    materials.light.opacity = (0.7 + Math.sin(clock.elapsedTime * 1.1) * 0.12) * (1 - departure);
+  });
+
+  return (
+    <group ref={rootRef}>
+      <mesh position={[0, 2.6, 1.8]}>
+        <shapeGeometry args={[ridges[0]]} />
+        <meshBasicMaterial color="#102321" fog />
+      </mesh>
+      <mesh position={[-2.5, 2.15, 4.6]}>
+        <shapeGeometry args={[ridges[1]]} />
+        <meshBasicMaterial color="#0c1b1a" fog />
+      </mesh>
+      <mesh position={[3, 1.7, 7.2]}>
+        <shapeGeometry args={[ridges[2]]} />
+        <meshBasicMaterial color="#091413" fog />
+      </mesh>
+      <instancedMesh ref={towerRef} args={[geometries.tower, materials.tower, towerCount]} frustumCulled={false} />
+      <instancedMesh ref={roofRef} args={[geometries.roof, materials.roof, towerCount]} frustumCulled={false} />
+      <instancedMesh ref={treeRef} args={[geometries.tree, materials.tree, treeCount]} frustumCulled={false} />
+      <instancedMesh ref={lightRef} args={[geometries.light, materials.light, lightCount]} frustumCulled={false} />
+      <instancedMesh ref={mistRef} args={[geometries.mist, materials.mist, 4]} frustumCulled={false} renderOrder={1} />
+    </group>
+  );
+}
+
 function createWingShape(direction: -1 | 1) {
   const shape = new THREE.Shape();
   shape.moveTo(0, 0.08);
@@ -396,6 +548,11 @@ export function CarpathianThreshold({
 
   return (
     <group ref={rootRef}>
+      <CarpathianBackdrop
+        progressRef={progressRef}
+        qualityTier={qualityTier}
+        reducedMotion={reducedMotion}
+      />
       <group position={compact ? [-7.2, 13.15, 4.2] : [-9.3, 12.8, 4.2]} scale={compact ? 0.5 : 1}>
         <mesh position={[0, 0, -0.08]}>
           <circleGeometry args={[4.35, 48]} />

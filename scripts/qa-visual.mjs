@@ -24,6 +24,7 @@ async function waitForWorld(page) {
       ? Array.from(world.children).some((element) => (
           element.classList.contains('mf-cinematic-loader')
           || element.classList.contains('mf-identity-loader')
+          || element.classList.contains('mf-gate-loader')
         ))
       : true;
     return !loadingGate

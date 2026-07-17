@@ -17,7 +17,6 @@ import type { JourneyChapter } from '../../experience/chapters';
 import type { EvidenceCoreId } from '../../experience/evidenceCores';
 import type { QualityTier } from '../../experience/quality';
 import { CarpathianThreshold } from './CarpathianThreshold';
-import { CitadelIdentitySequence } from './CitadelIdentitySequence';
 import { BuriedActPackage } from './buried-act/BuriedActPackage';
 import { prepareBuriedActAssets } from './buried-act/buriedActAssets';
 import {
@@ -27,7 +26,6 @@ import {
 } from './buried-act/buriedActCamera';
 import { FirstLightLayer } from './FirstLightLayer';
 import { NexusActScene } from './NexusActScene';
-import { SystemContinuityRig } from './SystemContinuityRig';
 import { VerticalSliceLoader } from './VerticalSliceLoader';
 import { VerticalSliceLoadingGate } from './VerticalSliceLoadingGate';
 import type { LensPointerState, MacroLensMode, MacroTraceOutcome, NexusFlightInput } from './macroFlowTypes';
@@ -467,11 +465,16 @@ function FirstLightCitadel({
   const model = useMemo(() => {
     const clone = scene.clone(true);
     const materialCache = new Map<string, THREE.Material>();
+    const pointA = new THREE.Vector3();
+    const pointB = new THREE.Vector3();
+    const pointC = new THREE.Vector3();
+    const centroid = new THREE.Vector3();
+    clone.updateMatrixWorld(true);
     clone.traverse((child) => {
       if (!(child instanceof THREE.Mesh)) return;
       const materials = Array.isArray(child.material) ? child.material : [child.material];
       const assetLabel = `${child.name} ${child.geometry.name} ${child.parent?.name ?? ''}`;
-      if (/bat flight/i.test(assetLabel)) {
+      if (/bat flight|bear|crest|emblem|herald|far carpathians|near ridge/i.test(assetLabel)) {
         child.visible = false;
         const hiddenMaterials = materials.map((source) => {
           const cached = materialCache.get(source.uuid);
@@ -483,6 +486,56 @@ function FirstLightCitadel({
         child.material = Array.isArray(child.material) ? hiddenMaterials : hiddenMaterials[0];
         return;
       }
+
+      const index = child.geometry.getIndex();
+      const position = child.geometry.getAttribute('position');
+      if (index && position) {
+        const retained: number[] = [];
+        let removedTriangles = 0;
+        for (let offset = 0; offset < index.count; offset += 3) {
+          const indexA = index.getX(offset);
+          const indexB = index.getX(offset + 1);
+          const indexC = index.getX(offset + 2);
+          pointA.fromBufferAttribute(position, indexA).applyMatrix4(child.matrixWorld);
+          pointB.fromBufferAttribute(position, indexB).applyMatrix4(child.matrixWorld);
+          pointC.fromBufferAttribute(position, indexC).applyMatrix4(child.matrixWorld);
+          centroid.copy(pointA).add(pointB).add(pointC).multiplyScalar(1 / 3);
+          const materialName = materials[0]?.name ?? '';
+          const isCrestStructure = materialName === 'Blackened timber'
+            || materialName === 'Limestone light'
+            || materialName === 'Limestone mobile';
+          const isCrestAccent = materialName === 'Occupied light'
+            || materialName === 'Oxidized brass'
+            || materialName === 'Polished brass edge';
+          const structuralX = centroid.x / 1.7;
+          const structuralY = (centroid.y - 10.95) / 1.8;
+          const accentX = centroid.x / 2.2;
+          const accentY = (centroid.y - 10.95) / 2.2;
+          const belongsToCrest = (
+            isCrestStructure
+              && structuralX * structuralX + structuralY * structuralY < 1
+              && centroid.z > 15.35
+          ) || (
+            isCrestAccent
+              && accentX * accentX + accentY * accentY < 1
+              && centroid.z > 12
+          );
+          if (belongsToCrest) {
+            removedTriangles += 1;
+          } else {
+            retained.push(indexA, indexB, indexC);
+          }
+        }
+        if (removedTriangles > 0) {
+          const geometry = child.geometry.clone();
+          geometry.setIndex(retained);
+          geometry.computeBoundingBox();
+          geometry.computeBoundingSphere();
+          child.geometry = geometry;
+          child.userData.mfOwnsGeometry = true;
+        }
+      }
+
       const structuralMaterial = materials.some((material) => (
         /Limestone|plaster|stone|earth|timber/.test(material.name)
       ));
@@ -542,6 +595,7 @@ function FirstLightCitadel({
     const materials = new Set<THREE.Material>();
     model.traverse((child) => {
       if (!(child instanceof THREE.Mesh)) return;
+      if (child.userData.mfOwnsGeometry) child.geometry.dispose();
       const meshMaterials = Array.isArray(child.material) ? child.material : [child.material];
       meshMaterials.forEach((material) => materials.add(material));
     });
@@ -999,54 +1053,35 @@ const NEXUS_CHAPTERS = new Set<JourneyChapter>(['field', 'lens', 'proof']);
 const SCHOOL_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
 const SCHOOL_CAMERA_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
 const BURIED_CHAPTERS = new Set<JourneyChapter>(['descent', 'lamp', 'build', 'infect']);
-const FIRST_ACT_HANDOFF_CHAPTERS = new Set<JourneyChapter>(['threshold', 'field', 'lens']);
 const THRESHOLD_HANDOFF_END = 0.074;
-const IDENTITY_HANDOFF_END = 0.142;
-const CONTINUITY_HANDOFF_END = 0.142;
 
 type FirstActPresence = {
   threshold: boolean;
-  identity: boolean;
-  continuity: boolean;
 };
 
 function resolveFirstActPresence(
   activeChapter: JourneyChapter,
   progress: number,
-  compact: boolean,
 ): FirstActPresence {
-  const carriesThresholdArtifacts = FIRST_ACT_HANDOFF_CHAPTERS.has(activeChapter);
-  const lensOwnsCompactFrame = compact && activeChapter === 'lens';
   return {
     threshold: activeChapter === 'threshold'
       || (activeChapter === 'field' && progress < THRESHOLD_HANDOFF_END),
-    identity: carriesThresholdArtifacts
-      && !lensOwnsCompactFrame
-      && progress < IDENTITY_HANDOFF_END,
-    continuity: carriesThresholdArtifacts
-      && !lensOwnsCompactFrame
-      && progress < CONTINUITY_HANDOFF_END,
   };
 }
 
 function sameFirstActPresence(left: FirstActPresence, right: FirstActPresence) {
-  return left.threshold === right.threshold
-    && left.identity === right.identity
-    && left.continuity === right.continuity;
+  return left.threshold === right.threshold;
 }
 
 function useFirstActLifecycle(
   activeChapter: JourneyChapter,
   progressRef: MutableRefObject<number>,
-  compact: boolean,
 ) {
   const [presence, setPresence] = useState<FirstActPresence>(() => (
-    resolveFirstActPresence(activeChapter, progressRef.current, compact)
+    resolveFirstActPresence(activeChapter, progressRef.current)
   ));
   const presenceRef = useRef(presence);
   const thresholdGroupRef = useRef<THREE.Group>(null);
-  const identityGroupRef = useRef<THREE.Group>(null);
-  const continuityGroupRef = useRef<THREE.Group>(null);
 
   const commitPresence = useCallback((next: FirstActPresence) => {
     const current = presenceRef.current;
@@ -1055,31 +1090,22 @@ function useFirstActLifecycle(
     if (current.threshold && !next.threshold && thresholdGroupRef.current) {
       thresholdGroupRef.current.visible = false;
     }
-    if (current.identity && !next.identity && identityGroupRef.current) {
-      identityGroupRef.current.visible = false;
-    }
-    if (current.continuity && !next.continuity && continuityGroupRef.current) {
-      continuityGroupRef.current.visible = false;
-    }
-
     presenceRef.current = next;
     setPresence(next);
   }, []);
 
   useLayoutEffect(() => {
-    commitPresence(resolveFirstActPresence(activeChapter, progressRef.current, compact));
-  }, [activeChapter, commitPresence, compact, progressRef]);
+    commitPresence(resolveFirstActPresence(activeChapter, progressRef.current));
+  }, [activeChapter, commitPresence, progressRef]);
 
   useFrame(() => {
-    if (!FIRST_ACT_HANDOFF_CHAPTERS.has(activeChapter)) return;
-    commitPresence(resolveFirstActPresence(activeChapter, progressRef.current, compact));
+    if (activeChapter !== 'threshold' && activeChapter !== 'field') return;
+    commitPresence(resolveFirstActPresence(activeChapter, progressRef.current));
   });
 
   return {
     presence,
     thresholdGroupRef,
-    identityGroupRef,
-    continuityGroupRef,
   };
 }
 
@@ -1113,7 +1139,7 @@ function World({
   onBuriedPixelHandoffRendered,
 }: WorldProps) {
   const compact = useThree((state) => state.size.width <= 820);
-  const firstAct = useFirstActLifecycle(activeChapter, progressRef, compact);
+  const firstAct = useFirstActLifecycle(activeChapter, progressRef);
   const showThreshold = firstAct.presence.threshold;
   const showNexus = NEXUS_CHAPTERS.has(activeChapter);
   const showSchool = SCHOOL_CHAPTERS.has(activeChapter);
@@ -1186,15 +1212,6 @@ function World({
         buriedCameraCurve={buriedCameraCurve}
       />
       <RenderBudgetMonitor />
-      {firstAct.presence.continuity ? (
-        <group ref={firstAct.continuityGroupRef} visible>
-          <SystemContinuityRig
-            progressRef={progressRef}
-            qualityTier={qualityTier}
-            reducedMotion={reducedMotion}
-          />
-        </group>
-      ) : null}
       {showThreshold ? (
         <group ref={firstAct.thresholdGroupRef} visible>
           <FirstLightCitadel progressRef={progressRef} qualityTier={qualityTier} />
@@ -1215,15 +1232,6 @@ function World({
           ) : null}
         </group>
       ) : null}
-      {firstAct.presence.identity ? (
-        <group ref={firstAct.identityGroupRef} visible>
-          <CitadelIdentitySequence
-            progressRef={progressRef}
-            qualityTier={qualityTier}
-            reducedMotion={reducedMotion}
-          />
-        </group>
-      ) : null}
       {showNexus ? (
         <group visible>
           <NexusActScene
@@ -1234,7 +1242,7 @@ function World({
             collectedEvidenceCores={collectedEvidenceCores}
             onCollectEvidenceCore={onCollectEvidenceCore}
             qualityTier={qualityTier}
-            compactLens={compact && activeChapter === 'lens'}
+            compact={compact}
           />
         </group>
       ) : null}

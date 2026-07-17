@@ -661,7 +661,6 @@ function MacroFlowExperience() {
 
       <header className="mf-header">
         <ViewTransitionLink className="mf-brand" to="/" aria-label="Transylvanian Bears, start">
-          <span className="mf-brand__mark" aria-hidden="true"><i /></span>
           <span>Transylvanian Bears</span>
         </ViewTransitionLink>
         <p>Interactive expedition / 16 chapters</p>
@@ -717,13 +716,24 @@ function MacroFlowExperience() {
 
       <section id="mf-threshold" className="mf-beat mf-beat--threshold" data-chapter="threshold">
         <div className="mf-copy mf-copy--hero">
+          <div className="mf-hero-readout" aria-hidden="true">
+            <span>46° 46′ N / 23° 35′ E</span>
+            <i />
+            <span>Chapter 01 / 16</span>
+          </div>
           <p className="mf-kicker">The Citadel of Seven Systems / Transylvania</p>
           <h1><span>Transylvanian</span><span>Bears</span></h1>
           <div className="mf-hero-statement">
             <strong>Șapte sisteme. O singură cetate.</strong>
-            <p>Software, jocuri, machine learning și cercetare aplicată, construite sub același însemn.</p>
+            <p>Software, jocuri, machine learning și cercetare aplicată, construite în aceeași lume.</p>
           </div>
-          <ChevronDown className="mf-scroll-cue" aria-hidden="true" />
+          <div className="mf-hero-domains" aria-label="Domeniile echipei">
+            <span>Games</span><span>Machine learning</span><span>Research</span><span>Software</span>
+          </div>
+          <div className="mf-scroll-entry" aria-hidden="true">
+            <ChevronDown className="mf-scroll-cue" />
+            <span>Traversează poarta</span>
+          </div>
         </div>
       </section>
 

@@ -2,13 +2,12 @@ import type { CSSProperties } from 'react';
 
 import './vertical-slice-loader.css';
 
-const SEGMENT_COUNT = 7;
+const GATE_BAR_COUNT = 7;
 
-type IdentityLoaderStyle = CSSProperties & {
-  '--mf-identity-loader-index'?: number;
-  '--mf-identity-loader-progress'?: number;
-  '--mf-identity-loader-reveal'?: number;
-  '--mf-identity-loader-scale'?: number;
+type GateLoaderStyle = CSSProperties & {
+  '--mf-gate-loader-index'?: number;
+  '--mf-gate-loader-progress'?: number;
+  '--mf-gate-loader-lift'?: number;
 };
 
 type VerticalSliceLoaderProps = {
@@ -21,88 +20,54 @@ export function VerticalSliceLoader({ unavailable = false, progress }: VerticalS
     ? undefined
     : Math.max(0, Math.min(100, progress));
   const progressFraction = normalizedProgress === undefined ? 0 : normalizedProgress / 100;
-  const completedSegments = normalizedProgress === undefined
+  const completedBars = normalizedProgress === undefined
     ? undefined
-    : Math.min(SEGMENT_COUNT, Math.floor(progressFraction * SEGMENT_COUNT));
-  const loaderStyle: IdentityLoaderStyle = {
-    '--mf-identity-loader-progress': progressFraction,
+    : Math.min(GATE_BAR_COUNT, Math.floor(progressFraction * GATE_BAR_COUNT));
+  const loaderStyle: GateLoaderStyle = {
+    '--mf-gate-loader-progress': progressFraction,
   };
   const statusText = unavailable
     ? 'Mod editorial / pregătit'
     : normalizedProgress === undefined
-      ? 'Traseu 01–04 / acordare'
-      : `Traseu 01–04 / ${Math.round(normalizedProgress)}%`;
+      ? 'Ridicăm poarta / acordare'
+      : `Ridicăm poarta / ${Math.round(normalizedProgress)}%`;
 
   return (
     <div
-      className="mf-identity-loader"
+      className="mf-gate-loader"
       role="status"
       aria-live="polite"
-      aria-label={unavailable ? 'Mod editorial activ' : 'Se acordă încuietoarea citadelei'}
+      aria-label={unavailable ? 'Mod editorial activ' : 'Se încarcă intrarea în citadelă'}
       data-indeterminate={normalizedProgress === undefined ? 'true' : 'false'}
       style={loaderStyle}
     >
-      <div className="mf-identity-loader__assembly">
-        <div
-          className="mf-identity-loader__seal-meter"
-          role={normalizedProgress === undefined ? undefined : 'progressbar'}
-          aria-label={normalizedProgress === undefined ? undefined : 'Progres încărcare lume'}
-          aria-valuemin={normalizedProgress === undefined ? undefined : 0}
-          aria-valuemax={normalizedProgress === undefined ? undefined : 100}
-          aria-valuenow={normalizedProgress === undefined ? undefined : Math.round(normalizedProgress)}
-        >
-          <div className="mf-identity-loader__seal" aria-hidden="true">
-            <div className="mf-identity-loader__segments">
-              {Array.from({ length: SEGMENT_COUNT }, (_, index) => {
-                const segmentStart = index / SEGMENT_COUNT;
-                const segmentReveal = normalizedProgress === undefined
-                  ? 0
-                  : Math.max(0, Math.min(1, (progressFraction - segmentStart) * SEGMENT_COUNT));
-                const segmentStyle: IdentityLoaderStyle = {
-                  '--mf-identity-loader-index': index,
-                  '--mf-identity-loader-reveal': segmentReveal,
-                  '--mf-identity-loader-scale': 0.955 + segmentReveal * 0.045,
-                };
+      <div className="mf-gate-loader__scene" aria-hidden="true">
+        <span className="mf-gate-loader__arch" />
+        <div className="mf-gate-loader__bars">
+          {Array.from({ length: GATE_BAR_COUNT }, (_, index) => {
+            const barStart = index / GATE_BAR_COUNT;
+            const lift = normalizedProgress === undefined
+              ? 0
+              : Math.max(0, Math.min(1, (progressFraction - barStart) * GATE_BAR_COUNT));
+            const barStyle: GateLoaderStyle = {
+              '--mf-gate-loader-index': index,
+              '--mf-gate-loader-lift': lift,
+            };
 
-                return (
-                  <span
-                    className="mf-identity-loader__segment"
-                    key={index}
-                    style={segmentStyle}
-                  >
-                    <i className="mf-identity-loader__segment-face" />
-                  </span>
-                );
-              })}
-            </div>
-
-            <div className="mf-identity-loader__hub">
-              <span className="mf-identity-loader__shield">
-                <span className="mf-identity-loader__shield-field">
-                  <i className="mf-identity-loader__bear" />
-                </span>
-              </span>
-            </div>
-
-            <i className="mf-identity-loader__jewel" />
-          </div>
+            return <i key={index} style={barStyle} />;
+          })}
         </div>
+        <span className="mf-gate-loader__horizon" />
+      </div>
 
-        <div className="mf-identity-loader__copy">
-          <p className="mf-identity-loader__brand">Transylvanian Bears</p>
-          <p className="mf-identity-loader__descriptor">Încuietoarea celor șapte sisteme</p>
-          <div className="mf-identity-loader__readout" aria-hidden="true">
-            <small className="mf-identity-loader__status">{statusText}</small>
-            <span className="mf-identity-loader__count">
-              {completedSegments === undefined
-                ? '·· / 07'
-                : `${String(completedSegments).padStart(2, '0')} / 07`}
-            </span>
-            <span className="mf-identity-loader__track">
-              <i className="mf-identity-loader__track-fill" />
-            </span>
-          </div>
+      <div className="mf-gate-loader__copy">
+        <p className="mf-gate-loader__brand">Transylvanian Bears</p>
+        <p className="mf-gate-loader__descriptor">Citadela celor șapte sisteme</p>
+        <div className="mf-gate-loader__readout" aria-hidden="true">
+          <small>{statusText}</small>
+          <span>{completedBars === undefined ? '·· / 07' : `${String(completedBars).padStart(2, '0')} / 07`}</span>
         </div>
+        <span className="mf-gate-loader__track"><i /></span>
       </div>
     </div>
   );
