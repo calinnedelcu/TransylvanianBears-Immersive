@@ -10,6 +10,7 @@ reviewed without depending on a local .blend file or manual export settings.
 from __future__ import annotations
 
 import math
+import re
 from pathlib import Path
 
 import bmesh
@@ -24,6 +25,16 @@ RAW_GLB = WORLD_DIR / "first-light-citadel.raw.glb"
 POSTER = WORLD_DIR / "first-light-poster.png"
 BLEND_FILE = SOURCE_DIR / "first-light-citadel.blend"
 EDGE_WEAR_MATERIALS: dict[str, str] = {}
+REJECTED_OPENING_GEOMETRY = re.compile(
+    r"\bbear\b"
+    r"|\bcrest\b"
+    r"|\bemblem\b"
+    r"|\bherald(?:ic|ry)?\b"
+    r"|\bbat[\s_-]+flight\b"
+    r"|\bfar[\s_-]+carpathians?\b"
+    r"|\bnear[\s_-]+ridge\b",
+    re.IGNORECASE,
+)
 
 WORLD_DIR.mkdir(parents=True, exist_ok=True)
 SOURCE_DIR.mkdir(parents=True, exist_ok=True)
@@ -41,6 +52,20 @@ def clear_scene() -> None:
     ):
         for item in list(data_collection):
             data_collection.remove(item)
+
+
+def exclude_rejected_opening_geometry() -> None:
+    rejected = [
+        obj
+        for obj in bpy.context.scene.objects
+        if obj.type == "MESH" and REJECTED_OPENING_GEOMETRY.search(obj.name)
+    ]
+    for obj in rejected:
+        bpy.data.objects.remove(obj, do_unlink=True)
+    for mesh in list(bpy.data.meshes):
+        if mesh.users == 0:
+            bpy.data.meshes.remove(mesh)
+    print(f"Excluded {len(rejected)} rejected opening geometry objects")
 
 
 def hex_color(value: str) -> tuple[float, float, float, float]:
@@ -1222,10 +1247,6 @@ def consolidate_render_meshes() -> None:
         bpy.ops.object.material_slot_remove_unused()
         return joined
 
-    bats = [obj for obj in bpy.context.scene.objects if obj.type == "MESH" and obj.name.startswith("Bat flight")]
-    if bats:
-        join_objects(bats, "Bat flight 1")
-
     def is_ring_window_panel(name: str) -> bool:
         return name.startswith("Window ") and name.removeprefix("Window ").isdigit()
 
@@ -1255,8 +1276,6 @@ def add_asset_metadata() -> None:
     root["HSP_Threshold_GatePivot"] = (0.0, 5.02, 15.62)
     root["gatePivotSemanticId"] = "threshold.gate-pivot"
     root["gatePivotRadiusMeters"] = 0.55
-    root["ANC_Threshold_BearCrest"] = (0.0, 10.95, 16.06)
-    root["bearCrestSemanticId"] = "threshold.identity.bear-crest"
     root["ANC_Threshold_HandoffField"] = (0.0, 4.25, 12.5)
     root["handoffSemanticId"] = "handoff.threshold-field"
     root["handoffAspectRatio"] = "16:9"
@@ -2061,6 +2080,7 @@ def export_and_render() -> None:
 def main() -> None:
     clear_scene()
     build_world()
+    exclude_rejected_opening_geometry()
     add_box_uvs()
     consolidate_render_meshes()
     add_asset_metadata()

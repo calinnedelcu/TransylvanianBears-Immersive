@@ -9,6 +9,7 @@ type VerticalSliceLoadingGateProps = {
 export function VerticalSliceLoadingGate({ cameraReady }: VerticalSliceLoadingGateProps) {
   const { active, loaded, progress, total } = useProgress();
   const [started, setStarted] = useState(false);
+  const [revealing, setRevealing] = useState(false);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -18,8 +19,13 @@ export function VerticalSliceLoadingGate({ cameraReady }: VerticalSliceLoadingGa
 
   useEffect(() => {
     if (active || loaded < total || !cameraReady) return;
-    const timer = window.setTimeout(() => setReady(true), total === 0 ? 450 : 180);
-    return () => window.clearTimeout(timer);
+    const revealDelay = total === 0 ? 450 : 180;
+    const revealTimer = window.setTimeout(() => setRevealing(true), revealDelay);
+    const readyTimer = window.setTimeout(() => setReady(true), revealDelay + 780);
+    return () => {
+      window.clearTimeout(revealTimer);
+      window.clearTimeout(readyTimer);
+    };
   }, [active, cameraReady, loaded, total]);
 
   useEffect(() => {
@@ -29,8 +35,15 @@ export function VerticalSliceLoadingGate({ cameraReady }: VerticalSliceLoadingGa
   }, [ready]);
 
   if (ready || failed) return null;
-  const composedProgress = cameraReady
+  const composedProgress = revealing
+    ? 100
+    : cameraReady
     ? (total === 0 ? 100 : progress)
     : Math.min(progress, 92);
-  return <VerticalSliceLoader progress={started || cameraReady ? composedProgress : 0} />;
+  return (
+    <VerticalSliceLoader
+      progress={started || cameraReady ? composedProgress : 0}
+      revealing={revealing}
+    />
+  );
 }

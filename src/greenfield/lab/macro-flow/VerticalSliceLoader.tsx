@@ -13,9 +13,14 @@ type GateLoaderStyle = CSSProperties & {
 type VerticalSliceLoaderProps = {
   unavailable?: boolean;
   progress?: number;
+  revealing?: boolean;
 };
 
-export function VerticalSliceLoader({ unavailable = false, progress }: VerticalSliceLoaderProps) {
+export function VerticalSliceLoader({
+  unavailable = false,
+  progress,
+  revealing = false,
+}: VerticalSliceLoaderProps) {
   const normalizedProgress = progress === undefined
     ? undefined
     : Math.max(0, Math.min(100, progress));
@@ -28,6 +33,8 @@ export function VerticalSliceLoader({ unavailable = false, progress }: VerticalS
   };
   const statusText = unavailable
     ? 'Mod editorial / pregătit'
+    : revealing
+      ? 'Poarta este acordată'
     : normalizedProgress === undefined
       ? 'Ridicăm poarta / acordare'
       : `Ridicăm poarta / ${Math.round(normalizedProgress)}%`;
@@ -39,6 +46,7 @@ export function VerticalSliceLoader({ unavailable = false, progress }: VerticalS
       aria-live="polite"
       aria-label={unavailable ? 'Mod editorial activ' : 'Se încarcă intrarea în citadelă'}
       data-indeterminate={normalizedProgress === undefined ? 'true' : 'false'}
+      data-revealing={revealing ? 'true' : 'false'}
       style={loaderStyle}
     >
       <div className="mf-gate-loader__scene" aria-hidden="true">

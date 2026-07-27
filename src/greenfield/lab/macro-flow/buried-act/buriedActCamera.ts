@@ -232,7 +232,10 @@ async function fetchCurve(variant: BuriedActCameraVariant, signal: AbortSignal) 
   return payload;
 }
 
-export function useBuriedActCamera(compact: boolean): BuriedActCameraSelection {
+export function useBuriedActCamera(
+  compact: boolean,
+  enabled = true,
+): BuriedActCameraSelection {
   const variant: BuriedActCameraVariant = compact ? 'mobile' : 'desktop';
   const [load, setLoad] = useState<BuriedActCameraLoad>(() => ({
     variant,
@@ -240,8 +243,11 @@ export function useBuriedActCamera(compact: boolean): BuriedActCameraSelection {
     error: null,
   }));
   const selectedLoad = load.variant === variant ? load : null;
+  const hasSelectedCurve = Boolean(selectedLoad?.curve);
 
   useEffect(() => {
+    if (!enabled || hasSelectedCurve) return undefined;
+
     const controller = new AbortController();
     setLoad({ variant, curve: null, error: null });
 
@@ -258,7 +264,7 @@ export function useBuriedActCamera(compact: boolean): BuriedActCameraSelection {
     });
 
     return () => controller.abort();
-  }, [variant]);
+  }, [enabled, hasSelectedCurve, variant]);
 
   return {
     variant,

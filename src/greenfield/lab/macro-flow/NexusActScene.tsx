@@ -3120,5 +3120,3 @@ export function NexusActScene(props: NexusActSceneProps) {
     </group>
   );
 }
-
-useTexture.preload(NEXUS_FIELD_TEXTURE);

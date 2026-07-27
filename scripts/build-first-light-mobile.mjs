@@ -40,6 +40,11 @@ const DESKTOP_MAX_TRANSFER_BYTES = Math.floor(1.65 * 1024 * 1024);
 const DESKTOP_MAX_PRIMITIVES = 15;
 const DESKTOP_MAX_DRAW_CALLS = 15;
 const DESKTOP_MAX_BOUNDS_DRIFT = 0.001;
+const REJECTED_OPENING_GEOMETRY = /\bbear\b|\bcrest\b|\bemblem\b|\bherald(?:ic|ry)?\b|\bbat[\s_-]+flight\b|\bfar[\s_-]+carpathians?\b|\bnear[\s_-]+ridge\b/i;
+const REJECTED_IDENTITY_METADATA = new Set([
+  'ANC_Threshold_BearCrest',
+  'bearCrestSemanticId',
+]);
 
 // Allow Meshopt to discard tiny disconnected detail islands; bounds checks below protect the silhouette.
 const MOBILE_SIMPLIFIER = {
@@ -140,13 +145,26 @@ function selectMobileMaterial(materialName, materials) {
   return materials.stone;
 }
 
+function excludeRejectedOpeningGeometry(document) {
+  for (const node of document.getRoot().listNodes()) {
+    if (REJECTED_OPENING_GEOMETRY.test(node.getName())) {
+      node.dispose();
+      continue;
+    }
+
+    const extras = node.getExtras();
+    const filteredExtras = Object.fromEntries(
+      Object.entries(extras).filter(([key]) => !REJECTED_IDENTITY_METADATA.has(key)),
+    );
+    if (Object.keys(filteredExtras).length !== Object.keys(extras).length) {
+      node.setExtras(filteredExtras);
+    }
+  }
+}
+
 function prepareMobileDocument(document) {
   const root = document.getRoot();
   const materials = createMobileMaterials(document);
-
-  for (const node of root.listNodes()) {
-    if (/bat flight/i.test(node.getName())) node.dispose();
-  }
 
   for (const mesh of root.listMeshes()) {
     for (const primitive of mesh.listPrimitives()) {
@@ -366,6 +384,7 @@ async function main() {
   const sourceBytes = await readFile(SOURCE);
   const sourceMetrics = readGlbMetrics(sourceBytes);
   const document = await io.read(SOURCE);
+  excludeRejectedOpeningGeometry(document);
   const sourceBounds = inspect(document).scenes.properties[0];
   if (!sourceBounds) throw new Error('First Light source has no scene.');
   let boundsReference = sourceBounds;
@@ -379,7 +398,7 @@ async function main() {
       flatten(),
       join({ keepMeshes: false, keepNamed: false }),
       weld(),
-      simplify({ simplifier: MOBILE_SIMPLIFIER, ratio: 0.42, error: 0.01 }),
+      simplify({ simplifier: MOBILE_SIMPLIFIER, ratio: 0.4, error: 0.018 }),
       dedup(),
       prune(),
       meshopt({

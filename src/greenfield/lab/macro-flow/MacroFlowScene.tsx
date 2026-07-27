@@ -16,6 +16,7 @@ import * as THREE from 'three';
 import type { JourneyChapter } from '../../experience/chapters';
 import type { EvidenceCoreId } from '../../experience/evidenceCores';
 import type { QualityTier } from '../../experience/quality';
+import { prepareNexusActAssets, prepareSchoolActAssets } from './actAssetPreload';
 import { CarpathianThreshold } from './CarpathianThreshold';
 import { BuriedActPackage } from './buried-act/BuriedActPackage';
 import { prepareBuriedActAssets } from './buried-act/buriedActAssets';
@@ -521,10 +522,6 @@ function FirstLightCitadel({
     occupiedLightMaterialsRef.current = [];
     occupiedLightUniformsRef.current = [];
     const materialCache = new Map<string, THREE.Material>();
-    const pointA = new THREE.Vector3();
-    const pointB = new THREE.Vector3();
-    const pointC = new THREE.Vector3();
-    const centroid = new THREE.Vector3();
     clone.updateMatrixWorld(true);
     clone.traverse((child) => {
       if (!(child instanceof THREE.Mesh)) return;
@@ -541,55 +538,6 @@ function FirstLightCitadel({
         });
         child.material = Array.isArray(child.material) ? hiddenMaterials : hiddenMaterials[0];
         return;
-      }
-
-      const index = child.geometry.getIndex();
-      const position = child.geometry.getAttribute('position');
-      if (index && position) {
-        const retained: number[] = [];
-        let removedTriangles = 0;
-        for (let offset = 0; offset < index.count; offset += 3) {
-          const indexA = index.getX(offset);
-          const indexB = index.getX(offset + 1);
-          const indexC = index.getX(offset + 2);
-          pointA.fromBufferAttribute(position, indexA).applyMatrix4(child.matrixWorld);
-          pointB.fromBufferAttribute(position, indexB).applyMatrix4(child.matrixWorld);
-          pointC.fromBufferAttribute(position, indexC).applyMatrix4(child.matrixWorld);
-          centroid.copy(pointA).add(pointB).add(pointC).multiplyScalar(1 / 3);
-          const materialName = materials[0]?.name ?? '';
-          const isCrestStructure = materialName === 'Blackened timber'
-            || materialName === 'Limestone light'
-            || materialName === 'Limestone mobile';
-          const isCrestAccent = materialName === 'Occupied light'
-            || materialName === 'Oxidized brass'
-            || materialName === 'Polished brass edge';
-          const structuralX = centroid.x / 1.7;
-          const structuralY = (centroid.y - 10.95) / 1.8;
-          const accentX = centroid.x / 2.2;
-          const accentY = (centroid.y - 10.95) / 2.2;
-          const belongsToCrest = (
-            isCrestStructure
-              && structuralX * structuralX + structuralY * structuralY < 1
-              && centroid.z > 15.35
-          ) || (
-            isCrestAccent
-              && accentX * accentX + accentY * accentY < 1
-              && centroid.z > 12
-          );
-          if (belongsToCrest) {
-            removedTriangles += 1;
-          } else {
-            retained.push(indexA, indexB, indexC);
-          }
-        }
-        if (removedTriangles > 0) {
-          const geometry = child.geometry.clone();
-          geometry.setIndex(retained);
-          geometry.computeBoundingBox();
-          geometry.computeBoundingSphere();
-          child.geometry = geometry;
-          child.userData.mfOwnsGeometry = true;
-        }
       }
 
       const structuralMaterial = materials.some((material) => (
@@ -706,7 +654,6 @@ function FirstLightCitadel({
     const materials = new Set<THREE.Material>();
     model.traverse((child) => {
       if (!(child instanceof THREE.Mesh)) return;
-      if (child.userData.mfOwnsGeometry) child.geometry.dispose();
       const meshMaterials = Array.isArray(child.material) ? child.material : [child.material];
       meshMaterials.forEach((material) => materials.add(material));
     });
@@ -1185,6 +1132,7 @@ const NEXUS_CHAPTERS = new Set<JourneyChapter>(['field', 'lens', 'proof']);
 const SCHOOL_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
 const SCHOOL_CAMERA_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
 const BURIED_CHAPTERS = new Set<JourneyChapter>(['descent', 'lamp', 'build', 'infect']);
+const VERTICAL_SLICE_CAMERA_CHAPTERS = new Set<JourneyChapter>(['threshold', 'field', 'lens', 'proof']);
 type FirstActPresence = {
   threshold: boolean;
 };
@@ -1473,13 +1421,20 @@ function WebGLContextGuard({
 export function MacroFlowScene(props: MacroFlowSceneProps) {
   const [compact, setCompact] = useState(() => window.innerWidth <= 820);
   const [schoolCompact, setSchoolCompact] = useState(() => window.innerWidth <= 840);
-  const authoredCameraCurves = useVerticalSliceCameraCurves(compact);
-  const schoolCamera = useSchoolActCamera(schoolCompact);
-  const buriedCamera = useBuriedActCamera(compact);
+  const verticalSliceCameraChapter = VERTICAL_SLICE_CAMERA_CHAPTERS.has(props.activeChapter)
+    ? props.activeChapter as 'threshold' | 'field' | 'lens' | 'proof'
+    : null;
+  const schoolCameraEnabled = SCHOOL_CAMERA_CHAPTERS.has(props.activeChapter);
+  const buriedCameraEnabled = BURIED_CHAPTERS.has(props.activeChapter);
+  const authoredCameraCurves = useVerticalSliceCameraCurves(compact, verticalSliceCameraChapter);
+  const schoolCamera = useSchoolActCamera(schoolCompact, schoolCameraEnabled);
+  const buriedCamera = useBuriedActCamera(compact, buriedCameraEnabled);
   const buriedCameraSettled = buriedCamera.ready || buriedCamera.error !== null;
-  const cameraReady = Object.keys(authoredCameraCurves).length === 4
-    && (schoolCamera.ready || schoolCamera.error !== null)
-    && (!BURIED_CHAPTERS.has(props.activeChapter) || buriedCameraSettled);
+  const verticalSliceCameraReady = verticalSliceCameraChapter === null
+    || Boolean(authoredCameraCurves[verticalSliceCameraChapter]);
+  const cameraReady = verticalSliceCameraReady
+    && (!schoolCameraEnabled || schoolCamera.ready || schoolCamera.error !== null)
+    && (!buriedCameraEnabled || buriedCameraSettled);
   const dpr: [number, number] | number = props.qualityTier === 'cinematic' ? [1, 1.5] : 1;
 
   useEffect(() => {
@@ -1490,6 +1445,30 @@ export function MacroFlowScene(props: MacroFlowSceneProps) {
     window.addEventListener('resize', onResize, { passive: true });
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  useEffect(() => {
+    const schedule = window.requestIdleCallback
+      ? (callback: () => void) => window.requestIdleCallback(callback, { timeout: 1_600 })
+      : (callback: () => void) => window.setTimeout(callback, 900);
+    const cancel = window.cancelIdleCallback
+      ? (handle: number) => window.cancelIdleCallback(handle)
+      : (handle: number) => window.clearTimeout(handle);
+    let handle: number | null = null;
+
+    if (props.activeChapter === 'threshold') {
+      handle = schedule(prepareNexusActAssets);
+    } else if (
+      props.activeChapter === 'field'
+      || props.activeChapter === 'lens'
+      || props.activeChapter === 'proof'
+    ) {
+      handle = schedule(prepareSchoolActAssets);
+    }
+
+    return () => {
+      if (handle !== null) cancel(handle);
+    };
+  }, [props.activeChapter]);
 
   useEffect(() => {
     if (
@@ -1569,9 +1548,4 @@ export function MacroFlowScene(props: MacroFlowSceneProps) {
       </Canvas>
     </>
   );
-}
-
-useGLTF.preload(FIRST_LIGHT_MODEL_DESKTOP, false, true);
-if (FIRST_LIGHT_MODEL_MOBILE !== FIRST_LIGHT_MODEL_DESKTOP) {
-  useGLTF.preload(FIRST_LIGHT_MODEL_MOBILE, false, true);
 }

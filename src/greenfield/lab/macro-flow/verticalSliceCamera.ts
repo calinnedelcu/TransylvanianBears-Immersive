@@ -38,6 +38,8 @@ const CAMERA_RANGES: Array<{
   { chapter: 'proof', start: 0.285, end: 0.345 },
 ];
 
+const CAMERA_CHAPTERS = Object.keys(CAMERA_ASSETS) as VerticalSliceCameraChapter[];
+
 function finiteVector(value: unknown): value is [number, number, number] {
   return Array.isArray(value)
     && value.length === 3
@@ -67,42 +69,96 @@ function isCameraCurve(value: unknown): value is CameraCurve {
   return curve.samples[0].progress === 0 && curve.samples[curve.samples.length - 1].progress === 1;
 }
 
-export function useVerticalSliceCameraCurves(compact: boolean) {
-  const [curves, setCurves] = useState<VerticalSliceCameraCurves>({});
+async function fetchCameraCurve(
+  chapter: VerticalSliceCameraChapter,
+  variant: 'desktop' | 'mobile',
+  signal: AbortSignal,
+) {
+  const asset = resolveVerticalSliceAsset(
+    getVerticalSliceAsset(CAMERA_ASSETS[chapter][variant]),
+    { allowCandidate: true },
+  );
+  if (asset?.kind !== 'url') return null;
+
+  const response = await fetch(asset.url, { signal });
+  if (!response.ok) throw new Error(`Camera curve ${chapter} returned ${response.status}`);
+  const payload: unknown = await response.json();
+  if (!isCameraCurve(payload)) throw new Error(`Camera curve ${chapter} failed schema validation`);
+  return payload;
+}
+
+export function useVerticalSliceCameraCurves(
+  compact: boolean,
+  chapter: VerticalSliceCameraChapter | null,
+) {
+  const variant = compact ? 'mobile' : 'desktop';
+  const [curvesByVariant, setCurvesByVariant] = useState<
+    Record<'desktop' | 'mobile', VerticalSliceCameraCurves>
+  >({ desktop: {}, mobile: {} });
+  const activeCurve = chapter ? curvesByVariant[variant][chapter] : null;
 
   useEffect(() => {
+    if (!chapter || activeCurve) return undefined;
+
     const controller = new AbortController();
-    const variant = compact ? 'mobile' : 'desktop';
-    const resolved = (Object.keys(CAMERA_ASSETS) as VerticalSliceCameraChapter[])
-      .flatMap((chapter) => {
-        const asset = resolveVerticalSliceAsset(
-          getVerticalSliceAsset(CAMERA_ASSETS[chapter][variant]),
-          { allowCandidate: true },
-        );
-        return asset?.kind === 'url' ? [{ chapter, url: asset.url }] : [];
-      });
-
-    if (resolved.length === 0) {
-      setCurves({});
-      return () => controller.abort();
-    }
-
-    void Promise.all(resolved.map(async ({ chapter, url }) => {
-      const response = await fetch(url, { signal: controller.signal });
-      if (!response.ok) throw new Error(`Camera curve ${chapter} returned ${response.status}`);
-      const payload: unknown = await response.json();
-      if (!isCameraCurve(payload)) throw new Error(`Camera curve ${chapter} failed schema validation`);
-      return [chapter, payload] as const;
-    })).then((entries) => {
-      if (!controller.signal.aborted) setCurves(Object.fromEntries(entries) as VerticalSliceCameraCurves);
+    void fetchCameraCurve(chapter, variant, controller.signal).then((curve) => {
+      if (!curve || controller.signal.aborted) return;
+      setCurvesByVariant((current) => ({
+        ...current,
+        [variant]: {
+          ...current[variant],
+          [chapter]: curve,
+        },
+      }));
     }).catch(() => {
-      if (!controller.signal.aborted) setCurves({});
+      // The generic camera path remains available when an authored curve fails.
     });
 
     return () => controller.abort();
-  }, [compact]);
+  }, [activeCurve, chapter, variant]);
 
-  return curves;
+  useEffect(() => {
+    if (!chapter || !activeCurve) return undefined;
+    const missingChapters = CAMERA_CHAPTERS.filter(
+      (candidate) => !curvesByVariant[variant][candidate],
+    );
+    if (missingChapters.length === 0) return undefined;
+
+    const controller = new AbortController();
+    const schedule = window.requestIdleCallback
+      ? (callback: () => void) => window.requestIdleCallback(callback, { timeout: 1_400 })
+      : (callback: () => void) => window.setTimeout(callback, 700);
+    const cancel = window.cancelIdleCallback
+      ? (handle: number) => window.cancelIdleCallback(handle)
+      : (handle: number) => window.clearTimeout(handle);
+    const handle = schedule(() => {
+      void Promise.all(missingChapters.map(async (candidate) => ({
+        candidate,
+        curve: await fetchCameraCurve(candidate, variant, controller.signal),
+      }))).then((loaded) => {
+        if (controller.signal.aborted) return;
+        setCurvesByVariant((current) => ({
+          ...current,
+          [variant]: loaded.reduce<VerticalSliceCameraCurves>(
+            (next, { candidate, curve }) => {
+              if (curve) next[candidate] = curve;
+              return next;
+            },
+            { ...current[variant] },
+          ),
+        }));
+      }).catch(() => {
+        // Missing authored curves continue to use the generic camera path.
+      });
+    });
+
+    return () => {
+      cancel(handle);
+      controller.abort();
+    };
+  }, [activeCurve, chapter, curvesByVariant, variant]);
+
+  return curvesByVariant[variant];
 }
 
 export function sampleVerticalSliceCamera(

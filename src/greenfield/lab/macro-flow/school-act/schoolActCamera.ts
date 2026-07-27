@@ -85,35 +85,35 @@ async function fetchCurve(variant: SchoolActCameraVariant, signal: AbortSignal) 
   return payload;
 }
 
-export function useSchoolActCamera(compact: boolean): SchoolActCameraSelection {
+export function useSchoolActCamera(
+  compact: boolean,
+  enabled = true,
+): SchoolActCameraSelection {
   const [curves, setCurves] = useState<SchoolActCameraCurves>({});
   const [error, setError] = useState<Error | null>(null);
   const variant: SchoolActCameraVariant = compact ? 'mobile' : 'desktop';
 
   useEffect(() => {
+    if (!enabled || curves[variant]) return undefined;
+
     const controller = new AbortController();
     setError(null);
 
-    void Promise.all((Object.keys(CAMERA_URLS) as SchoolActCameraVariant[]).map(async (cameraVariant) => {
-      const curve = await fetchCurve(cameraVariant, controller.signal);
-      return [cameraVariant, curve] as const;
-    })).then((entries) => {
+    void fetchCurve(variant, controller.signal).then((curve) => {
       if (controller.signal.aborted) return;
-      setCurves(Object.fromEntries(entries) as Record<SchoolActCameraVariant, SchoolActCameraCurve>);
+      setCurves((current) => ({ ...current, [variant]: curve }));
     }).catch((reason: unknown) => {
       if (controller.signal.aborted) return;
-      setCurves({});
       setError(reason instanceof Error ? reason : new Error('School camera loading failed'));
     });
 
     return () => controller.abort();
-  }, []);
+  }, [curves, enabled, variant]);
 
-  const ready = Boolean(curves.desktop && curves.mobile);
   return {
     variant,
     curve: curves[variant] ?? null,
-    ready,
+    ready: Boolean(curves[variant]),
     error,
   };
 }

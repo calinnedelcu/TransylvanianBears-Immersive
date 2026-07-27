@@ -583,6 +583,3 @@ export function SchoolActPackage({
 
   return <primitive object={runtime.scene} />;
 }
-
-useGLTF.preload(SCHOOL_ACT_MODEL_URL, false, true);
-useTexture.preload([AEGIS_MEDIA_URL, SCHOOLMATE_MEDIA_URL]);
