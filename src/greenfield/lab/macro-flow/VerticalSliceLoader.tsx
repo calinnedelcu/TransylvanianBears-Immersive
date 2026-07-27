@@ -5,9 +5,7 @@ import './vertical-slice-loader.css';
 const GATE_BAR_COUNT = 7;
 
 type GateLoaderStyle = CSSProperties & {
-  '--mf-gate-loader-index'?: number;
   '--mf-gate-loader-progress'?: number;
-  '--mf-gate-loader-lift'?: number;
 };
 
 type VerticalSliceLoaderProps = {
@@ -34,10 +32,10 @@ export function VerticalSliceLoader({
   const statusText = unavailable
     ? 'Mod editorial / pregătit'
     : revealing
-      ? 'Poarta este acordată'
+      ? 'Intrarea este pregătită'
     : normalizedProgress === undefined
-      ? 'Ridicăm poarta / acordare'
-      : `Ridicăm poarta / ${Math.round(normalizedProgress)}%`;
+      ? 'Cartografiem cetatea'
+      : `Cartografiem cetatea / ${Math.round(normalizedProgress)}%`;
 
   return (
     <div
@@ -49,33 +47,37 @@ export function VerticalSliceLoader({
       data-revealing={revealing ? 'true' : 'false'}
       style={loaderStyle}
     >
-      <div className="mf-gate-loader__scene" aria-hidden="true">
-        <span className="mf-gate-loader__arch" />
-        <div className="mf-gate-loader__bars">
-          {Array.from({ length: GATE_BAR_COUNT }, (_, index) => {
-            const barStart = index / GATE_BAR_COUNT;
-            const lift = normalizedProgress === undefined
-              ? 0
-              : Math.max(0, Math.min(1, (progressFraction - barStart) * GATE_BAR_COUNT));
-            const barStyle: GateLoaderStyle = {
-              '--mf-gate-loader-index': index,
-              '--mf-gate-loader-lift': lift,
-            };
-
-            return <i key={index} style={barStyle} />;
-          })}
-        </div>
-        <span className="mf-gate-loader__horizon" />
-      </div>
+      <figure className="mf-gate-loader__scene" aria-hidden="true">
+        <img src="/assets/world/first-light-poster.webp" alt="" />
+        <span className="mf-gate-loader__atmosphere" />
+        <figcaption>
+          <span>46° 46′ N / 23° 35′ E</span>
+          <span>Entry sequence / 01</span>
+        </figcaption>
+      </figure>
 
       <div className="mf-gate-loader__copy">
-        <p className="mf-gate-loader__brand">Transylvanian Bears</p>
-        <p className="mf-gate-loader__descriptor">Citadela celor șapte sisteme</p>
+        <p className="mf-gate-loader__kicker">Interactive expedition / Transylvania</p>
+        <p className="mf-gate-loader__brand">
+          <span>Transylvanian</span>
+          <span>Bears</span>
+        </p>
+        <p className="mf-gate-loader__descriptor">
+          Șapte sisteme construite în interiorul aceleiași cetăți.
+        </p>
+      </div>
+
+      <div className="mf-gate-loader__status">
         <div className="mf-gate-loader__readout" aria-hidden="true">
           <small>{statusText}</small>
           <span>{completedBars === undefined ? '·· / 07' : `${String(completedBars).padStart(2, '0')} / 07`}</span>
         </div>
         <span className="mf-gate-loader__track"><i /></span>
+        <div className="mf-gate-loader__markers" aria-hidden="true">
+          {Array.from({ length: GATE_BAR_COUNT }, (_, index) => (
+            <i key={index} data-ready={completedBars !== undefined && index < completedBars ? 'true' : 'false'} />
+          ))}
+        </div>
       </div>
     </div>
   );
