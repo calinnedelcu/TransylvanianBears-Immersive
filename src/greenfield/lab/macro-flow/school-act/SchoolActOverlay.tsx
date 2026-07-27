@@ -220,6 +220,28 @@ export function SchoolActOverlay({
       </section>
 
       <section
+        className="sa-classroom-passage"
+        data-chapter="schoolmate"
+        data-reduced-motion={reducedMotion || undefined}
+        aria-labelledby="sa-classroom-passage-title"
+      >
+        <div className="sa-classroom-passage__frame">
+          <div className="sa-classroom-passage__route" aria-hidden="true">
+            <span>Poartă</span>
+            <i />
+            <span>Coridor</span>
+            <i />
+            <strong>Clasă</strong>
+          </div>
+          <div className="sa-classroom-passage__copy">
+            <p className="sa-kicker">07 / Classroom passage</p>
+            <h2 id="sa-classroom-passage-title">Accesul devine o zi de școală.</h2>
+            <p>Ecranul clasei preia firul de la poartă și deschide lumea SchoolMate.</p>
+          </div>
+        </div>
+      </section>
+
+      <section
         id="mf-schoolmate"
         className="sa-clearing"
         data-chapter="schoolmate"

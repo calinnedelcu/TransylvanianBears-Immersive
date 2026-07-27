@@ -1,5 +1,6 @@
 .sa-passage,
 .sa-access,
+.sa-classroom-passage,
 .sa-clearing {
   --sa-night: #080c0d;
   --sa-night-soft: #111819;
@@ -22,6 +23,7 @@
 
 .sa-passage *,
 .sa-access *,
+.sa-classroom-passage *,
 .sa-clearing * {
   box-sizing: border-box;
   letter-spacing: 0;
@@ -484,6 +486,71 @@
   font-size: 7px;
 }
 
+.sa-classroom-passage {
+  min-height: 165dvh;
+  overflow: clip;
+  background:
+    linear-gradient(90deg, rgb(8 12 13 / 0.62), transparent 34%, transparent 70%, rgb(8 12 13 / 0.34)),
+    linear-gradient(180deg, rgb(8 12 13 / 0.28), transparent 34%, transparent 72%, rgb(8 12 13 / 0.78));
+}
+
+.sa-classroom-passage__frame {
+  position: sticky;
+  top: 0;
+  display: grid;
+  min-height: 100dvh;
+  align-content: space-between;
+  padding: 104px 6vw 7dvh;
+  pointer-events: none;
+}
+
+.sa-classroom-passage__route {
+  display: grid;
+  width: min(480px, 46vw);
+  grid-template-columns: auto minmax(34px, 1fr) auto minmax(34px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  color: rgb(226 222 208 / 0.48);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.sa-classroom-passage__route i {
+  height: 1px;
+  background: rgb(226 222 208 / 0.22);
+}
+
+.sa-classroom-passage__route strong {
+  color: var(--sa-brass);
+  font-weight: 650;
+}
+
+.sa-classroom-passage__copy {
+  width: min(430px, 38vw);
+  margin-left: auto;
+  padding: 22px 0 4px 24px;
+  border-left: 1px solid rgb(187 163 107 / 0.62);
+  background: linear-gradient(90deg, rgb(8 12 13 / 0.72), transparent);
+}
+
+.sa-classroom-passage__copy h2 {
+  margin: 0;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 38px;
+  font-weight: 520;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+.sa-classroom-passage__copy > p:last-child {
+  max-width: 380px;
+  margin: 18px 0 0;
+  color: var(--sa-muted-dark);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
 .sa-clearing {
   z-index: 13;
   min-height: 280dvh;
@@ -906,6 +973,7 @@
 
 .sa-passage[data-reduced-motion] *,
 .sa-access[data-reduced-motion] *,
+.sa-classroom-passage[data-reduced-motion] *,
 .sa-clearing[data-reduced-motion] * {
   scroll-behavior: auto !important;
   transition-duration: 0.001ms !important;
@@ -1036,6 +1104,14 @@
     grid-template-columns: minmax(0, 1fr);
     gap: 28px;
     margin-top: 76px;
+  }
+
+  .sa-classroom-passage {
+    min-height: 145dvh;
+  }
+
+  .sa-classroom-passage__copy {
+    width: min(430px, 52vw);
   }
 
   .sa-clearing {
@@ -1203,6 +1279,31 @@
     border-bottom: 1px solid var(--sa-line-dark);
   }
 
+  .sa-classroom-passage {
+    min-height: 260dvh;
+  }
+
+  .sa-classroom-passage__frame {
+    align-content: start;
+    padding: 88px 18px 8dvh;
+  }
+
+  .sa-classroom-passage__route {
+    width: 100%;
+    gap: 8px;
+    font-size: 7px;
+  }
+
+  .sa-classroom-passage__copy {
+    width: min(330px, 88vw);
+    margin: 24px 0 0 auto;
+    padding-left: 16px;
+  }
+
+  .sa-classroom-passage__copy h2 {
+    font-size: 30px;
+  }
+
   .sa-clearing__inner {
     padding-right: 18px;
     padding-left: 18px;
@@ -1287,6 +1388,7 @@
 @media (prefers-reduced-motion: reduce) {
   .sa-passage *,
   .sa-access *,
+  .sa-classroom-passage *,
   .sa-clearing * {
     scroll-behavior: auto !important;
     transition-duration: 0.001ms !important;

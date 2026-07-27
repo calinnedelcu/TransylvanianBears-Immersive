@@ -546,10 +546,12 @@ export function BuriedActPackage({
     () => makeRuntimePackage(sourceScene, textures, qualityTier, compact, maxAnisotropy),
     [compact, maxAnisotropy, qualityTier, sourceScene, textures],
   );
-  const needsReadabilityFill = compact || qualityTier !== 'cinematic';
   const lampLightRef = useRef<THREE.PointLight>(null);
   const mercuryLightRef = useRef<THREE.PointLight>(null);
   const readabilityFillLightRef = useRef<THREE.PointLight>(null);
+  const entryGlowLightRef = useRef<THREE.PointLight>(null);
+  const galleryGlowLightRef = useRef<THREE.PointLight>(null);
+  const royalGlowLightRef = useRef<THREE.PointLight>(null);
   const liftRef = useRef<number | null>(null);
   const activeEvidenceRef = useRef<MediaId | 'none'>('none');
   const pixelHandoffArmedRef = useRef(false);
@@ -789,7 +791,10 @@ export function BuriedActPackage({
     }
 
     if (lampLightRef.current) {
-      lampLightRef.current.intensity = 4 + lift * 48;
+      const flicker = reducedMotion
+        ? 0
+        : Math.sin(clock.elapsedTime * 8.7) * 1.2 + Math.sin(clock.elapsedTime * 15.3) * 0.55;
+      lampLightRef.current.intensity = 12 + lift * 52 + flicker * (0.25 + lift * 0.75);
       if (runtime.nodes.lampFlame) {
         runtime.nodes.lampFlame.getWorldPosition(lampWorldPosition);
         lampLightRef.current.position.copy(lampWorldPosition);
@@ -802,12 +807,22 @@ export function BuriedActPackage({
       camera.getWorldDirection(readabilityFillDirection);
       readabilityFillPosition
         .copy(camera.position)
-        .addScaledVector(readabilityFillDirection, 1.6);
-      readabilityFillPosition.y += 0.5;
+        .addScaledVector(readabilityFillDirection, 2.4);
+      readabilityFillPosition.y += 0.7;
       readabilityFillLightRef.current.position.copy(readabilityFillPosition);
-      readabilityFillLightRef.current.intensity = (compact ? 18 : 16)
-        + lift * (compact ? 10 : 7)
-        + range(progress, 0.52, 0.78) * (compact ? 6 : 4);
+      readabilityFillLightRef.current.intensity = (compact ? 30 : 26)
+        + lift * (compact ? 10 : 8)
+        + range(progress, 0.48, 0.8) * (compact ? 6 : 5);
+    }
+    if (entryGlowLightRef.current) {
+      entryGlowLightRef.current.intensity = 34 * (1 - range(progress, 0.34, 0.5));
+    }
+    if (galleryGlowLightRef.current) {
+      const galleryEnvelope = range(progress, 0.28, 0.42) * (1 - range(progress, 0.76, 0.88));
+      galleryGlowLightRef.current.intensity = 36 * galleryEnvelope;
+    }
+    if (royalGlowLightRef.current) {
+      royalGlowLightRef.current.intensity = 38 * range(progress, 0.68, 0.82);
     }
   });
 
@@ -817,9 +832,9 @@ export function BuriedActPackage({
       <pointLight
         ref={lampLightRef}
         position={[-2.7, 2.8, -150]}
-        color="#e2a056"
-        intensity={4}
-        distance={24}
+        color="#f09a45"
+        intensity={12}
+        distance={29}
         decay={2}
         castShadow={qualityTier === 'cinematic'}
       />
@@ -831,18 +846,47 @@ export function BuriedActPackage({
         distance={16}
         decay={2}
       />
-      {needsReadabilityFill ? (
-        <ambientLight color="#8f7b66" intensity={compact ? 0.16 : 0.11} />
-      ) : null}
-      {needsReadabilityFill ? (
-        <pointLight
-          ref={readabilityFillLightRef}
-          color="#d2b78d"
-          intensity={compact ? 18 : 16}
-          distance={18}
-          decay={2}
-        />
-      ) : null}
+      <hemisphereLight
+        color="#e8b778"
+        groundColor="#2b120b"
+        intensity={compact ? 0.48 : 0.4}
+      />
+      <directionalLight
+        position={[-7, 11, -132]}
+        color="#d98243"
+        intensity={compact ? 0.72 : 0.86}
+      />
+      <pointLight
+        ref={readabilityFillLightRef}
+        color="#d99a68"
+        intensity={compact ? 30 : 26}
+        distance={compact ? 26 : 30}
+        decay={2}
+      />
+      <pointLight
+        ref={entryGlowLightRef}
+        position={[-1.8, 4.2, -137]}
+        color="#f07832"
+        intensity={34}
+        distance={31}
+        decay={2}
+      />
+      <pointLight
+        ref={galleryGlowLightRef}
+        position={[2.4, 3.8, -169]}
+        color="#e86f2d"
+        intensity={0}
+        distance={32}
+        decay={2}
+      />
+      <pointLight
+        ref={royalGlowLightRef}
+        position={[-1.4, 4.8, -187]}
+        color="#ff9141"
+        intensity={0}
+        distance={28}
+        decay={2}
+      />
     </>
   );
 }

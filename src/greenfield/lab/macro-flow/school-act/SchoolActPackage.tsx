@@ -545,11 +545,11 @@ export function SchoolActPackage({
       overlay.visible = progress < 0.66;
     });
 
-    const schoolMateEvidence = range(progress, 0.51, 0.72);
+    const schoolMateEvidence = range(progress, 0.305, 0.37);
     runtime.screenMaterials.schoolMate.opacity = schoolMateEvidence;
     runtime.screenMaterials.schoolMate.emissiveIntensity = 0.24 + schoolMateEvidence * 0.52;
     runtime.overlays.schoolMate.forEach((overlay) => {
-      overlay.visible = progress > 0.46;
+      overlay.visible = progress > 0.295;
     });
 
     const descentReveal = range(progress, 0.84, 0.985);

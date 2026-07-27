@@ -1100,19 +1100,15 @@ const NEXUS_CHAPTERS = new Set<JourneyChapter>(['field', 'lens', 'proof']);
 const SCHOOL_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
 const SCHOOL_CAMERA_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
 const BURIED_CHAPTERS = new Set<JourneyChapter>(['descent', 'lamp', 'build', 'infect']);
-const THRESHOLD_HANDOFF_END = 0.062;
-
 type FirstActPresence = {
   threshold: boolean;
 };
 
 function resolveFirstActPresence(
   activeChapter: JourneyChapter,
-  progress: number,
 ): FirstActPresence {
   return {
-    threshold: activeChapter === 'threshold'
-      || (activeChapter === 'field' && progress < THRESHOLD_HANDOFF_END),
+    threshold: activeChapter === 'threshold',
   };
 }
 
@@ -1122,10 +1118,9 @@ function sameFirstActPresence(left: FirstActPresence, right: FirstActPresence) {
 
 function useFirstActLifecycle(
   activeChapter: JourneyChapter,
-  progressRef: MutableRefObject<number>,
 ) {
   const [presence, setPresence] = useState<FirstActPresence>(() => (
-    resolveFirstActPresence(activeChapter, progressRef.current)
+    resolveFirstActPresence(activeChapter)
   ));
   const presenceRef = useRef(presence);
   const thresholdGroupRef = useRef<THREE.Group>(null);
@@ -1142,12 +1137,12 @@ function useFirstActLifecycle(
   }, []);
 
   useLayoutEffect(() => {
-    commitPresence(resolveFirstActPresence(activeChapter, progressRef.current));
-  }, [activeChapter, commitPresence, progressRef]);
+    commitPresence(resolveFirstActPresence(activeChapter));
+  }, [activeChapter, commitPresence]);
 
   useFrame(() => {
     if (activeChapter !== 'threshold' && activeChapter !== 'field') return;
-    commitPresence(resolveFirstActPresence(activeChapter, progressRef.current));
+    commitPresence(resolveFirstActPresence(activeChapter));
   });
 
   return {
@@ -1186,7 +1181,7 @@ function World({
   onBuriedPixelHandoffRendered,
 }: WorldProps) {
   const compact = useThree((state) => state.size.width <= 820);
-  const firstAct = useFirstActLifecycle(activeChapter, progressRef);
+  const firstAct = useFirstActLifecycle(activeChapter);
   const showThreshold = firstAct.presence.threshold;
   const showNexus = NEXUS_CHAPTERS.has(activeChapter);
   const showSchool = SCHOOL_CHAPTERS.has(activeChapter);

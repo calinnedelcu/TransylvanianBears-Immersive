@@ -465,7 +465,7 @@ function DataStreams({
   }, []);
 
   useFrame(() => {
-    const reveal = motionRange(progressRef.current, 0.075, 0.135, reducedMotion);
+    const reveal = motionRange(progressRef.current, 0.052, 0.098, reducedMotion);
     const departure = motionRange(progressRef.current, 0.285, 0.325, reducedMotion);
     if (rootRef.current) {
       rootRef.current.scale.setScalar(Math.max(0.001, reveal * (1 - departure)));
@@ -629,8 +629,9 @@ function DataKeep({
   }, [scratch]);
 
   useFrame((_, delta) => {
-    const reveal = motionRange(progressRef.current, 0.085, 0.145, reducedMotion);
+    const reveal = motionRange(progressRef.current, 0.08, 0.122, reducedMotion);
     if (rootRef.current) {
+      rootRef.current.visible = reveal > 0.005;
       rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, -0.2 + reveal * 0.2, 14, delta);
       rootRef.current.scale.y = THREE.MathUtils.damp(rootRef.current.scale.y, Math.max(0.001, reveal), 14, delta);
     }
@@ -1473,7 +1474,7 @@ function BatchedCityBuildings({
 
     CITY_BLOCKS.forEach((block, index) => {
       const stagger = block.row * 0.0018;
-      const revealTarget = Math.max(0.001, smooth(range(progressRef.current, 0.076 + stagger, 0.126 + stagger)));
+      const revealTarget = Math.max(0.001, smooth(range(progressRef.current, 0.045 + stagger, 0.091 + stagger)));
       const revealScale = revealTarget;
       const yOffset = (1 - revealTarget) * -0.32;
       const [x, , z] = block.position;
@@ -1914,7 +1915,7 @@ function CompactNexusCity({
 
   useFrame(({ gl, size }, delta) => {
     const progress = progressRef.current;
-    const reveal = motionRange(progress, 0.062, 0.13, reducedMotion);
+    const reveal = motionRange(progress, 0.035, 0.062, reducedMotion);
     const departure = motionRange(progress, 0.285, 0.345, reducedMotion);
     const lensPresence = smooth(range(progress, 0.13, 0.16))
       * (1 - smooth(range(progress, 0.285, 0.318)));
@@ -2024,8 +2025,8 @@ function NexusCity({
 
   useFrame(({ gl, size }, delta) => {
     const progress = progressRef.current;
-    const fieldReveal = motionRange(progress, 0.062, 0.135, reducedMotion);
-    const solidReveal = motionRange(progress, 0.092, 0.165, reducedMotion);
+    const fieldReveal = motionRange(progress, 0.045, 0.09, reducedMotion);
+    const solidReveal = motionRange(progress, 0.058, 0.112, reducedMotion);
     const lensPresence = smooth(range(progress, 0.13, 0.16)) * (1 - smooth(range(progress, 0.285, 0.318)));
     updateSemanticMaterials(
       cityMaterials,
@@ -2181,8 +2182,8 @@ function SurveyDrone({
 
   useFrame((_, delta) => {
     if (!rootRef.current) return;
-    const local = motionRange(progressRef.current, 0.076, 0.285, reducedMotion);
-    const visibility = motionRange(progressRef.current, 0.064, 0.092, reducedMotion)
+    const local = motionRange(progressRef.current, 0.07, 0.285, reducedMotion);
+    const visibility = motionRange(progressRef.current, 0.069, 0.09, reducedMotion)
       * (1 - motionRange(progressRef.current, 0.29, 0.325, reducedMotion));
     DRONE_PATH.getPoint(local, position);
     DRONE_PATH.getPoint(Math.min(1, local + 0.025), lookAhead);
@@ -2196,6 +2197,7 @@ function SurveyDrone({
     lookAhead.y += flightY * 0.82;
     position.y += reducedMotion ? 0 : Math.sin(local * Math.PI * 5) * 0.08;
     rootRef.current.position.lerp(position, reducedMotion ? 1 : 1 - Math.exp(-delta * 15));
+    rootRef.current.visible = visibility > 0.005;
     orientation.position.copy(rootRef.current.position);
     orientation.lookAt(lookAhead);
     orientation.rotateZ(flightActive ? -(flightInput?.x ?? 0) * 0.12 : 0);
@@ -2600,7 +2602,7 @@ export function NexusActScene(props: NexusActSceneProps) {
   useFrame(() => {
     if (!rootRef.current) return;
     const progress = props.progressRef.current;
-    rootRef.current.visible = progress >= 0.064 && progress <= 0.355;
+    rootRef.current.visible = progress <= 0.355;
   });
 
   return (

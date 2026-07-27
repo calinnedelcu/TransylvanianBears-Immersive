@@ -12,12 +12,14 @@ ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_DIR = ROOT / "public" / "assets" / "vertical-slice" / "v1" / "05-07-school"
 SAMPLE_COUNT = 241
 AEGIS_SCAN_TARGET = (-0.775, 1.65, -77.225)
-CLASSROOM_SCREEN_TARGET = (-14.15, 4.25, -105.2)
+CLASSROOM_FOCUS_TARGET = (-12.2, 2.2, -102.1)
 SECRETARIAT_SCREEN_TARGET = (10.55, 2.72, -109.2)
 DESKTOP_SCAN_HOLD_RANGE = (0.18333333, 0.25833333)
 DESKTOP_SCHOOLMATE_START = 0.328
+DESKTOP_CLASSROOM_HOLD_RANGE = (0.405, 0.475)
 MOBILE_SCAN_HOLD_RANGE = (0.153, 0.232)
 MOBILE_SCHOOLMATE_START = 0.291
+MOBILE_CLASSROOM_HOLD_RANGE = (0.325, 0.355)
 
 
 @dataclass(frozen=True)
@@ -212,19 +214,29 @@ def validate_spec(spec):
     if hold_in.target != AEGIS_SCAN_TARGET:
         raise ValueError(f"{spec.asset_id} scan hold must frame the phone and scanner")
 
-    classroom_label = "classroom-glimpse" if spec.tier == "desktop" else "classroom-crop"
+    classroom_label = "classroom-hold-in"
     secretariat_label = "secretariat-arrival" if spec.tier == "desktop" else "secretariat-crop"
     classroom = beats_by_label[classroom_label]
+    classroom_hold_out = beats_by_label["classroom-hold-out"]
     secretariat = beats_by_label[secretariat_label]
-    if classroom.target != CLASSROOM_SCREEN_TARGET:
-        raise ValueError(f"{spec.asset_id} classroom beat must target the classroom screen")
+    if classroom.target != CLASSROOM_FOCUS_TARGET:
+        raise ValueError(f"{spec.asset_id} classroom beat must frame the desks and blackboard")
+    if classroom.position != classroom_hold_out.position or classroom.target != classroom_hold_out.target:
+        raise ValueError(f"{spec.asset_id} classroom hold must remain settled")
     if secretariat.target != SECRETARIAT_SCREEN_TARGET:
         raise ValueError(f"{spec.asset_id} secretariat beat must target the secretariat screen")
 
     hold_range = DESKTOP_SCAN_HOLD_RANGE if spec.tier == "desktop" else MOBILE_SCAN_HOLD_RANGE
+    classroom_hold_range = (
+        DESKTOP_CLASSROOM_HOLD_RANGE
+        if spec.tier == "desktop"
+        else MOBILE_CLASSROOM_HOLD_RANGE
+    )
     schoolmate_start = DESKTOP_SCHOOLMATE_START if spec.tier == "desktop" else MOBILE_SCHOOLMATE_START
     if (hold_in.progress, hold_out.progress) != hold_range:
         raise ValueError(f"{spec.asset_id} scan hold is outside the access interaction")
+    if (classroom.progress, classroom_hold_out.progress) != classroom_hold_range:
+        raise ValueError(f"{spec.asset_id} classroom hold is outside the classroom passage")
 
     gate = beats_by_label["gate-opens"]
     corridor_label = "corridor-wakes" if spec.tier == "desktop" else "corridor-vertical"
@@ -295,11 +307,12 @@ DESKTOP_BEATS = (
     CameraBeat("scanner-hold-out", 0.25833333, (2.0, 3.6, -81.5), AEGIS_SCAN_TARGET, 48.0, -0.2, 0.0),
     CameraBeat("transaction-resolves", 0.27916667, (4.15, 4.1, -81.8), (3.72, 0.7, -84.0), 44.0, 0.34),
     CameraBeat("gate-opens", 0.30416667, (1.2, 4.35, -84.0), (0.0, 2.8, -89.5), 46.5, 0.1),
-    CameraBeat("corridor-wakes", 0.325, (-1.0, 5.0, -88.5), (0.1, 3.8, -94.0), 48.5, -0.3),
-    CameraBeat("classroom-glimpse", 0.575, (-10.5, 4.4, -99.2), CLASSROOM_SCREEN_TARGET, 42.0, 0.22),
-    CameraBeat("request-transit", 0.75, (1.0, 5.3, -104.1), (-0.8, 3.3, -110.3), 46.0, -0.12),
-    CameraBeat("secretariat-arrival", 0.86666667, (7.0, 3.7, -104.8), SECRETARIAT_SCREEN_TARGET, 43.0, 0.3),
-    CameraBeat("editorial-wide", 0.93333333, (2.8, 5.9, -113.0), (0.0, 3.5, -118.0), 49.0),
+    CameraBeat("corridor-wakes", 0.325, (-1.0, 4.85, -89.0), (-0.2, 3.65, -95.0), 48.5, -0.18),
+    CameraBeat("classroom-threshold", 0.365, (-4.6, 4.45, -96.4), (-10.8, 3.15, -101.5), 47.0, 0.12, 0.7),
+    CameraBeat("classroom-hold-in", 0.405, (-8.4, 4.15, -99.4), CLASSROOM_FOCUS_TARGET, 48.0, 0.08, 0.0),
+    CameraBeat("classroom-hold-out", 0.475, (-8.4, 4.15, -99.4), CLASSROOM_FOCUS_TARGET, 48.0, 0.08, 0.0),
+    CameraBeat("secretariat-arrival", 0.68, (7.0, 3.7, -104.8), SECRETARIAT_SCREEN_TARGET, 43.0, 0.3),
+    CameraBeat("editorial-wide", 0.91, (2.8, 5.9, -113.0), (0.0, 3.5, -118.0), 49.0),
     CameraBeat("descent-handoff", 1.0, (0.0, 3.8, -120.0), (0.0, 1.65, -128.0), 50.0),
 )
 
@@ -314,11 +327,12 @@ MOBILE_BEATS = (
     CameraBeat("scanner-hold-out", 0.232, (-0.6, 3.5, -82.5), AEGIS_SCAN_TARGET, 60.0, -0.06, 0.0),
     CameraBeat("transaction-stacked", 0.25, (-0.2, 4.0, -83.2), (3.72, 0.7, -84.0), 60.0, 0.12),
     CameraBeat("gate-opens", 0.27083333, (0.05, 4.5, -85.0), (0.0, 3.0, -91.0), 61.0, 0.04),
-    CameraBeat("corridor-vertical", 0.289, (0.2, 5.2, -88.5), (0.0, 3.6, -94.0), 63.0, -0.1),
-    CameraBeat("classroom-crop", 0.575, (-8.0, 4.3, -98.0), CLASSROOM_SCREEN_TARGET, 56.0, 0.08),
-    CameraBeat("request-transit", 0.75, (0.3, 5.25, -101.8), (-0.8, 3.2, -110.5), 59.0, -0.05),
-    CameraBeat("secretariat-crop", 0.87083333, (7.0, 3.7, -103.0), SECRETARIAT_SCREEN_TARGET, 60.0, 0.1),
-    CameraBeat("editorial-vertical", 0.9375, (0.0, 6.35, -113.5), (0.0, 3.3, -119.0), 64.0),
+    CameraBeat("corridor-vertical", 0.289, (0.2, 5.1, -88.8), (0.0, 3.6, -94.8), 63.0, -0.08),
+    CameraBeat("classroom-threshold", 0.305, (-3.1, 4.75, -96.0), (-10.8, 3.3, -101.5), 64.0, 0.05, 0.65),
+    CameraBeat("classroom-hold-in", 0.325, (-8.6, 4.2, -99.7), CLASSROOM_FOCUS_TARGET, 64.0, 0.04, 0.0),
+    CameraBeat("classroom-hold-out", 0.355, (-8.6, 4.2, -99.7), CLASSROOM_FOCUS_TARGET, 64.0, 0.04, 0.0),
+    CameraBeat("secretariat-crop", 0.69, (7.0, 3.7, -103.0), SECRETARIAT_SCREEN_TARGET, 60.0, 0.1),
+    CameraBeat("editorial-vertical", 0.91, (0.0, 6.35, -113.5), (0.0, 3.3, -119.0), 64.0),
     CameraBeat("descent-handoff", 1.0, (0.0, 4.25, -120.0), (0.0, 1.7, -128.0), 60.0),
 )
 
