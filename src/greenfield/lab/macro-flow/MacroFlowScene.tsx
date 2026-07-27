@@ -969,8 +969,15 @@ function BuriedChamber({
   );
 }
 
-function PostEffects({ qualityTier }: Pick<MacroFlowSceneProps, 'qualityTier'>) {
-  if (qualityTier !== 'cinematic') return null;
+function PostEffects({
+  qualityTier,
+  activeChapter,
+}: Pick<MacroFlowSceneProps, 'qualityTier' | 'activeChapter'>) {
+  if (
+    qualityTier !== 'cinematic'
+    || activeChapter === 'lens'
+    || activeChapter === 'proof'
+  ) return null;
 
   return (
     <EffectComposer multisampling={0} enableNormalPass={false}>
@@ -1348,7 +1355,7 @@ function World({
         <planeGeometry args={[36, 190]} />
         <meshStandardMaterial color="#101516" roughness={0.98} />
       </mesh>
-      {!compact ? <PostEffects qualityTier={qualityTier} /> : null}
+      {!compact ? <PostEffects qualityTier={qualityTier} activeChapter={activeChapter} /> : null}
     </>
   );
 }
