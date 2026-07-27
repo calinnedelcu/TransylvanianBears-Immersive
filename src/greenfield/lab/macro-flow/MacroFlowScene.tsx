@@ -1298,6 +1298,13 @@ function World({
       {showNexus ? (
         <group visible>
           <NexusActScene
+            activeChapter={
+              activeChapter === 'lens'
+                ? 'lens'
+                : activeChapter === 'proof'
+                  ? 'proof'
+                  : 'field'
+            }
             progressRef={progressRef}
             lensMode={lensMode}
             lensPointerRef={lensPointerRef}

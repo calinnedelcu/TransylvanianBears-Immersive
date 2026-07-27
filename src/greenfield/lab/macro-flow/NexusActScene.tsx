@@ -8,6 +8,7 @@ import type { QualityTier } from '../../experience/quality';
 import type { LensPointerState, MacroLensMode, NexusFlightInput } from './macroFlowTypes';
 
 type NexusActSceneProps = {
+  activeChapter: 'field' | 'lens' | 'proof';
   progressRef: MutableRefObject<number>;
   lensMode: MacroLensMode;
   lensPointerRef: MutableRefObject<LensPointerState>;
@@ -27,7 +28,7 @@ type CityBlock = {
 };
 
 const RAW_COLORS = ['#586763', '#68706a', '#495b59'];
-const SEGMENT_COLORS = ['#c96554', '#c96554', '#c96554'];
+const SEGMENT_COLORS = ['#c96554', '#d8b75e', '#559f9a'];
 const LENS_ACCENTS: Record<MacroLensMode, string> = {
   raw: '#72d9d6',
   segmentation: '#e1bd67',
@@ -224,7 +225,8 @@ function createSemanticMaterial(
           surfacePattern = plasterWear;
         }
 
-        vec3 rawColor = uRaw * vInstanceTint * diffuse * materialGrain * surfacePattern;
+        float architectureLift = uSemanticClass < 0.5 ? 1.22 : 1.0;
+        vec3 rawColor = uRaw * vInstanceTint * diffuse * materialGrain * surfacePattern * architectureLift;
         vec3 inspected = rawColor;
         float silhouette = pow(1.0 - abs(normalView.z), 3.2);
         float structuralBand = uSemanticClass < 0.5
@@ -245,7 +247,7 @@ function createSemanticMaterial(
         vec3 modeAccent = uMode > 1.5 ? uDetection : (uMode > 0.5 ? uSegment : vec3(0.447, 0.851, 0.839));
         color += modeAccent * lensEdge * 0.42;
         float fogAmount = smoothstep(28.0, 74.0, vDepth);
-        color = mix(color, vec3(0.025, 0.055, 0.058), fogAmount * 0.72);
+        color = mix(color, vec3(0.035, 0.072, 0.071), fogAmount * 0.62);
         gl_FragColor = vec4(color, 1.0);
       }
     `,
@@ -687,6 +689,263 @@ function DataKeep({
   );
 }
 
+function NexusLivingSignals({
+  progressRef,
+  lensMode,
+  reducedMotion,
+  compact,
+}: Pick<NexusActSceneProps, 'progressRef' | 'lensMode' | 'compact'> & {
+  reducedMotion: boolean;
+}) {
+  const rootRef = useRef<THREE.Group>(null);
+  const poolRef = useRef<THREE.InstancedMesh>(null);
+  const beaconRef = useRef<THREE.InstancedMesh>(null);
+  const sweepRef = useRef<THREE.Mesh>(null);
+  const sweepMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const scratch = useMemo(() => new THREE.Object3D(), []);
+  const scratchColor = useMemo(() => new THREE.Color(), []);
+  const poolCount = compact ? 8 : 12;
+  const beaconCount = compact ? 12 : 18;
+  const geometries = useMemo(() => ({
+    pool: new THREE.CircleGeometry(1, 28),
+    beacon: new THREE.BoxGeometry(1, 1, 1),
+    sweep: new THREE.PlaneGeometry(7.15, 3.8),
+  }), []);
+  const materials = useMemo(() => ({
+    pool: new THREE.MeshBasicMaterial({
+      color: '#ffffff',
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.12,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      toneMapped: false,
+    }),
+    beacon: new THREE.MeshBasicMaterial({
+      color: '#ffffff',
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.72,
+      depthWrite: false,
+      toneMapped: false,
+    }),
+  }), []);
+
+  useEffect(() => () => {
+    Object.values(geometries).forEach((geometry) => geometry.dispose());
+    Object.values(materials).forEach((material) => material.dispose());
+  }, [geometries, materials]);
+
+  useLayoutEffect(() => {
+    for (let index = 0; index < poolCount; index += 1) {
+      const side = index % 2 === 0 ? -1 : 1;
+      const row = Math.floor(index / 2);
+      setInstanceTransform(
+        poolRef.current,
+        index,
+        scratch,
+        side * 3.62,
+        0.035,
+        1.5 - row * 9.1,
+        1.35,
+        0.62,
+        1,
+        -Math.PI / 2,
+      );
+      poolRef.current?.setColorAt(
+        index,
+        scratchColor.set(index % 3 === 1 ? '#e1bd67' : '#72d9d6'),
+      );
+    }
+    for (let index = 0; index < beaconCount; index += 1) {
+      const side = index % 2 === 0 ? -1 : 1;
+      const row = Math.floor(index / 2);
+      setInstanceTransform(
+        beaconRef.current,
+        index,
+        scratch,
+        side * (6.34 + (row % 3) * 0.16),
+        1.8,
+        3 - row * 6.2,
+        0.045,
+        0.8,
+        0.045,
+      );
+      beaconRef.current?.setColorAt(
+        index,
+        scratchColor.set(index % 4 === 0 ? '#e1bd67' : '#72d9d6'),
+      );
+    }
+    [poolRef.current, beaconRef.current].forEach(markInstanceMatrixDirty);
+    [poolRef.current, beaconRef.current].forEach((mesh) => {
+      if (mesh?.instanceColor) mesh.instanceColor.needsUpdate = true;
+    });
+    beaconRef.current?.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  }, [beaconCount, poolCount, scratch, scratchColor]);
+
+  useFrame(({ clock }, delta) => {
+    const progress = progressRef.current;
+    const reveal = motionRange(progress, 0.048, 0.086, reducedMotion);
+    const departure = motionRange(progress, 0.285, 0.325, reducedMotion);
+    const presence = reveal * (1 - departure);
+    if (rootRef.current) {
+      rootRef.current.visible = presence > 0.005;
+      rootRef.current.scale.y = THREE.MathUtils.damp(
+        rootRef.current.scale.y,
+        Math.max(0.001, presence),
+        12,
+        delta,
+      );
+    }
+
+    const accent = LENS_ACCENTS[lensMode];
+    materials.pool.opacity = presence * (lensMode === 'raw' ? 0.1 : 0.18);
+    materials.beacon.opacity = presence * (lensMode === 'raw' ? 0.58 : 0.86);
+    for (let index = 0; index < beaconCount; index += 1) {
+      const side = index % 2 === 0 ? -1 : 1;
+      const row = Math.floor(index / 2);
+      const pulse = reducedMotion
+        ? 0.62
+        : 0.46 + Math.sin(clock.elapsedTime * 2.1 + index * 0.73) * 0.22;
+      setInstanceTransform(
+        beaconRef.current,
+        index,
+        scratch,
+        side * (6.34 + (row % 3) * 0.16),
+        1.2 + pulse * 0.9,
+        3 - row * 6.2,
+        0.045,
+        0.35 + pulse * 1.25,
+        0.045,
+      );
+    }
+    markInstanceMatrixDirty(beaconRef.current);
+
+    if (sweepRef.current) {
+      const cycle = reducedMotion
+        ? 0.42
+        : (clock.elapsedTime * 0.092 + progress * 1.8) % 1;
+      sweepRef.current.position.z = THREE.MathUtils.lerp(7, -48, cycle);
+      sweepRef.current.visible = presence > 0.2;
+    }
+    if (sweepMaterialRef.current) {
+      sweepMaterialRef.current.color.set(accent);
+      sweepMaterialRef.current.opacity = presence * (lensMode === 'raw' ? 0.065 : 0.14);
+    }
+  });
+
+  return (
+    <group ref={rootRef} position={[0, 0, -7]} scale={[1, 0.001, 1]} visible={false}>
+      <instancedMesh
+        ref={poolRef}
+        args={[geometries.pool, materials.pool, poolCount]}
+        frustumCulled={false}
+        renderOrder={2}
+      />
+      <instancedMesh
+        ref={beaconRef}
+        args={[geometries.beacon, materials.beacon, beaconCount]}
+        frustumCulled={false}
+        renderOrder={3}
+      />
+      <mesh
+        ref={sweepRef}
+        geometry={geometries.sweep}
+        position={[0, 0.047, 7]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        renderOrder={4}
+      >
+        <meshBasicMaterial
+          ref={sweepMaterialRef}
+          color="#72d9d6"
+          transparent
+          opacity={0}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+function NexusThresholdEcho({
+  progressRef,
+  reducedMotion,
+}: Pick<NexusActSceneProps, 'progressRef'> & { reducedMotion: boolean }) {
+  const rootRef = useRef<THREE.Group>(null);
+  const latticeRef = useRef<THREE.InstancedMesh>(null);
+  const archMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const scratch = useMemo(() => new THREE.Object3D(), []);
+  const geometries = useMemo(() => ({
+    lattice: new THREE.BoxGeometry(1, 1, 1),
+    arch: new THREE.TorusGeometry(4.35, 0.055, 8, 64, Math.PI),
+  }), []);
+  const latticeMaterial = useMemo(() => new THREE.MeshBasicMaterial({
+    color: '#72d9d6',
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    toneMapped: false,
+  }), []);
+
+  useEffect(() => () => {
+    Object.values(geometries).forEach((geometry) => geometry.dispose());
+    latticeMaterial.dispose();
+  }, [geometries, latticeMaterial]);
+
+  useLayoutEffect(() => {
+    [
+      [-4.18, 4.25, 0.06, 8.5],
+      [4.18, 4.25, 0.06, 8.5],
+      [-3.2, 7.5, 0.06, 1.5],
+      [3.2, 7.5, 0.06, 1.5],
+      [-3.72, 1.45, 0.06, 1.65],
+      [3.72, 1.45, 0.06, 1.65],
+    ].forEach(([x, y, width, height], index) => {
+      setInstanceTransform(latticeRef.current, index, scratch, x, y, 0, width, height, 0.06);
+    });
+    markInstanceMatrixDirty(latticeRef.current);
+  }, [scratch]);
+
+  useFrame(({ clock }) => {
+    const exit = motionRange(progressRef.current, 0.064, 0.105, reducedMotion);
+    const presence = 1 - exit;
+    if (rootRef.current) {
+      rootRef.current.visible = presence > 0.005;
+      rootRef.current.position.z = 14.85 - exit * 7.5;
+      rootRef.current.scale.setScalar(0.96 + exit * 0.08);
+      rootRef.current.rotation.z = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.5) * 0.0025;
+    }
+    latticeMaterial.opacity = presence * 0.16;
+    if (archMaterialRef.current) {
+      archMaterialRef.current.opacity = presence * 0.3;
+    }
+  });
+
+  return (
+    <group ref={rootRef} position={[0, 0, 14.85]}>
+      <instancedMesh
+        ref={latticeRef}
+        args={[geometries.lattice, latticeMaterial, 6]}
+        frustumCulled={false}
+        renderOrder={5}
+      />
+      <mesh geometry={geometries.arch} position={[0, 4.2, 0]} renderOrder={5}>
+        <meshBasicMaterial
+          ref={archMaterialRef}
+          color="#e1bd67"
+          transparent
+          opacity={0}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+    </group>
+  );
+}
+
 function createSurveyCableGeometry() {
   const positions: number[] = [];
   const rows = [2, -7, -16, -25, -34, -43];
@@ -1080,7 +1339,7 @@ function Traffic({
     if (bodies.instanceColor) bodies.instanceColor.needsUpdate = true;
   }, [scratchColor]);
 
-  useFrame(({ gl, size }) => {
+  useFrame(({ clock, gl, size }) => {
     const bodies = bodyRef.current;
     const cabins = cabinRef.current;
     const wheels = wheelRef.current;
@@ -1100,7 +1359,10 @@ function Traffic({
 
     for (let index = 0; index < 6; index += 1) {
       const direction = index % 2 === 0 ? -1 : 1;
-      const travel = (index * 9.35 + (reducedMotion ? 0 : progressRef.current * 214)) % 56;
+      const travel = (
+        index * 9.35
+        + (reducedMotion ? 0 : clock.elapsedTime * 4.8 + progressRef.current * 82)
+      ) % 56;
       const lane = index % 2 === 0 ? -1.35 : 1.35;
       const z = direction < 0 ? 8 - travel : -48 + travel;
 
@@ -1230,7 +1492,7 @@ function TrackedSubjects({
     });
   }, [pedestrians, scratchColor, transforms]);
 
-  useFrame(({ gl, size }) => {
+  useFrame(({ clock, gl, size }) => {
     const lensPresence = smooth(range(progressRef.current, 0.13, 0.16))
       * (1 - smooth(range(progressRef.current, 0.285, 0.318)));
     updateSemanticMaterials(
@@ -1244,7 +1506,10 @@ function TrackedSubjects({
     );
 
     pedestrians.forEach((pedestrian, index) => {
-      const travel = (pedestrian.phase + (reducedMotion ? 0 : progressRef.current * pedestrian.speed * 2.6)) % 1;
+      const travel = (
+        pedestrian.phase
+        + (reducedMotion ? 0 : clock.elapsedTime * pedestrian.speed * 0.028 + progressRef.current * 0.72)
+      ) % 1;
       const direction = index % 4 < 2 ? 1 : -1;
       const directedTravel = direction > 0 ? travel : 1 - travel;
       const x = pedestrian.cross
@@ -1913,7 +2178,7 @@ function CompactNexusCity({
       });
   }, [pedestrians, scratch, scratchColor]);
 
-  useFrame(({ gl, size }, delta) => {
+  useFrame(({ clock, gl, size }, delta) => {
     const progress = progressRef.current;
     const reveal = motionRange(progress, 0.035, 0.062, reducedMotion);
     const departure = motionRange(progress, 0.285, 0.345, reducedMotion);
@@ -1937,7 +2202,10 @@ function CompactNexusCity({
     }
 
     pedestrians.forEach((pedestrian, index) => {
-      const travel = (pedestrian.phase + (reducedMotion ? 0 : progress * pedestrian.speed * 2.35)) % 1;
+      const travel = (
+        pedestrian.phase
+        + (reducedMotion ? 0 : clock.elapsedTime * pedestrian.speed * 0.028 + progress * 0.66)
+      ) % 1;
       const direction = index % 4 < 2 ? 1 : -1;
       const directedTravel = direction > 0 ? travel : 1 - travel;
       const x = pedestrian.cross
@@ -1964,7 +2232,10 @@ function CompactNexusCity({
 
     for (let index = 0; index < COMPACT_TRAFFIC_COUNT; index += 1) {
       const direction = index % 2 === 0 ? -1 : 1;
-      const travel = (index * 9.35 + (reducedMotion ? 0 : progress * 214)) % 56;
+      const travel = (
+        index * 9.35
+        + (reducedMotion ? 0 : clock.elapsedTime * 4.6 + progress * 76)
+      ) % 56;
       const z = direction < 0 ? 8 - travel : -48 + travel;
       setInstanceTransform(
         trafficRef.current,
@@ -2055,6 +2326,12 @@ function NexusCity({
     <group ref={rootRef} position={[0, 0, -7]}>
       <CarpathianDataHorizon />
       <DataStreams progressRef={progressRef} lensMode={lensMode} reducedMotion={reducedMotion} />
+      <NexusLivingSignals
+        progressRef={progressRef}
+        lensMode={lensMode}
+        reducedMotion={reducedMotion}
+        compact={false}
+      />
       <DataKeep
         progressRef={progressRef}
         lensMode={lensMode}
@@ -2180,7 +2457,7 @@ function SurveyDrone({
     rotorBladeRef.current?.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   }, [rotorAnchors, scratch]);
 
-  useFrame((_, delta) => {
+  useFrame(({ clock }, delta) => {
     if (!rootRef.current) return;
     const local = motionRange(progressRef.current, 0.07, 0.285, reducedMotion);
     const visibility = motionRange(progressRef.current, 0.069, 0.09, reducedMotion)
@@ -2207,7 +2484,9 @@ function SurveyDrone({
 
     const rotorPhase = reducedMotion
       ? 0
-      : progressRef.current * 210 + (flightActive ? (flightInput?.x ?? 0) * 2.4 + (flightInput?.y ?? 0) * 1.7 : 0);
+      : clock.elapsedTime * 52
+        + progressRef.current * 18
+        + (flightActive ? (flightInput?.x ?? 0) * 2.4 + (flightInput?.y ?? 0) * 1.7 : 0);
     rotorAnchors.forEach(([x, z], rotorIndex) => {
       for (let blade = 0; blade < 2; blade += 1) {
         setInstanceTransform(
@@ -2247,6 +2526,154 @@ function SurveyDrone({
           color="#72d9d6"
           transparent
           opacity={0.1}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+function SurveyDroneLite({
+  progressRef,
+  lensMode,
+  nexusFlightInputRef,
+  dronePositionRef,
+  reducedMotion,
+}: Pick<NexusActSceneProps, 'progressRef' | 'lensMode' | 'nexusFlightInputRef'> & {
+  dronePositionRef: MutableRefObject<THREE.Vector3>;
+  reducedMotion: boolean;
+}) {
+  const rootRef = useRef<THREE.Group>(null);
+  const partsRef = useRef<THREE.InstancedMesh>(null);
+  const beamMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const position = useMemo(() => new THREE.Vector3(), []);
+  const lookAhead = useMemo(() => new THREE.Vector3(), []);
+  const orientation = useMemo(() => new THREE.Object3D(), []);
+  const scratch = useMemo(() => new THREE.Object3D(), []);
+  const scratchColor = useMemo(() => new THREE.Color(), []);
+  const rotorAnchors = useMemo<Array<[number, number]>>(() => [
+    [-0.78, -0.58],
+    [0.78, -0.58],
+    [-0.78, 0.58],
+    [0.78, 0.58],
+  ], []);
+  const geometry = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
+  const beamGeometry = useMemo(() => new THREE.ConeGeometry(1.32, 3.5, 18, 1, true), []);
+  const material = useMemo(() => new THREE.MeshStandardMaterial({
+    color: '#ffffff',
+    vertexColors: true,
+    metalness: 0.58,
+    roughness: 0.34,
+  }), []);
+
+  useEffect(() => () => {
+    geometry.dispose();
+    beamGeometry.dispose();
+    material.dispose();
+  }, [beamGeometry, geometry, material]);
+
+  useLayoutEffect(() => {
+    const parts = partsRef.current;
+    if (!parts) return;
+
+    setInstanceTransform(parts, 0, scratch, 0, 0, 0, 0.64, 0.3, 0.9);
+    setInstanceTransform(parts, 1, scratch, 0, -0.31, 0.32, 0.28, 0.2, 0.28);
+    setInstanceTransform(parts, 2, scratch, 0, 0, 0, 1.85, 0.07, 0.09, 0, Math.PI / 4);
+    setInstanceTransform(parts, 3, scratch, 0, 0, 0, 1.85, 0.07, 0.09, 0, -Math.PI / 4);
+    setInstanceTransform(parts, 4, scratch, -0.34, -0.4, 0.1, 0.06, 0.06, 1.05);
+    setInstanceTransform(parts, 5, scratch, 0.34, -0.4, 0.1, 0.06, 0.06, 1.05);
+
+    rotorAnchors.forEach(([x, z], index) => {
+      setInstanceTransform(parts, 6 + index, scratch, x, 0.02, z, 0.26, 0.16, 0.26);
+    });
+
+    const colors = [
+      '#c8cdc5',
+      LENS_ACCENTS[lensMode],
+      '#435154',
+      '#435154',
+      '#435154',
+      '#435154',
+      '#1b292a',
+      '#1b292a',
+      '#1b292a',
+      '#1b292a',
+    ];
+    colors.forEach((color, index) => parts.setColorAt(index, scratchColor.set(color)));
+    for (let index = 10; index < 18; index += 1) {
+      parts.setColorAt(index, scratchColor.set('#91ded9'));
+    }
+    parts.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    if (parts.instanceColor) parts.instanceColor.needsUpdate = true;
+    markInstanceMatrixDirty(parts);
+  }, [lensMode, rotorAnchors, scratch, scratchColor]);
+
+  useFrame(({ clock }, delta) => {
+    const root = rootRef.current;
+    const parts = partsRef.current;
+    if (!root || !parts) return;
+
+    const local = motionRange(progressRef.current, 0.07, 0.285, reducedMotion);
+    const visibility = motionRange(progressRef.current, 0.069, 0.09, reducedMotion)
+      * (1 - motionRange(progressRef.current, 0.29, 0.325, reducedMotion));
+    DRONE_PATH.getPoint(local, position);
+    DRONE_PATH.getPoint(Math.min(1, local + 0.025), lookAhead);
+
+    const flightInput = nexusFlightInputRef.current;
+    const flightX = flightInput.active ? flightInput.x * 2.65 : 0;
+    const flightY = flightInput.active ? flightInput.y * 1.7 : 0;
+    position.x += flightX;
+    position.y += flightY;
+    lookAhead.x += flightX * 0.82;
+    lookAhead.y += flightY * 0.82;
+    position.y += reducedMotion ? 0 : Math.sin(local * Math.PI * 5) * 0.08;
+
+    root.position.lerp(position, reducedMotion ? 1 : 1 - Math.exp(-delta * 15));
+    root.visible = visibility > 0.005;
+    orientation.position.copy(root.position);
+    orientation.lookAt(lookAhead);
+    orientation.rotateZ(flightInput.active ? -flightInput.x * 0.12 : 0);
+    root.quaternion.slerp(orientation.quaternion, reducedMotion ? 1 : 1 - Math.exp(-delta * 15));
+    root.scale.setScalar(0.001 + visibility * 0.68);
+    dronePositionRef.current.copy(root.position);
+
+    const rotorPhase = reducedMotion ? 0 : clock.elapsedTime * 52 + progressRef.current * 18;
+    rotorAnchors.forEach(([x, z], rotorIndex) => {
+      for (let blade = 0; blade < 2; blade += 1) {
+        setInstanceTransform(
+          parts,
+          10 + rotorIndex * 2 + blade,
+          scratch,
+          x,
+          0.18,
+          z,
+          1.05,
+          0.018,
+          0.065,
+          0,
+          rotorPhase + rotorIndex * 0.47 + blade * Math.PI / 2,
+        );
+      }
+    });
+    markInstanceMatrixDirty(parts);
+
+    if (beamMaterialRef.current) {
+      beamMaterialRef.current.color.set(LENS_ACCENTS[lensMode]);
+      beamMaterialRef.current.opacity = visibility * (lensMode === 'raw' ? 0.04 : 0.1);
+    }
+  });
+
+  return (
+    <group ref={rootRef} visible={false} scale={0.001}>
+      <instancedMesh ref={partsRef} args={[geometry, material, 18]} frustumCulled={false} />
+      <mesh geometry={beamGeometry} position={[0, -2.2, 0]}>
+        <meshBasicMaterial
+          ref={beamMaterialRef}
+          color="#72d9d6"
+          transparent
+          opacity={0.08}
           depthWrite={false}
           side={THREE.DoubleSide}
           blending={THREE.AdditiveBlending}
@@ -2598,6 +3025,8 @@ export function NexusActScene(props: NexusActSceneProps) {
   const rootRef = useRef<THREE.Group>(null);
   const dronePositionRef = useRef(new THREE.Vector3(999, 999, 999));
   const reducedMotion = usePrefersReducedMotion();
+  const fieldProfile = props.activeChapter === 'field';
+  const lensProfile = props.activeChapter === 'lens';
 
   useFrame(() => {
     if (!rootRef.current) return;
@@ -2607,7 +3036,42 @@ export function NexusActScene(props: NexusActSceneProps) {
 
   return (
     <group ref={rootRef} visible={false}>
-      {props.compact ? (
+      {fieldProfile ? (
+        <>
+          <NexusThresholdEcho
+            progressRef={props.progressRef}
+            reducedMotion={reducedMotion}
+          />
+          {props.compact ? (
+            <>
+              <CompactNexusCity
+                progressRef={props.progressRef}
+                lensMode={props.lensMode}
+                lensPointerRef={props.lensPointerRef}
+                reducedMotion={reducedMotion}
+              />
+              <NexusLivingSignals
+                progressRef={props.progressRef}
+                lensMode={props.lensMode}
+                reducedMotion={reducedMotion}
+                compact
+              />
+            </>
+          ) : (
+            <>
+              <NexusCity {...props} reducedMotion={reducedMotion} />
+              <SurveyDrone
+                progressRef={props.progressRef}
+                lensMode={props.lensMode}
+                nexusFlightInputRef={props.nexusFlightInputRef}
+                dronePositionRef={dronePositionRef}
+                reducedMotion={reducedMotion}
+              />
+            </>
+          )}
+        </>
+      ) : null}
+      {lensProfile ? (
         <>
           <CompactNexusCity
             progressRef={props.progressRef}
@@ -2615,16 +3079,7 @@ export function NexusActScene(props: NexusActSceneProps) {
             lensPointerRef={props.lensPointerRef}
             reducedMotion={reducedMotion}
           />
-          <CompactLensOptic
-            progressRef={props.progressRef}
-            lensPointerRef={props.lensPointerRef}
-            lensMode={props.lensMode}
-          />
-        </>
-      ) : (
-        <>
-          <NexusCity {...props} reducedMotion={reducedMotion} />
-          <SurveyDrone
+          <SurveyDroneLite
             progressRef={props.progressRef}
             lensMode={props.lensMode}
             nexusFlightInputRef={props.nexusFlightInputRef}
@@ -2640,18 +3095,28 @@ export function NexusActScene(props: NexusActSceneProps) {
             dronePositionRef={dronePositionRef}
             reducedMotion={reducedMotion}
           />
-          <EvidencePanel
-            progressRef={props.progressRef}
-            lensMode={props.lensMode}
-            reducedMotion={reducedMotion}
-          />
-          <LensOptic
-            progressRef={props.progressRef}
-            lensPointerRef={props.lensPointerRef}
-            lensMode={props.lensMode}
-          />
+          {!props.compact ? (
+            <EvidencePanel
+              progressRef={props.progressRef}
+              lensMode={props.lensMode}
+              reducedMotion={reducedMotion}
+            />
+          ) : null}
+          {props.compact ? (
+            <CompactLensOptic
+              progressRef={props.progressRef}
+              lensPointerRef={props.lensPointerRef}
+              lensMode={props.lensMode}
+            />
+          ) : (
+            <LensOptic
+              progressRef={props.progressRef}
+              lensPointerRef={props.lensPointerRef}
+              lensMode={props.lensMode}
+            />
+          )}
         </>
-      )}
+      ) : null}
     </group>
   );
 }
