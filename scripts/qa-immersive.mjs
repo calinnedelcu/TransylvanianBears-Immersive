@@ -213,6 +213,27 @@ async function moveWithin(page, selector, progress) {
   await page.waitForTimeout(850);
 }
 
+async function moveWorldProgress(page, progress) {
+  const geometry = await page.evaluate(() => {
+    const root = document.querySelector('.mf-lab');
+    const worldEnd = document.querySelector('#mf-infect');
+    if (!(root instanceof HTMLElement) || !(worldEnd instanceof HTMLElement)) return null;
+    return {
+      rootTop: window.scrollY + root.getBoundingClientRect().top,
+      endTop: window.scrollY + worldEnd.getBoundingClientRect().top,
+    };
+  });
+  if (!geometry) throw new Error('World progress anchors are unavailable');
+  await page.evaluate(async ({ target, value }) => {
+    const destination = target.rootTop + (target.endTop - target.rootTop) * value;
+    for (let frame = 0; frame < 8; frame += 1) {
+      window.scrollTo({ top: destination, behavior: 'instant' });
+      await new Promise(requestAnimationFrame);
+    }
+  }, { target: geometry, value: progress });
+  await page.waitForTimeout(420);
+}
+
 async function placeSectionTop(page, selector, viewportFraction) {
   const geometry = await page.locator(selector).evaluate((element) => {
     const rect = element.getBoundingClientRect();
@@ -474,6 +495,24 @@ try {
   await desktop.waitForTimeout(300);
   report.desktop.firstCanvas = await signature(await desktop.screenshot());
   report.desktop.thresholdFilled = report.desktop.firstCanvas.entropy >= 3.5;
+  report.desktop.thresholdSequence = {
+    total: Number(await desktop.locator('.mf-lab').getAttribute('data-threshold-response-total')),
+  };
+  await moveWorldProgress(desktop, 0.043);
+  await desktop.waitForFunction(() => (
+    document.querySelector('.mf-lab')?.getAttribute('data-threshold-responses') === '6'
+  ));
+  report.desktop.thresholdSequence.forward = {
+    responses: Number(await desktop.locator('.mf-lab').getAttribute('data-threshold-responses')),
+    signal: await desktop.locator('.mf-lab').getAttribute('data-threshold-signal'),
+    aperture: await desktop.locator('.mf-lab').getAttribute('data-threshold-aperture'),
+  };
+  await moveWorldProgress(desktop, 0.032);
+  report.desktop.thresholdSequence.reverse = {
+    responses: Number(await desktop.locator('.mf-lab').getAttribute('data-threshold-responses')),
+    signal: await desktop.locator('.mf-lab').getAttribute('data-threshold-signal'),
+    aperture: await desktop.locator('.mf-lab').getAttribute('data-threshold-aperture'),
+  };
 
   await moveWithin(desktop, '.mf-beat--field', 0.45);
   report.desktop.verticalSliceRender.field = assessVerticalSliceRender(
@@ -618,6 +657,24 @@ try {
   await mobile.waitForTimeout(300);
   report.mobile.firstCanvas = await signature(await mobile.screenshot());
   report.mobile.thresholdFilled = report.mobile.firstCanvas.entropy >= 3.2;
+  report.mobile.thresholdSequence = {
+    total: Number(await mobile.locator('.mf-lab').getAttribute('data-threshold-response-total')),
+  };
+  await moveWorldProgress(mobile, 0.043);
+  await mobile.waitForFunction(() => (
+    document.querySelector('.mf-lab')?.getAttribute('data-threshold-responses') === '6'
+  ));
+  report.mobile.thresholdSequence.forward = {
+    responses: Number(await mobile.locator('.mf-lab').getAttribute('data-threshold-responses')),
+    signal: await mobile.locator('.mf-lab').getAttribute('data-threshold-signal'),
+    aperture: await mobile.locator('.mf-lab').getAttribute('data-threshold-aperture'),
+  };
+  await moveWorldProgress(mobile, 0.032);
+  report.mobile.thresholdSequence.reverse = {
+    responses: Number(await mobile.locator('.mf-lab').getAttribute('data-threshold-responses')),
+    signal: await mobile.locator('.mf-lab').getAttribute('data-threshold-signal'),
+    aperture: await mobile.locator('.mf-lab').getAttribute('data-threshold-aperture'),
+  };
 
   await moveWithin(mobile, '.mf-beat--field', 0.45);
   report.mobile.verticalSliceRender.field = assessVerticalSliceRender(
@@ -744,6 +801,22 @@ checkHard(report.desktop.descentRender?.withinBudget === true, 'desktop:descent'
 checkHard(report.desktop.thresholdFilled === true, 'desktop:threshold', 'Threshold canvas entropy is too low', report.desktop.firstCanvas);
 checkHard(report.desktop.descentFilled === true, 'desktop:descent', 'Descent canvas entropy is too low', report.desktop.descentCanvas);
 checkHard(report.mobile.thresholdFilled === true, 'mobile:threshold', 'Threshold canvas entropy is too low', report.mobile.firstCanvas);
+checkHard(
+  report.desktop.thresholdSequence?.total === 6
+    && report.desktop.thresholdSequence?.forward?.responses === 6
+    && report.desktop.thresholdSequence?.reverse?.responses < 6,
+  'desktop:threshold-sequence',
+  'The six-response threshold is incomplete or not reversible',
+  report.desktop.thresholdSequence,
+);
+checkHard(
+  report.mobile.thresholdSequence?.total === 6
+    && report.mobile.thresholdSequence?.forward?.responses === 6
+    && report.mobile.thresholdSequence?.reverse?.responses < 6,
+  'mobile:threshold-sequence',
+  'The mobile six-response threshold is incomplete or not reversible',
+  report.mobile.thresholdSequence,
+);
 checkHard(report.mobile.lens?.filled === true, 'mobile:03-lens', 'Lens canvas entropy is too low', report.mobile.lens?.canvas);
 checkHard(report.mobile.lens?.visible === true, 'mobile:03-lens', 'Lens did not become visible', report.mobile.lens);
 checkHard(report.mobile.lens?.controlCount === 3, 'mobile:03-lens', 'Lens does not expose all three mode controls', report.mobile.lens);

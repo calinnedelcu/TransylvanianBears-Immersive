@@ -8,6 +8,7 @@ type CarpathianThresholdProps = {
   progressRef: MutableRefObject<number>;
   qualityTier: QualityTier;
   reducedMotion: boolean;
+  atmosphereEnabled?: boolean;
   realtimeLightEnabled?: boolean;
 };
 
@@ -536,6 +537,7 @@ export function CarpathianThreshold({
   progressRef,
   qualityTier,
   reducedMotion,
+  atmosphereEnabled = true,
   realtimeLightEnabled = true,
 }: CarpathianThresholdProps) {
   const compact = useThree((state) => state.size.width <= 820);
@@ -619,8 +621,8 @@ export function CarpathianThreshold({
   useFrame(({ clock }, delta) => {
     const root = rootRef.current;
     if (!root) return;
-    const doorOpening = smooth(range(progressRef.current, 0.006, 0.04));
-    const gateLift = smooth(range(progressRef.current, 0.006, 0.035));
+    const doorOpening = smooth(range(progressRef.current, 0.0405, 0.051));
+    const gateLift = smooth(range(progressRef.current, 0.04, 0.047));
     const departure = smooth(range(progressRef.current, 0.044, 0.072));
     if (introStartTimeRef.current === null) introStartTimeRef.current = clock.elapsedTime;
     const introTime = clock.elapsedTime - introStartTimeRef.current;
@@ -671,28 +673,31 @@ export function CarpathianThreshold({
 
   return (
     <group ref={rootRef}>
-      <CarpathianBackdrop
-        progressRef={progressRef}
-        qualityTier={qualityTier}
-        reducedMotion={reducedMotion}
-      />
-      {!reducedMotion ? (
-        <CinematicRain progressRef={progressRef} qualityTier={qualityTier} />
-      ) : null}
-      <group position={compact ? [-7.2, 13.15, 4.2] : [-9.3, 12.8, 4.2]} scale={compact ? 0.5 : 1}>
-        <mesh>
-          <circleGeometry args={[4.35, 48]} />
-          <shaderMaterial
-            vertexShader={MOON_VERTEX_SHADER}
-            fragmentShader={MOON_FRAGMENT_SHADER}
-            transparent
-            depthWrite={false}
-            toneMapped={false}
+      {atmosphereEnabled ? (
+        <>
+          <CarpathianBackdrop
+            progressRef={progressRef}
+            qualityTier={qualityTier}
+            reducedMotion={reducedMotion}
           />
-        </mesh>
-      </group>
-
-      <BatFlock progressRef={progressRef} qualityTier={qualityTier} reducedMotion={reducedMotion} />
+          {!reducedMotion ? (
+            <CinematicRain progressRef={progressRef} qualityTier={qualityTier} />
+          ) : null}
+          <group position={compact ? [-7.2, 13.15, 4.2] : [-9.3, 12.8, 4.2]} scale={compact ? 0.5 : 1}>
+            <mesh>
+              <circleGeometry args={[4.35, 48]} />
+              <shaderMaterial
+                vertexShader={MOON_VERTEX_SHADER}
+                fragmentShader={MOON_FRAGMENT_SHADER}
+                transparent
+                depthWrite={false}
+                toneMapped={false}
+              />
+            </mesh>
+          </group>
+          <BatFlock progressRef={progressRef} qualityTier={qualityTier} reducedMotion={reducedMotion} />
+        </>
+      ) : null}
       <group ref={leftDoorRef} position={[-3.42, 0, 15.05]}>
         <TimberDoor side={-1} resources={doorResources} />
       </group>

@@ -95,8 +95,8 @@ export function useJourneyDirector({
           ease: 'none',
           scrollTrigger: {
             trigger: threshold,
-            start: '38% top',
-            end: '74% top',
+            start: '28% top',
+            end: '58% top',
             scrub: true,
           },
         });

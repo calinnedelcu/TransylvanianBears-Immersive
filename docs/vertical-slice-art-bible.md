@@ -11,6 +11,13 @@
 | Reference viewports | Desktop `1440 x 900`; mobile `390 x 844` |
 | Companion document | [`storyboard-01-04.md`](./storyboard-01-04.md) |
 
+> **Current identity override (2026-07-27):** The rejected crest, heraldic emblem,
+> guardian-bear sculptures, and bear-mascot imagery are not production requirements
+> and must not be reintroduced. References to those artifacts later in this historical
+> brief are superseded. The live direction communicates Transylvania through the
+> inhabited citadel, pointed threshold, mountain silhouette, weather, bats, material
+> language, and the `Transylvanian Bears` wordmark.
+
 This document governs the opening vertical slice. It converts the existing visual
 direction, production runtime, First Light brief, Project Nexus brief, and current
 implementation into one enforceable art contract. When a prototype detail conflicts

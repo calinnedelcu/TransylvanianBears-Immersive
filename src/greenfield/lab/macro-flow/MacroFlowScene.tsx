@@ -36,6 +36,7 @@ import {
   useSchoolActCamera,
   type SchoolActCameraCurve,
 } from './school-act/schoolActCamera';
+import { ThresholdResponseSequence } from './ThresholdResponseSequence';
 import { getVerticalSliceAsset, resolveVerticalSliceAsset } from './verticalSliceAssets';
 import {
   sampleVerticalSliceCamera,
@@ -663,7 +664,7 @@ function FirstLightCitadel({
   useFrame(({ clock }) => {
     const root = rootRef.current;
     if (!root) return;
-    const departure = smooth(range(progressRef.current, 0.045, 0.072));
+    const departure = smooth(range(progressRef.current, 0.044, 0.056));
     root.visible = departure < 0.995;
     if (!root.visible) return;
     root.position.y = 0;
@@ -1311,8 +1312,10 @@ function World({
       <RenderBudgetMonitor />
       {mountThreshold ? (
         <group ref={firstAct.thresholdGroupRef} visible>
-          <FirstLightCitadel progressRef={progressRef} qualityTier={qualityTier} />
-          {!compact ? (
+          {showThreshold ? (
+            <FirstLightCitadel progressRef={progressRef} qualityTier={qualityTier} />
+          ) : null}
+          {!compact && showThreshold ? (
             <FirstLightLayer
               progressRef={progressRef}
               qualityTier={qualityTier}
@@ -1324,9 +1327,15 @@ function World({
               progressRef={progressRef}
               qualityTier={qualityTier}
               reducedMotion={reducedMotion}
+              atmosphereEnabled={showThreshold}
               realtimeLightEnabled
             />
           ) : null}
+          <ThresholdResponseSequence
+            progressRef={progressRef}
+            qualityTier={qualityTier}
+            reducedMotion={reducedMotion}
+          />
         </group>
       ) : null}
       {showNexus ? (

@@ -11,6 +11,12 @@
 | Runtime anchors | `#mf-threshold`, `#mf-field`, `#mf-lens`, `#mf-proof` |
 | Reference viewports | Desktop `1440 x 900`; mobile `390 x 844` |
 
+> **Current identity override (2026-07-27):** The crest, heraldic emblem,
+> guardian-bear sculptures, and mascot-like bear imagery were rejected and are not
+> part of the production direction. Any later keyframe or acceptance note that
+> requires them is superseded. Preserve the castle, threshold mechanism, weather,
+> bats, material identity, and wordmark instead.
+
 This storyboard covers the opening Project Nexus vertical slice in the live 16-chapter
 journey. It replaces the older macro-storyboard numbering for this scope. The four
 chapters are the exact registry entries in `src/greenfield/experience/chapters.ts`.

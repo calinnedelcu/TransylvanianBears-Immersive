@@ -148,8 +148,8 @@ const LENS_TUNING: Record<VerticalSliceLensMode, LensTuning> = {
   },
 };
 
-const LOCK_SEQUENCE_FREQUENCIES = [146.83, 164.81, 174.61, 196, 220, 246.94, 293.66] as const;
-const LOCK_SEQUENCE_TIMES = [0, 0.085, 0.18, 0.29, 0.415, 0.55, 0.7] as const;
+const LOCK_SEQUENCE_FREQUENCIES = [146.83, 164.81, 174.61, 196, 220, 246.94] as const;
+const LOCK_SEQUENCE_TIMES = [0, 0.1, 0.21, 0.33, 0.46, 0.6] as const;
 
 const NOISE_SEEDS: Record<NoiseColor, number> = {
   wind: 0x02f6e2b1,
@@ -999,7 +999,7 @@ export class VerticalSliceSoundscape {
       metalLevel.gain.linearRampToValueAtTime(0.44 + index * 0.035, strike + 0.008);
       metalLevel.gain.exponentialRampToValueAtTime(MIN_GAIN, strike + 0.064);
       panner.positionX.setValueAtTime(
-        clamp(position.x + mix(-1.25, 1.25, index / 6), -8, 8),
+        clamp(position.x + mix(-1.25, 1.25, index / (LOCK_SEQUENCE_TIMES.length - 1)), -8, 8),
         strike,
       );
     });

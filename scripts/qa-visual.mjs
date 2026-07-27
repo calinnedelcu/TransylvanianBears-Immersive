@@ -49,6 +49,27 @@ async function placeSectionTop(page, selector, viewportFraction) {
   await page.waitForTimeout(320);
 }
 
+async function moveWorldProgress(page, progress) {
+  const geometry = await page.evaluate(() => {
+    const root = document.querySelector('.mf-lab');
+    const worldEnd = document.querySelector('#mf-infect');
+    if (!(root instanceof HTMLElement) || !(worldEnd instanceof HTMLElement)) return null;
+    return {
+      rootTop: window.scrollY + root.getBoundingClientRect().top,
+      endTop: window.scrollY + worldEnd.getBoundingClientRect().top,
+    };
+  });
+  if (!geometry) throw new Error('World progress anchors are unavailable');
+  await page.evaluate(async ({ target, value }) => {
+    const destination = target.rootTop + (target.endTop - target.rootTop) * value;
+    for (let frame = 0; frame < 8; frame += 1) {
+      window.scrollTo({ top: destination, behavior: 'instant' });
+      await new Promise(requestAnimationFrame);
+    }
+  }, { target: geometry, value: progress });
+  await page.waitForTimeout(420);
+}
+
 async function capture(page, name) {
   const file = resolve(outputDir, `${name}.png`);
   await page.screenshot({ path: file, animations: 'disabled' });
@@ -63,6 +84,12 @@ try {
   await desktop.goto(baseUrl, { waitUntil: 'networkidle' });
   await waitForWorld(desktop);
   files.push(await capture(desktop, '01-opening-desktop'));
+  await moveWorldProgress(desktop, 0.032);
+  files.push(await capture(desktop, '01a-threshold-response-desktop'));
+  await moveWorldProgress(desktop, 0.043);
+  files.push(await capture(desktop, '01b-threshold-complete-desktop'));
+  await moveWorldProgress(desktop, 0.052);
+  files.push(await capture(desktop, '01c-threshold-aperture-desktop'));
 
   await placeSectionTop(desktop, '#mf-lens', 0.45);
   await desktop.waitForTimeout(650);
@@ -91,6 +118,12 @@ try {
   await mobile.goto(baseUrl, { waitUntil: 'networkidle' });
   await waitForWorld(mobile);
   files.push(await capture(mobile, '09-opening-mobile'));
+  await moveWorldProgress(mobile, 0.032);
+  files.push(await capture(mobile, '09a-threshold-response-mobile'));
+  await moveWorldProgress(mobile, 0.043);
+  files.push(await capture(mobile, '09b-threshold-complete-mobile'));
+  await moveWorldProgress(mobile, 0.052);
+  files.push(await capture(mobile, '09c-threshold-aperture-mobile'));
   await placeSectionTop(mobile, '#mf-lens', 0.45);
   await mobile.waitForTimeout(420);
   files.push(await capture(mobile, '10-nexus-raw-mobile'));

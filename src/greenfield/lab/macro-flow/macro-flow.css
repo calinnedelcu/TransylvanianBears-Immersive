@@ -44,6 +44,10 @@ body.mf-lab-mode {
   outline-offset: 4px;
 }
 
+.mf-lab [data-chapter][tabindex='-1']:focus-visible {
+  outline: none;
+}
+
 .mf-skip {
   position: fixed;
   z-index: 100;
