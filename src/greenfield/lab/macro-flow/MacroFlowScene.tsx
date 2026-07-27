@@ -384,7 +384,12 @@ function WorldAtmosphere({
   reducedMotion,
 }: Pick<MacroFlowSceneProps, 'progressRef' | 'qualityTier' | 'reducedMotion'>) {
   const skyRef = useRef<THREE.Mesh>(null);
+  const skyMaterialRef = useRef<THREE.ShaderMaterial>(null);
   const dustRef = useRef<THREE.Points>(null);
+  const skyUniforms = useMemo(() => ({
+    uTime: { value: 0 },
+    uFlash: { value: 0 },
+  }), []);
   const dustGeometry = useMemo(() => {
     const count = qualityTier === 'cinematic' && !reducedMotion ? 280 : 0;
     const positions = new Float32Array(count * 3);
@@ -406,6 +411,13 @@ function WorldAtmosphere({
 
   useFrame(({ camera, clock }) => {
     if (skyRef.current) skyRef.current.position.copy(camera.position);
+    if (skyMaterialRef.current) {
+      const cycle = clock.elapsedTime % 11.8;
+      const flashA = reducedMotion ? 0 : Math.max(0, 1 - Math.abs(cycle - 2.1) / 0.07);
+      const flashB = reducedMotion ? 0 : Math.max(0, 1 - Math.abs(cycle - 2.32) / 0.045);
+      skyMaterialRef.current.uniforms.uTime.value = reducedMotion ? 0 : clock.elapsedTime;
+      skyMaterialRef.current.uniforms.uFlash.value = Math.max(flashA, flashB * 0.72);
+    }
     if (dustRef.current) {
       dustRef.current.rotation.y = progressRef.current * 0.018 + clock.elapsedTime * 0.006;
       dustRef.current.position.y = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.16) * 0.16;
@@ -417,6 +429,8 @@ function WorldAtmosphere({
       <mesh ref={skyRef} renderOrder={-100}>
         <sphereGeometry args={[145, 36, 20]} />
         <shaderMaterial
+          ref={skyMaterialRef}
+          uniforms={skyUniforms}
           side={THREE.BackSide}
           depthWrite={false}
           fog={false}
@@ -429,6 +443,8 @@ function WorldAtmosphere({
             }
           `}
           fragmentShader={`
+            uniform float uTime;
+            uniform float uFlash;
             varying vec3 vDirection;
             void main() {
               float horizon = pow(1.0 - abs(vDirection.y), 3.2);
@@ -440,13 +456,16 @@ function WorldAtmosphere({
 
               float longitude = atan(vDirection.z, vDirection.x);
               float cloudField = 0.5
-                + 0.24 * sin(longitude * 3.2 + vDirection.y * 15.0)
-                + 0.16 * sin(longitude * 7.4 - vDirection.y * 23.0)
-                + 0.1 * sin(longitude * 13.0 + vDirection.y * 41.0);
+                + 0.24 * sin(longitude * 3.2 + vDirection.y * 15.0 + uTime * 0.026)
+                + 0.16 * sin(longitude * 7.4 - vDirection.y * 23.0 - uTime * 0.041)
+                + 0.1 * sin(longitude * 13.0 + vDirection.y * 41.0 + uTime * 0.018);
               float cloudAltitude = smoothstep(-0.2, 0.12, vDirection.y)
                 * (1.0 - smoothstep(0.24, 0.62, vDirection.y));
               float cloudVeil = smoothstep(0.54, 0.76, cloudField) * cloudAltitude;
               color = mix(color, vec3(0.12, 0.17, 0.17), cloudVeil * 0.2);
+              color += vec3(0.34, 0.44, 0.46)
+                * uFlash
+                * (0.32 + cloudVeil * 0.68);
 
               float gateGlow = pow(
                 max(0.0, dot(normalize(vDirection), normalize(vec3(0.24, -0.08, -0.96)))),
@@ -485,6 +504,11 @@ function FirstLightCitadel({
 }: Pick<MacroFlowSceneProps, 'progressRef' | 'qualityTier'>) {
   const rootRef = useRef<THREE.Group>(null);
   const occupiedLightMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
+  const occupiedLightUniformsRef = useRef<Array<{
+    uOccupiedTime: { value: number };
+    uOccupiedIgnition: { value: number };
+    uOccupiedDeparture: { value: number };
+  }>>([]);
   const introStartTimeRef = useRef<number | null>(null);
   const occupiedDark = useMemo(() => new THREE.Color('#211f1b'), []);
   const occupiedLit = useMemo(() => new THREE.Color('#d9ba73'), []);
@@ -495,6 +519,7 @@ function FirstLightCitadel({
   const model = useMemo(() => {
     const clone = scene.clone(true);
     occupiedLightMaterialsRef.current = [];
+    occupiedLightUniformsRef.current = [];
     const materialCache = new Map<string, THREE.Material>();
     const pointA = new THREE.Vector3();
     const pointB = new THREE.Vector3();
@@ -607,10 +632,58 @@ function FirstLightCitadel({
           material.emissiveIntensity = Math.max(material.emissiveIntensity, 0.46);
         }
         if (material.name === 'Occupied light') {
+          const occupiedUniforms = {
+            uOccupiedTime: { value: 0 },
+            uOccupiedIgnition: { value: 0 },
+            uOccupiedDeparture: { value: 1 },
+          };
           material.color.set('#d9ba73');
           material.emissive.set('#e4b96c');
           material.emissiveIntensity = Math.max(material.emissiveIntensity, 5.4);
+          material.onBeforeCompile = (shader) => {
+            Object.assign(shader.uniforms, occupiedUniforms);
+            shader.vertexShader = shader.vertexShader
+              .replace(
+                '#include <common>',
+                `#include <common>
+                varying vec3 vOccupiedWorld;`,
+              )
+              .replace(
+                '#include <project_vertex>',
+                `#include <project_vertex>
+                vOccupiedWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;`,
+              );
+            shader.fragmentShader = shader.fragmentShader
+              .replace(
+                '#include <common>',
+                `#include <common>
+                varying vec3 vOccupiedWorld;
+                uniform float uOccupiedTime;
+                uniform float uOccupiedIgnition;
+                uniform float uOccupiedDeparture;`,
+              )
+              .replace(
+                '#include <emissivemap_fragment>',
+                `#include <emissivemap_fragment>
+                float occupiedCell = floor(vOccupiedWorld.x * 1.31)
+                  + floor(vOccupiedWorld.y * 1.73)
+                  + floor(vOccupiedWorld.z * 1.17);
+                float occupiedSeed = fract(sin(occupiedCell * 17.17) * 43758.5453);
+                float occupiedPulse = 0.72
+                  + sin(uOccupiedTime * (1.25 + occupiedSeed * 1.15) + occupiedCell * 2.37) * 0.18;
+                float occupiedDelay = occupiedSeed * 0.74;
+                float occupiedResponse = smoothstep(
+                  occupiedDelay,
+                  min(1.0, occupiedDelay + 0.22),
+                  uOccupiedIgnition
+                );
+                totalEmissiveRadiance *= mix(0.055, occupiedPulse, occupiedResponse)
+                  * uOccupiedDeparture;`,
+              );
+          };
+          material.customProgramCacheKey = () => 'mf-occupied-light-v2';
           occupiedLightMaterialsRef.current.push(material);
+          occupiedLightUniformsRef.current.push(occupiedUniforms);
         }
         if (material.name === 'Signal anchor') {
           material.color.set('#72d9d6');
@@ -646,8 +719,8 @@ function FirstLightCitadel({
     const departure = smooth(range(progressRef.current, 0.045, 0.072));
     root.visible = departure < 0.995;
     if (!root.visible) return;
-    root.position.y = -18 * departure;
-    root.rotation.y = departure * -0.018;
+    root.position.y = 0;
+    root.rotation.y = 0;
     if (introStartTimeRef.current === null) introStartTimeRef.current = clock.elapsedTime;
     const introTime = clock.elapsedTime - introStartTimeRef.current;
     const ignition = smooth(range(introTime, 0.45, 2.25));
@@ -656,6 +729,11 @@ function FirstLightCitadel({
       const flicker = Math.sin(clock.elapsedTime * (2.1 + index * 0.17) + index * 1.4) * 0.42;
       material.color.lerpColors(occupiedDark, occupiedLit, stagger);
       material.emissiveIntensity = (0.12 + stagger * (6 + flicker)) * (1 - departure);
+    });
+    occupiedLightUniformsRef.current.forEach((uniforms) => {
+      uniforms.uOccupiedTime.value = clock.elapsedTime;
+      uniforms.uOccupiedIgnition.value = ignition;
+      uniforms.uOccupiedDeparture.value = 1 - departure;
     });
   });
 
@@ -1115,7 +1193,7 @@ function resolveFirstActPresence(
   activeChapter: JourneyChapter,
 ): FirstActPresence {
   return {
-    threshold: activeChapter === 'threshold',
+    threshold: activeChapter === 'threshold' || activeChapter === 'field',
   };
 }
 
@@ -1189,7 +1267,8 @@ function World({
 }: WorldProps) {
   const compact = useThree((state) => state.size.width <= 820);
   const firstAct = useFirstActLifecycle(activeChapter);
-  const showThreshold = firstAct.presence.threshold;
+  const mountThreshold = firstAct.presence.threshold;
+  const showThreshold = activeChapter === 'threshold';
   const showNexus = NEXUS_CHAPTERS.has(activeChapter);
   const showSchool = SCHOOL_CHAPTERS.has(activeChapter);
   const showBuried = BURIED_CHAPTERS.has(activeChapter);
@@ -1282,7 +1361,7 @@ function World({
         buriedCameraCurve={buriedCameraCurve}
       />
       <RenderBudgetMonitor />
-      {showThreshold ? (
+      {mountThreshold ? (
         <group ref={firstAct.thresholdGroupRef} visible>
           <FirstLightCitadel progressRef={progressRef} qualityTier={qualityTier} />
           {!compact ? (

@@ -192,7 +192,7 @@ export function FirstLightLayer({ progressRef, qualityTier, reducedMotion }: Fir
 
     if (rootRef.current) {
       rootRef.current.visible = departure < 0.995;
-      rootRef.current.position.y = -18 * departure;
+      rootRef.current.position.y = 0;
     }
 
     bannerMaterials.forEach((material) => {
@@ -221,8 +221,8 @@ export function FirstLightLayer({ progressRef, qualityTier, reducedMotion }: Fir
     }
     if (cursorLightRef.current) {
       cursorLightRef.current.position.copy(lightTarget);
-      const idlePulse = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 1.1) * 0.9;
-      cursorLightRef.current.intensity = (7.2 + idlePulse + pointerIntent * (8.8 + opening * 2.4))
+      const idlePulse = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 1.1) * 0.42;
+      cursorLightRef.current.intensity = (4.2 + idlePulse + pointerIntent * (4.6 + opening * 1.4))
         * (1 - departure);
     }
     if (fogRef.current && !reducedMotion) {
@@ -266,7 +266,7 @@ export function FirstLightLayer({ progressRef, qualityTier, reducedMotion }: Fir
         ref={cursorLightRef}
         position={[0, 5.4, 17.4]}
         color="#b8cbc8"
-        intensity={7.2}
+        intensity={4.2}
         distance={16}
         decay={2.15}
       />

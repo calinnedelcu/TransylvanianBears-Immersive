@@ -1,6 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef, type MutableRefObject } from 'react';
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { QualityTier } from '../../experience/quality';
 
 type CarpathianThresholdProps = {
@@ -68,19 +69,25 @@ const MOON_FRAGMENT_SHADER = /* glsl */ `
   void main() {
     vec2 point = vUv - 0.5;
     float radius = length(point) * 2.0;
-    float limb = 1.0 - smoothstep(0.69, 1.0, radius);
-    float terrain = valueNoise(vUv * 8.0) * 0.12 + valueNoise(vUv * 19.0) * 0.055;
-    terrain += crater(vUv, vec2(0.31, 0.63), 0.18);
-    terrain += crater(vUv, vec2(0.62, 0.7), 0.1);
-    terrain += crater(vUv, vec2(0.68, 0.37), 0.15);
-    terrain += crater(vUv, vec2(0.43, 0.29), 0.085);
-    float cloudVeil = smoothstep(0.46, 0.72, valueNoise(vec2(vUv.x * 3.2, vUv.y * 14.0 + 2.7)));
+    float limb = 1.0 - smoothstep(0.65, 0.71, radius);
+    float halo = (1.0 - smoothstep(0.69, 1.0, radius)) * 0.07;
+    vec2 moonUv = point / 0.7 + 0.5;
+    float terrain = valueNoise(moonUv * 8.0) * 0.12 + valueNoise(moonUv * 19.0) * 0.055;
+    terrain += crater(moonUv, vec2(0.31, 0.63), 0.18);
+    terrain += crater(moonUv, vec2(0.62, 0.7), 0.1);
+    terrain += crater(moonUv, vec2(0.68, 0.37), 0.15);
+    terrain += crater(moonUv, vec2(0.43, 0.29), 0.085);
+    float cloudVeil = smoothstep(
+      0.46,
+      0.72,
+      valueNoise(vec2(moonUv.x * 3.2, moonUv.y * 14.0 + 2.7))
+    );
     vec3 coldStone = vec3(0.61, 0.67, 0.64);
     vec3 litStone = vec3(0.82, 0.84, 0.78);
     vec3 color = mix(coldStone, litStone, 0.52 + terrain);
     color *= 0.72 + limb * 0.34;
     color = mix(color, vec3(0.43, 0.52, 0.51), cloudVeil * 0.2);
-    gl_FragColor = vec4(color, limb * 0.86);
+    gl_FragColor = vec4(color, max(limb * 0.86, halo));
   }
 `;
 
@@ -120,6 +127,18 @@ function createRidgeShape(seedOffset: number, width: number, height: number) {
   return shape;
 }
 
+function applyVertexColor<T extends THREE.BufferGeometry>(geometry: T, color: THREE.ColorRepresentation) {
+  const tint = new THREE.Color(color);
+  const colors = new Float32Array(geometry.getAttribute('position').count * 3);
+  for (let index = 0; index < colors.length; index += 3) {
+    colors[index] = tint.r;
+    colors[index + 1] = tint.g;
+    colors[index + 2] = tint.b;
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return geometry;
+}
+
 function CarpathianBackdrop({ progressRef, qualityTier, reducedMotion }: CarpathianThresholdProps) {
   const compact = useThree((state) => state.size.width <= 820);
   const rootRef = useRef<THREE.Group>(null);
@@ -132,11 +151,26 @@ function CarpathianBackdrop({ progressRef, qualityTier, reducedMotion }: Carpath
   const treeCount = compact ? 34 : qualityTier === 'cinematic' ? 74 : 52;
   const towerCount = compact ? 7 : 12;
   const lightCount = compact ? 18 : 36;
-  const ridges = useMemo(() => [
-    createRidgeShape(131, 56, 8.5),
-    createRidgeShape(271, 60, 6.4),
-    createRidgeShape(419, 64, 4.9),
-  ], []);
+  const ridgeGeometry = useMemo(() => {
+    const layers = [
+      { shape: createRidgeShape(131, 56, 8.5), color: '#102321', position: [0, 2.6, 1.8] },
+      { shape: createRidgeShape(271, 60, 6.4), color: '#0c1b1a', position: [-2.5, 2.15, 4.6] },
+      { shape: createRidgeShape(419, 64, 4.9), color: '#091413', position: [3, 1.7, 7.2] },
+    ] as const;
+    const geometries = layers.map(({ shape, color, position }) => {
+      const geometry = applyVertexColor(new THREE.ShapeGeometry(shape), color);
+      geometry.translate(position[0], position[1], position[2]);
+      return geometry;
+    });
+    const merged = mergeGeometries(geometries, false);
+    geometries.forEach((geometry) => geometry.dispose());
+    if (!merged) throw new Error('Unable to batch Carpathian ridge geometry');
+    return merged;
+  }, []);
+  const ridgeMaterial = useMemo(() => new THREE.MeshBasicMaterial({
+    vertexColors: true,
+    fog: true,
+  }), []);
   const geometries = useMemo(() => ({
     tree: new THREE.ConeGeometry(0.72, 3.4, 6),
     tower: new THREE.BoxGeometry(1, 1, 1),
@@ -215,9 +249,11 @@ function CarpathianBackdrop({ progressRef, qualityTier, reducedMotion }: Carpath
   }, [lightCount, scratch, towerCount, treeCount]);
 
   useEffect(() => () => {
+    ridgeGeometry.dispose();
+    ridgeMaterial.dispose();
     Object.values(geometries).forEach((geometry) => geometry.dispose());
     Object.values(materials).forEach((material) => material.dispose());
-  }, [geometries, materials]);
+  }, [geometries, materials, ridgeGeometry, ridgeMaterial]);
 
   useFrame(({ clock }) => {
     const departure = smooth(range(progressRef.current, 0.044, 0.076));
@@ -245,18 +281,7 @@ function CarpathianBackdrop({ progressRef, qualityTier, reducedMotion }: Carpath
 
   return (
     <group ref={rootRef}>
-      <mesh position={[0, 2.6, 1.8]}>
-        <shapeGeometry args={[ridges[0]]} />
-        <meshBasicMaterial color="#102321" fog />
-      </mesh>
-      <mesh position={[-2.5, 2.15, 4.6]}>
-        <shapeGeometry args={[ridges[1]]} />
-        <meshBasicMaterial color="#0c1b1a" fog />
-      </mesh>
-      <mesh position={[3, 1.7, 7.2]}>
-        <shapeGeometry args={[ridges[2]]} />
-        <meshBasicMaterial color="#091413" fog />
-      </mesh>
+      <mesh geometry={ridgeGeometry} material={ridgeMaterial} />
       <instancedMesh ref={towerRef} args={[geometries.tower, materials.tower, towerCount]} frustumCulled={false} />
       <instancedMesh ref={roofRef} args={[geometries.roof, materials.roof, towerCount]} frustumCulled={false} />
       <instancedMesh ref={treeRef} args={[geometries.tree, materials.tree, treeCount]} frustumCulled={false} />
@@ -369,41 +394,46 @@ function CinematicRain({ progressRef, qualityTier }: CinematicRainProps) {
   );
 }
 
-function createWingShape(direction: -1 | 1) {
+function createBatShape() {
   const shape = new THREE.Shape();
-  shape.moveTo(0, 0.08);
-  shape.lineTo(direction * 0.78, 0.34);
-  shape.lineTo(direction * 1.65, 0.1);
-  shape.lineTo(direction * 1.22, -0.18);
-  shape.lineTo(direction * 0.84, -0.03);
-  shape.lineTo(direction * 0.54, -0.34);
-  shape.lineTo(0, -0.12);
+  shape.moveTo(-1.7, 0.08);
+  shape.lineTo(-1.18, 0.34);
+  shape.lineTo(-0.78, 0.17);
+  shape.lineTo(-0.5, 0.42);
+  shape.lineTo(-0.22, 0.12);
+  shape.lineTo(-0.1, 0.22);
+  shape.lineTo(0, 0.34);
+  shape.lineTo(0.1, 0.22);
+  shape.lineTo(0.22, 0.12);
+  shape.lineTo(0.5, 0.42);
+  shape.lineTo(0.78, 0.17);
+  shape.lineTo(1.18, 0.34);
+  shape.lineTo(1.7, 0.08);
+  shape.lineTo(1.18, -0.2);
+  shape.lineTo(0.82, -0.05);
+  shape.lineTo(0.5, -0.36);
+  shape.lineTo(0.18, -0.12);
+  shape.lineTo(0, -0.42);
+  shape.lineTo(-0.18, -0.12);
+  shape.lineTo(-0.5, -0.36);
+  shape.lineTo(-0.82, -0.05);
+  shape.lineTo(-1.18, -0.2);
   shape.closePath();
   return shape;
 }
 
 function BatFlock({ progressRef, qualityTier, reducedMotion }: CarpathianThresholdProps) {
   const rootRef = useRef<THREE.Group>(null);
-  const bodyRef = useRef<THREE.InstancedMesh>(null);
-  const leftWingRef = useRef<THREE.InstancedMesh>(null);
-  const rightWingRef = useRef<THREE.InstancedMesh>(null);
-  const flapValuesRef = useRef<number[]>([]);
+  const batRef = useRef<THREE.InstancedMesh>(null);
   const compact = useThree((state) => state.size.width <= 820);
-  const leftWing = useMemo(() => createWingShape(-1), []);
-  const rightWing = useMemo(() => createWingShape(1), []);
+  const batShape = useMemo(() => createBatShape(), []);
   const rootTransform = useMemo(() => new THREE.Object3D(), []);
-  const childTransform = useMemo(() => new THREE.Object3D(), []);
-  const composedMatrix = useMemo(() => new THREE.Matrix4(), []);
-  const geometries = useMemo(() => ({
-    body: new THREE.SphereGeometry(0.32, 8, 6),
-    leftWing: new THREE.ShapeGeometry(leftWing),
-    rightWing: new THREE.ShapeGeometry(rightWing),
-  }), [leftWing, rightWing]);
-  const materials = useMemo(() => ({
-    body: new THREE.MeshBasicMaterial({ color: '#050707' }),
-    wing: new THREE.MeshBasicMaterial({ color: '#050707', side: THREE.DoubleSide }),
+  const geometry = useMemo(() => new THREE.ShapeGeometry(batShape), [batShape]);
+  const material = useMemo(() => new THREE.MeshBasicMaterial({
+    color: '#050707',
+    side: THREE.DoubleSide,
   }), []);
-  const bats = useMemo(() => Array.from({ length: compact ? 8 : qualityTier === 'cinematic' ? 14 : 9 }, (_, index) => ({
+  const bats = useMemo(() => Array.from({ length: compact ? 4 : qualityTier === 'cinematic' ? 7 : 5 }, (_, index) => ({
     phase: seeded(index + 4),
     y: 9.2 + seeded(index + 11) * 5.8,
     z: 4.5 + seeded(index + 19) * 7.5,
@@ -412,25 +442,21 @@ function BatFlock({ progressRef, qualityTier, reducedMotion }: CarpathianThresho
   })), [compact, qualityTier]);
 
   useLayoutEffect(() => {
-    [bodyRef.current, leftWingRef.current, rightWingRef.current].forEach((mesh) => {
-      mesh?.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    });
+    batRef.current?.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   }, [bats.length]);
 
   useEffect(() => () => {
-    Object.values(geometries).forEach((geometry) => geometry.dispose());
-    Object.values(materials).forEach((material) => material.dispose());
-  }, [geometries, materials]);
+    geometry.dispose();
+    material.dispose();
+  }, [geometry, material]);
 
   useFrame(({ clock }) => {
     const departure = smooth(range(progressRef.current, 0.04, 0.064));
     if (rootRef.current) rootRef.current.visible = departure < 0.995;
     if (departure >= 0.995) return;
 
-    const bodies = bodyRef.current;
-    const leftWings = leftWingRef.current;
-    const rightWings = rightWingRef.current;
-    if (!bodies || !leftWings || !rightWings) return;
+    const batMesh = batRef.current;
+    if (!batMesh) return;
 
     const scrollFlight = smooth(range(progressRef.current, 0.003, 0.048));
     const idleFlight = reducedMotion ? 0 : (clock.elapsedTime * 0.026) % 1;
@@ -444,107 +470,66 @@ function BatFlock({ progressRef, qualityTier, reducedMotion }: CarpathianThresho
         bat.z,
       );
       rootTransform.rotation.set(0, 0, Math.sin((flight + bat.phase) * Math.PI * 2) * 0.12);
-      rootTransform.scale.setScalar(bat.scale * (1 - departure));
+      const flap = reducedMotion
+        ? 0
+        : Math.sin((clock.elapsedTime * 2.4 + flight * 3.8 + bat.phase + index * 0.08) * Math.PI * 2);
+      rootTransform.scale.set(
+        bat.scale * (1 - departure),
+        bat.scale * (0.72 + Math.abs(flap) * 0.34) * (1 - departure),
+        bat.scale * (1 - departure),
+      );
       rootTransform.updateMatrix();
-
-      childTransform.position.set(0, 0, 0);
-      childTransform.rotation.set(0, 0, 0);
-      childTransform.scale.set(0.32, 0.82, 0.32);
-      childTransform.updateMatrix();
-      composedMatrix.multiplyMatrices(rootTransform.matrix, childTransform.matrix);
-      bodies.setMatrixAt(index, composedMatrix);
-
-      let flap = flapValuesRef.current[index] ?? 0;
-      if (!reducedMotion) {
-        flap = Math.sin((clock.elapsedTime * 2.4 + flight * 3.8 + bat.phase + index * 0.08) * Math.PI * 2) * 0.62;
-        flapValuesRef.current[index] = flap;
-      }
-      childTransform.rotation.set(0, flap, 0);
-      childTransform.scale.set(1, 1, 1);
-      childTransform.updateMatrix();
-      composedMatrix.multiplyMatrices(rootTransform.matrix, childTransform.matrix);
-      leftWings.setMatrixAt(index, composedMatrix);
-
-      childTransform.rotation.set(0, -flap, 0);
-      childTransform.updateMatrix();
-      composedMatrix.multiplyMatrices(rootTransform.matrix, childTransform.matrix);
-      rightWings.setMatrixAt(index, composedMatrix);
+      batMesh.setMatrixAt(index, rootTransform.matrix);
     });
 
-    bodies.instanceMatrix.needsUpdate = true;
-    leftWings.instanceMatrix.needsUpdate = true;
-    rightWings.instanceMatrix.needsUpdate = true;
+    batMesh.instanceMatrix.needsUpdate = true;
   });
 
   return (
     <group ref={rootRef}>
-      <instancedMesh ref={bodyRef} args={[geometries.body, materials.body, bats.length]} frustumCulled={false} />
-      <instancedMesh ref={leftWingRef} args={[geometries.leftWing, materials.wing, bats.length]} frustumCulled={false} />
-      <instancedMesh ref={rightWingRef} args={[geometries.rightWing, materials.wing, bats.length]} frustumCulled={false} />
+      <instancedMesh ref={batRef} args={[geometry, material, bats.length]} frustumCulled={false} />
     </group>
   );
 }
 
 type TimberDoorResources = {
-  geometries: {
-    panel: THREE.BoxGeometry;
-    plank: THREE.BoxGeometry;
-    band: THREE.BoxGeometry;
-    ring: THREE.TorusGeometry;
-  };
-  materials: {
-    panel: THREE.MeshStandardMaterial;
-    plank: THREE.MeshStandardMaterial;
-    band: THREE.MeshStandardMaterial;
-    ring: THREE.MeshStandardMaterial;
-  };
+  geometries: Record<-1 | 1, THREE.BufferGeometry>;
+  material: THREE.MeshStandardMaterial;
 };
 
 function TimberDoor({ side, resources }: { side: -1 | 1; resources: TimberDoorResources }) {
-  const plankRef = useRef<THREE.InstancedMesh>(null);
-  const bandRef = useRef<THREE.InstancedMesh>(null);
-  const scratch = useMemo(() => new THREE.Object3D(), []);
+  return <mesh geometry={resources.geometries[side]} material={resources.material} />;
+}
 
-  useLayoutEffect(() => {
-    for (let index = 0; index < 5; index += 1) {
-      setInstanceTransform(
-        plankRef.current,
-        index,
-        scratch,
-        [side * (-0.42 - index * 0.64), 4.05, 0.2],
-      );
-    }
-    [1.65, 4.15, 6.55].forEach((y, index) => {
-      setInstanceTransform(bandRef.current, index, scratch, [side * -1.68, y, 0.23]);
-    });
-    markInstanceMatrixDirty(plankRef.current);
-    markInstanceMatrixDirty(bandRef.current);
-  }, [scratch, side]);
+function createTimberDoorGeometry(side: -1 | 1) {
+  const parts: THREE.BufferGeometry[] = [];
+  const addPart = (
+    geometry: THREE.BufferGeometry,
+    color: THREE.ColorRepresentation,
+    position: [number, number, number],
+  ) => {
+    applyVertexColor(geometry, color);
+    geometry.translate(...position);
+    parts.push(geometry);
+  };
 
-  return (
-    <group>
-      <mesh
-        position={[side * -1.68, 4.05, 0]}
-        geometry={resources.geometries.panel}
-        material={resources.materials.panel}
-      />
-      <instancedMesh
-        ref={plankRef}
-        args={[resources.geometries.plank, resources.materials.plank, 5]}
-        frustumCulled={false}
-      />
-      <instancedMesh
-        ref={bandRef}
-        args={[resources.geometries.band, resources.materials.band, 3]}
-        frustumCulled={false}
-      />
-      <mesh
-        position={[side * -0.62, 4.05, 0.28]}
-        geometry={resources.geometries.ring}
-        material={resources.materials.ring}
-      />
-    </group>
-  );
+  addPart(new THREE.BoxGeometry(3.32, 8.1, 0.34), '#231713', [side * -1.68, 4.05, 0]);
+  for (let index = 0; index < 5; index += 1) {
+    addPart(
+      new THREE.BoxGeometry(0.045, 7.72, 0.045),
+      '#5c3928',
+      [side * (-0.42 - index * 0.64), 4.05, 0.2],
+    );
+  }
+  [1.65, 4.15, 6.55].forEach((y) => {
+    addPart(new THREE.BoxGeometry(3.08, 0.14, 0.08), '#171918', [side * -1.68, y, 0.23]);
+  });
+  addPart(new THREE.TorusGeometry(0.24, 0.045, 8, 24), '#a18752', [side * -0.62, 4.05, 0.28]);
+
+  const merged = mergeGeometries(parts, false);
+  parts.forEach((geometry) => geometry.dispose());
+  if (!merged) throw new Error('Unable to batch timber door geometry');
+  return merged;
 }
 
 export function CarpathianThreshold({
@@ -569,23 +554,16 @@ export function CarpathianThreshold({
   const scratch = useMemo(() => new THREE.Object3D(), []);
   const doorResources = useMemo<TimberDoorResources>(() => ({
     geometries: {
-      panel: new THREE.BoxGeometry(3.32, 8.1, 0.34),
-      plank: new THREE.BoxGeometry(0.045, 7.72, 0.045),
-      band: new THREE.BoxGeometry(3.08, 0.14, 0.08),
-      ring: new THREE.TorusGeometry(0.24, 0.045, 8, 24),
+      [-1]: createTimberDoorGeometry(-1),
+      [1]: createTimberDoorGeometry(1),
     },
-    materials: {
-      panel: new THREE.MeshStandardMaterial({
-        color: '#231713',
-        emissive: '#100705',
-        emissiveIntensity: 0.22,
-        roughness: 0.87,
-        metalness: 0.03,
-      }),
-      plank: new THREE.MeshStandardMaterial({ color: '#5c3928', roughness: 0.9 }),
-      band: new THREE.MeshStandardMaterial({ color: '#171918', metalness: 0.72, roughness: 0.34 }),
-      ring: new THREE.MeshStandardMaterial({ color: '#a18752', metalness: 0.84, roughness: 0.26 }),
-    },
+    material: new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      emissive: '#100705',
+      emissiveIntensity: 0.16,
+      roughness: 0.74,
+      metalness: 0.18,
+    }),
   }), []);
   const gateResources = useMemo(() => ({
     geometries: {
@@ -633,7 +611,7 @@ export function CarpathianThreshold({
 
   useEffect(() => () => {
     Object.values(doorResources.geometries).forEach((geometry) => geometry.dispose());
-    Object.values(doorResources.materials).forEach((material) => material.dispose());
+    doorResources.material.dispose();
     Object.values(gateResources.geometries).forEach((geometry) => geometry.dispose());
     Object.values(gateResources.materials).forEach((material) => material.dispose());
   }, [doorResources, gateResources]);
@@ -649,7 +627,7 @@ export function CarpathianThreshold({
 
     root.visible = departure < 0.995;
     if (!root.visible) return;
-    root.position.y = -18 * departure;
+    root.position.y = 0;
     if (leftDoorRef.current) {
       leftDoorRef.current.rotation.y = THREE.MathUtils.damp(leftDoorRef.current.rotation.y, doorOpening * 1.34, 6.4, delta);
     }
@@ -702,12 +680,8 @@ export function CarpathianThreshold({
         <CinematicRain progressRef={progressRef} qualityTier={qualityTier} />
       ) : null}
       <group position={compact ? [-7.2, 13.15, 4.2] : [-9.3, 12.8, 4.2]} scale={compact ? 0.5 : 1}>
-        <mesh position={[0, 0, -0.08]}>
-          <circleGeometry args={[4.35, 48]} />
-          <meshBasicMaterial color="#9eb0aa" transparent opacity={0.055} depthWrite={false} />
-        </mesh>
         <mesh>
-          <circleGeometry args={[3.05, 48]} />
+          <circleGeometry args={[4.35, 48]} />
           <shaderMaterial
             vertexShader={MOON_VERTEX_SHADER}
             fragmentShader={MOON_FRAGMENT_SHADER}
