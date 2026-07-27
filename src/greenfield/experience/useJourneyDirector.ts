@@ -25,6 +25,7 @@ type JourneyDirectorOptions = {
   reducedMotion: boolean;
   onChapterChange: (chapter: JourneyChapter) => void;
   onProgress?: (progress: number, velocity: number) => void;
+  onWorldProgress?: (progress: number, velocity: number) => void;
   onSliceProgress?: (progress: number, velocity: number) => void;
   onSchoolActProgress?: (progress: number, velocity: number) => void;
   onBuriedActProgress?: (progress: number, velocity: number) => void;
@@ -35,6 +36,7 @@ export function useJourneyDirector({
   reducedMotion,
   onChapterChange,
   onProgress,
+  onWorldProgress,
   onSliceProgress,
   onSchoolActProgress,
   onBuriedActProgress,
@@ -249,6 +251,7 @@ export function useJourneyDirector({
           end: 'top top',
           onUpdate: (self) => {
             worldProgressRef.current = reducedMotion ? 1 : self.progress;
+            onWorldProgress?.(worldProgressRef.current, velocityRef.current);
           },
         });
       }
@@ -408,7 +411,7 @@ export function useJourneyDirector({
       root.style.removeProperty('--mf-progress');
       delete root.dataset.buriedActProgress;
     };
-  }, [onBuriedActProgress, onChapterChange, onProgress, onSchoolActProgress, onSliceProgress, reducedMotion, rootRef]);
+  }, [onBuriedActProgress, onChapterChange, onProgress, onSchoolActProgress, onSliceProgress, onWorldProgress, reducedMotion, rootRef]);
 
   return {
     journeyProgressRef,

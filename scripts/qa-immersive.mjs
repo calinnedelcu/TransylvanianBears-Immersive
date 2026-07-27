@@ -521,24 +521,27 @@ try {
     'field',
   );
 
-  await moveWithin(desktop, '.mf-beat--lens', 0.45);
+  await moveWorldProgress(desktop, 0.12);
   const lensKnot = desktop.locator('.mf-lens-knot');
   await lensKnot.waitFor({ state: 'visible' });
+  const desktopLensTimeline = [await desktop.locator('.mf-lab').getAttribute('data-lens')];
+  const recordDesktopLensMode = async (progress) => {
+    await moveWorldProgress(desktop, progress);
+    desktopLensTimeline.push(await desktop.locator('.mf-lab').getAttribute('data-lens'));
+  };
 
-  await desktop.mouse.move(216, 402);
-  await desktop.waitForFunction(() => document.querySelector('.mf-lab')?.getAttribute('data-evidence-cores') === '1');
-
-  await desktop.getByRole('button', { name: 'Segmentation Clasele devin suprafețe' }).click();
-  await desktop.mouse.move(1_250, 508);
-  await desktop.waitForFunction(() => document.querySelector('.mf-lab')?.getAttribute('data-evidence-cores') === '2');
-
-  await desktop.getByRole('button', { name: 'Detection Semnalele devin limite' }).click();
-  await desktop.mouse.move(720, 95);
-  await desktop.waitForFunction(() => document.querySelector('.mf-lab')?.getAttribute('data-evidence-cores') === '3');
-  report.desktop.nexusEvidenceCores = Number(
-    await desktop.locator('.mf-lab').getAttribute('data-evidence-cores'),
-  );
-  report.desktop.nexusEvidenceHud = await desktop.locator('.mf-evidence-cores [data-collected]').count();
+  await recordDesktopLensMode(0.14);
+  await recordDesktopLensMode(0.16);
+  await recordDesktopLensMode(0.14);
+  await recordDesktopLensMode(0.12);
+  report.desktop.lensTimeline = desktopLensTimeline;
+  const desktopLensControls = desktop.locator('.mf-lens-control button');
+  const desktopManualLensModes = [];
+  await desktopLensControls.nth(1).click();
+  desktopManualLensModes.push(await desktop.locator('.mf-lab').getAttribute('data-lens'));
+  await desktopLensControls.nth(2).click();
+  desktopManualLensModes.push(await desktop.locator('.mf-lab').getAttribute('data-lens'));
+  report.desktop.manualLensModes = desktopManualLensModes;
   report.desktop.verticalSliceRender.lens = assessVerticalSliceRender(
     await renderStats(desktop, 'lens'),
     'desktop',
@@ -683,16 +686,18 @@ try {
     'field',
   );
 
-  await moveWithin(mobile, '.mf-beat--lens', 0.45);
+  await moveWorldProgress(mobile, 0.12);
   const mobileLensKnot = mobile.locator('.mf-lens-knot');
   await mobileLensKnot.waitFor({ state: 'visible' });
   const mobileLensControls = mobile.locator('.mf-lens-control button');
   const mobileLensModes = [await mobile.locator('.mf-lab').getAttribute('data-lens')];
-  await mobileLensControls.nth(1).tap();
-  await mobile.waitForFunction(() => document.querySelector('.mf-lab')?.getAttribute('data-lens') === 'segmentation');
+  await moveWorldProgress(mobile, 0.14);
   mobileLensModes.push(await mobile.locator('.mf-lab').getAttribute('data-lens'));
-  await mobileLensControls.nth(2).tap();
-  await mobile.waitForFunction(() => document.querySelector('.mf-lab')?.getAttribute('data-lens') === 'detection');
+  await moveWorldProgress(mobile, 0.16);
+  mobileLensModes.push(await mobile.locator('.mf-lab').getAttribute('data-lens'));
+  await moveWorldProgress(mobile, 0.14);
+  mobileLensModes.push(await mobile.locator('.mf-lab').getAttribute('data-lens'));
+  await moveWorldProgress(mobile, 0.12);
   mobileLensModes.push(await mobile.locator('.mf-lab').getAttribute('data-lens'));
   await mobile.waitForTimeout(400);
   const mobileLensCanvas = await signature(await mobile.locator('.mf-world canvas').screenshot());
@@ -821,13 +826,35 @@ checkHard(report.mobile.lens?.filled === true, 'mobile:03-lens', 'Lens canvas en
 checkHard(report.mobile.lens?.visible === true, 'mobile:03-lens', 'Lens did not become visible', report.mobile.lens);
 checkHard(report.mobile.lens?.controlCount === 3, 'mobile:03-lens', 'Lens does not expose all three mode controls', report.mobile.lens);
 checkHard(
-  JSON.stringify(report.mobile.lens?.modes) === JSON.stringify(['raw', 'segmentation', 'detection']),
+  JSON.stringify(report.desktop.lensTimeline) === JSON.stringify([
+    'raw',
+    'segmentation',
+    'detection',
+    'segmentation',
+    'raw',
+  ]),
+  'desktop:03-lens',
+  'Scroll did not drive the Lens modes forward and backward',
+  report.desktop.lensTimeline,
+);
+checkHard(
+  JSON.stringify(report.mobile.lens?.modes) === JSON.stringify([
+    'raw',
+    'segmentation',
+    'detection',
+    'segmentation',
+    'raw',
+  ]),
   'mobile:03-lens',
-  'Lens modes did not respond to touch in order',
+  'Scroll did not drive the mobile Lens modes forward and backward',
   report.mobile.lens?.modes,
 );
-checkHard(report.desktop.nexusEvidenceCores === 3, 'desktop:03-lens', 'Not all Nexus evidence cores were collected', report.desktop.nexusEvidenceCores);
-checkHard(report.desktop.nexusEvidenceHud === 3, 'desktop:03-lens', 'Evidence core HUD is incomplete', report.desktop.nexusEvidenceHud);
+checkHard(
+  JSON.stringify(report.desktop.manualLensModes) === JSON.stringify(['segmentation', 'detection']),
+  'desktop:03-lens',
+  'Desktop Lens controls no longer allow optional manual comparison',
+  report.desktop.manualLensModes,
+);
 checkHard(report.desktop.proofHandoff?.reversible === true, 'desktop:04-proof', 'Proof handoff is not reversible', report.desktop.proofHandoff);
 checkHard(report.desktop.proofHandoff?.clearsAtProof === true, 'desktop:04-proof', 'Proof handoff does not clear at the proof section', report.desktop.proofHandoff);
 checkHard(report.desktop.evidenceMoved === true, 'desktop:evidence-weave', 'Evidence canvas did not advance', {

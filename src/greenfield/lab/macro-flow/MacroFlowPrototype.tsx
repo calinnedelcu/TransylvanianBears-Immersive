@@ -175,6 +175,7 @@ function MacroFlowExperience() {
   const buriedFocusRef = useRef<BuriedLampFocus>('oil');
   const buriedEvidenceCueRef = useRef(0);
   const buriedPixelCueRef = useRef(false);
+  const automaticLensModeRef = useRef<MacroLensMode>('raw');
   const lampRaisedRef = useRef(false);
   const schoolActStatusRef = useRef<SchoolActStatus>('idle');
   const previousSchoolActStatusRef = useRef<SchoolActStatus>('idle');
@@ -346,6 +347,17 @@ function MacroFlowExperience() {
   const onJourneyProgress = useCallback((progress: number, velocity: number) => {
     updateAudio(progress, velocity);
   }, [updateAudio]);
+  const onWorldProgress = useCallback((progress: number) => {
+    if (progress < 0.112 || progress >= 0.176) return;
+    const mode: MacroLensMode = progress < 0.135
+      ? 'raw'
+      : progress < 0.155
+        ? 'segmentation'
+        : 'detection';
+    if (automaticLensModeRef.current === mode) return;
+    automaticLensModeRef.current = mode;
+    selectLens(mode);
+  }, [selectLens]);
   const onSliceProgress = useCallback((progress: number, velocity: number) => {
     verticalSoundParametersRef.current.progress = progress;
     verticalSoundParametersRef.current.velocity = velocity;
@@ -433,6 +445,7 @@ function MacroFlowExperience() {
     reducedMotion,
     onChapterChange: enterChapter,
     onProgress: onJourneyProgress,
+    onWorldProgress,
     onSliceProgress,
     onSchoolActProgress,
     onBuriedActProgress,

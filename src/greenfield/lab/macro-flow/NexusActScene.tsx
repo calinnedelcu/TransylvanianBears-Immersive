@@ -2,6 +2,7 @@ import { useTexture } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef, type MutableRefObject } from 'react';
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { usePrefersReducedMotion } from '../../../hooks/usePrefersReducedMotion';
 import type { EvidenceCoreId } from '../../experience/evidenceCores';
 import type { QualityTier } from '../../experience/quality';
@@ -77,7 +78,11 @@ const NEXUS_CORE_SPECS: Record<MacroLensMode, {
 
 const NEXUS_CORE_IDS: EvidenceCoreId[] = ['source', 'structure', 'decision'];
 
-const NEXUS_FIELD_TEXTURE = '/assets/projects/nexus-ue5-aerial.webp';
+const NEXUS_EVIDENCE_TEXTURES: Record<MacroLensMode, string> = {
+  raw: '/assets/projects/nexus-ue5-aerial.webp',
+  segmentation: '/assets/projects/nexus-segmentation.webp',
+  detection: '/assets/projects/nexus-detection.webp',
+};
 
 function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
@@ -134,6 +139,7 @@ function createSemanticMaterial(
   detection = '#df6553',
 ) {
   return new THREE.ShaderMaterial({
+    vertexColors: true,
     uniforms: {
       uRaw: { value: new THREE.Color(raw) },
       uSegment: { value: new THREE.Color(segment) },
@@ -149,18 +155,23 @@ function createSemanticMaterial(
       varying vec3 vNormalView;
       varying vec3 vWorldPosition;
       varying vec3 vInstanceTint;
+      varying vec3 vVertexTint;
       varying float vDepth;
 
       void main() {
         vec4 localPosition = vec4(position, 1.0);
         vec3 objectNormal = normal;
         vInstanceTint = vec3(1.0);
+        vVertexTint = vec3(1.0);
         #ifdef USE_INSTANCING
           localPosition = instanceMatrix * localPosition;
           objectNormal = mat3(instanceMatrix) * objectNormal;
         #endif
         #ifdef USE_INSTANCING_COLOR
           vInstanceTint = instanceColor;
+        #endif
+        #ifdef USE_COLOR
+          vVertexTint = color;
         #endif
         vec4 worldPosition = modelMatrix * localPosition;
         vec4 viewPosition = viewMatrix * worldPosition;
@@ -183,6 +194,7 @@ function createSemanticMaterial(
       varying vec3 vNormalView;
       varying vec3 vWorldPosition;
       varying vec3 vInstanceTint;
+      varying vec3 vVertexTint;
       varying float vDepth;
 
       float hash21(vec2 value) {
@@ -226,7 +238,7 @@ function createSemanticMaterial(
         }
 
         float architectureLift = uSemanticClass < 0.5 ? 1.22 : 1.0;
-        vec3 rawColor = uRaw * vInstanceTint * diffuse * materialGrain * surfacePattern * architectureLift;
+        vec3 rawColor = uRaw * vInstanceTint * vVertexTint * diffuse * materialGrain * surfacePattern * architectureLift;
         vec3 inspected = rawColor;
         float silhouette = pow(1.0 - abs(normalView.z), 3.2);
         float structuralBand = uSemanticClass < 0.5
@@ -1339,7 +1351,7 @@ function Traffic({
     if (bodies.instanceColor) bodies.instanceColor.needsUpdate = true;
   }, [scratchColor]);
 
-  useFrame(({ clock, gl, size }) => {
+  useFrame(({ gl, size }) => {
     const bodies = bodyRef.current;
     const cabins = cabinRef.current;
     const wheels = wheelRef.current;
@@ -1361,7 +1373,7 @@ function Traffic({
       const direction = index % 2 === 0 ? -1 : 1;
       const travel = (
         index * 9.35
-        + (reducedMotion ? 0 : clock.elapsedTime * 4.8 + progressRef.current * 82)
+        + (reducedMotion ? 0 : progressRef.current * 172)
       ) % 56;
       const lane = index % 2 === 0 ? -1.35 : 1.35;
       const z = direction < 0 ? 8 - travel : -48 + travel;
@@ -1433,15 +1445,23 @@ function TrackedSubjects({
     composed: new THREE.Matrix4(),
   }), []);
   const scratchColor = useMemo(() => new THREE.Color(), []);
-  const pedestrians = useMemo(() => Array.from({ length: pedestrianCount }, (_, index) => ({
-    phase: seeded(index + 711),
-    speed: 0.92 + seeded(index + 811) * 0.76,
-    side: index % 2 === 0 ? -1 : 1,
-    cross: index % 5 === 0,
-    crossingZ: index % 10 === 0 ? -9 : -29,
-    offset: (seeded(index + 911) - 0.5) * 0.58,
-    color: ['#b7b3a8', '#8e9d98', '#aa765d', '#d0b86f', '#687b7b'][index % 5],
-  })), []);
+  const pedestrians = useMemo(() => Array.from({ length: pedestrianCount }, (_, index) => {
+    const stationary = index % 4 === 0;
+    const cluster = Math.floor(index / 4);
+    return {
+      phase: seeded(index + 711),
+      speed: 0.92 + seeded(index + 811) * 0.76,
+      side: index % 2 === 0 ? -1 : 1,
+      cross: index % 5 === 0,
+      crossingZ: index % 10 === 0 ? -9 : -29,
+      offset: (seeded(index + 911) - 0.5) * 0.58,
+      stationary,
+      anchorX: [-2.92, -2.6, 2.76, 3.02, -2.82, 0.7, 2.9][cluster],
+      anchorZ: [-8.64, -8.94, -28.64, -28.94, -17.3, -36.3, -42.1][cluster],
+      facing: [-0.24, 0.4, Math.PI + 0.22, Math.PI - 0.34, 0.16, -1.08, 2.65][cluster],
+      color: ['#b7b3a8', '#8e9d98', '#aa765d', '#d0b86f', '#687b7b'][index % 5],
+    };
+  }), []);
   const geometries = useMemo(() => ({
     box: new THREE.BoxGeometry(1, 1, 1),
     body: new THREE.CapsuleGeometry(0.2, 0.5, 4, 8),
@@ -1508,22 +1528,36 @@ function TrackedSubjects({
     pedestrians.forEach((pedestrian, index) => {
       const travel = (
         pedestrian.phase
-        + (reducedMotion ? 0 : clock.elapsedTime * pedestrian.speed * 0.028 + progressRef.current * 0.72)
+        + (reducedMotion ? 0 : progressRef.current * pedestrian.speed * 1.5)
       ) % 1;
       const direction = index % 4 < 2 ? 1 : -1;
       const directedTravel = direction > 0 ? travel : 1 - travel;
-      const x = pedestrian.cross
-        ? THREE.MathUtils.lerp(-3.05, 3.05, directedTravel)
-        : pedestrian.side * (2.75 + pedestrian.offset);
-      const z = pedestrian.cross
-        ? pedestrian.crossingZ + Math.sin(directedTravel * Math.PI) * 0.08
-        : THREE.MathUtils.lerp(6, -49, directedTravel);
-      const bob = reducedMotion ? 0 : Math.sin((travel * 10 + index) * Math.PI) * 0.035;
+      const x = pedestrian.stationary
+        ? pedestrian.anchorX
+        : pedestrian.cross
+          ? THREE.MathUtils.lerp(-3.05, 3.05, directedTravel)
+          : pedestrian.side * (2.75 + pedestrian.offset);
+      const z = pedestrian.stationary
+        ? pedestrian.anchorZ
+        : pedestrian.cross
+          ? pedestrian.crossingZ + Math.sin(directedTravel * Math.PI) * 0.08
+          : THREE.MathUtils.lerp(6, -49, directedTravel);
+      const bob = reducedMotion
+        ? 0
+        : pedestrian.stationary
+          ? Math.sin(clock.elapsedTime * 1.2 + index) * 0.008
+          : Math.sin((travel * 10 + index) * Math.PI) * 0.035;
 
       transforms.parent.position.set(x, bob, z);
-      transforms.parent.rotation.set(0, pedestrian.cross
-        ? (direction > 0 ? Math.PI / 2 : -Math.PI / 2)
-        : (direction > 0 ? Math.PI : 0), 0);
+      transforms.parent.rotation.set(
+        0,
+        pedestrian.stationary
+          ? pedestrian.facing
+          : pedestrian.cross
+            ? (direction > 0 ? Math.PI / 2 : -Math.PI / 2)
+            : (direction > 0 ? Math.PI : 0),
+        0,
+      );
       transforms.parent.scale.setScalar(0.86 + seeded(index + 1011) * 0.22);
       transforms.parent.updateMatrix();
 
@@ -1540,7 +1574,9 @@ function TrackedSubjects({
       transforms.composed.multiplyMatrices(transforms.parent.matrix, transforms.child.matrix);
       headRef.current?.setMatrixAt(index, transforms.composed);
 
-      const stride = reducedMotion ? 0 : Math.sin((travel * 10 + index) * Math.PI) * 0.34;
+      const stride = reducedMotion || pedestrian.stationary
+        ? 0
+        : Math.sin((travel * 10 + index) * Math.PI) * 0.34;
       [-1, 1].forEach((side, sideIndex) => {
         transforms.child.position.set(side * 0.105, 0.42, 0);
         transforms.child.rotation.set(side * stride, 0, 0);
@@ -1606,6 +1642,112 @@ function createGableRoofGeometry() {
   ]);
   geometry.computeVertexNormals();
   return geometry;
+}
+
+function createTintedPart(
+  geometry: THREE.BufferGeometry,
+  tint: string,
+  position: [number, number, number],
+  scale: [number, number, number],
+  rotation: [number, number, number] = [0, 0, 0],
+) {
+  const color = new THREE.Color(tint);
+  const vertexCount = geometry.getAttribute('position').count;
+  const colors = new Float32Array(vertexCount * 3);
+  for (let index = 0; index < vertexCount; index += 1) {
+    colors[index * 3] = color.r;
+    colors[index * 3 + 1] = color.g;
+    colors[index * 3 + 2] = color.b;
+  }
+  geometry.deleteAttribute('uv');
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geometry.applyMatrix4(new THREE.Matrix4().compose(
+    new THREE.Vector3(...position),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(...rotation)),
+    new THREE.Vector3(...scale),
+  ));
+  return geometry;
+}
+
+function mergeTintedParts(parts: THREE.BufferGeometry[]) {
+  const geometry = mergeGeometries(parts, false);
+  parts.forEach((part) => part.dispose());
+  if (!geometry) throw new Error('Nexus production geometry could not be merged');
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function createCompactBuildingGeometry(archetype: 0 | 1) {
+  const parts: THREE.BufferGeometry[] = [
+    createTintedPart(new THREE.BoxGeometry(1, 1, 1), '#ffffff', [0, 0.5, 0], [1, 1, 1]),
+    createTintedPart(new THREE.BoxGeometry(1, 1, 1), '#6f7772', [0, 0.045, 0], [1.06, 0.09, 1.04]),
+  ];
+
+  if (archetype === 0) {
+    parts.push(
+      createTintedPart(new THREE.BoxGeometry(1, 1, 1), '#7d837c', [0, 0.96, 0], [1.08, 0.075, 1.05]),
+      createTintedPart(createGableRoofGeometry(), '#424a48', [0, 1, 0], [1.12, 0.38, 1.08]),
+      createTintedPart(new THREE.BoxGeometry(1, 1, 1), '#4e5552', [0.27, 1.18, 0.12], [0.11, 0.3, 0.12]),
+      createTintedPart(new THREE.BoxGeometry(1, 1, 1), '#858b83', [-0.51, 0.53, -0.36], [0.075, 0.82, 0.085]),
+      createTintedPart(new THREE.BoxGeometry(1, 1, 1), '#858b83', [-0.51, 0.53, 0.36], [0.075, 0.82, 0.085]),
+      createTintedPart(new THREE.BoxGeometry(1, 1, 1), '#858b83', [0.51, 0.53, -0.36], [0.075, 0.82, 0.085]),
+      createTintedPart(new THREE.BoxGeometry(1, 1, 1), '#858b83', [0.51, 0.53, 0.36], [0.075, 0.82, 0.085]),
+    );
+  } else {
+    parts.push(
+      createTintedPart(new THREE.BoxGeometry(1, 1, 1), '#707975', [0, 1.02, 0], [1.08, 0.1, 1.08]),
+      createTintedPart(new THREE.BoxGeometry(1, 1, 1), '#535d59', [0, 1.11, 0], [0.72, 0.16, 0.76]),
+      createTintedPart(new THREE.BoxGeometry(1, 1, 1), '#7b827c', [-0.535, 0.61, 0], [0.11, 0.5, 0.54]),
+      createTintedPart(new THREE.BoxGeometry(1, 1, 1), '#7b827c', [0.535, 0.61, 0], [0.11, 0.5, 0.54]),
+      createTintedPart(new THREE.BoxGeometry(1, 1, 1), '#454e4b', [-0.28, 1.25, 0.14], [0.1, 0.26, 0.11]),
+      createTintedPart(new THREE.BoxGeometry(1, 1, 1), '#454e4b', [0.24, 1.22, -0.18], [0.09, 0.2, 0.1]),
+    );
+  }
+
+  return mergeTintedParts(parts);
+}
+
+function createCompactPedestrianGeometry() {
+  return mergeTintedParts([
+    createTintedPart(new THREE.CapsuleGeometry(0.18, 0.48, 3, 7), '#ffffff', [0, 1.02, 0], [1, 1, 1]),
+    createTintedPart(new THREE.SphereGeometry(0.16, 8, 6), '#d4c4aa', [0, 1.58, 0], [1, 1, 1]),
+    createTintedPart(new THREE.CapsuleGeometry(0.06, 0.46, 2, 6), '#343b3a', [-0.1, 0.38, 0], [1, 1, 1]),
+    createTintedPart(new THREE.CapsuleGeometry(0.06, 0.46, 2, 6), '#343b3a', [0.1, 0.38, 0], [1, 1, 1]),
+    createTintedPart(
+      new THREE.CapsuleGeometry(0.05, 0.4, 2, 6),
+      '#e7e2d7',
+      [-0.25, 1.02, 0],
+      [1, 1, 1],
+      [0, 0, -0.08],
+    ),
+    createTintedPart(
+      new THREE.CapsuleGeometry(0.05, 0.4, 2, 6),
+      '#e7e2d7',
+      [0.25, 1.02, 0],
+      [1, 1, 1],
+      [0, 0, 0.08],
+    ),
+  ]);
+}
+
+function createCompactVehicleGeometry() {
+  const parts: THREE.BufferGeometry[] = [
+    createTintedPart(new THREE.BoxGeometry(1, 1, 1), '#ffffff', [0, 0.31, 0], [1, 0.36, 1.56]),
+    createTintedPart(new THREE.BoxGeometry(1, 1, 1), '#80908d', [0, 0.57, -0.08], [0.78, 0.3, 0.82]),
+    createTintedPart(new THREE.BoxGeometry(1, 1, 1), '#d8ded8', [0, 0.34, 0.79], [0.84, 0.18, 0.16]),
+  ];
+  ([-1, 1] as const).forEach((side) => {
+    ([-1, 1] as const).forEach((axle) => {
+      parts.push(createTintedPart(
+        new THREE.CylinderGeometry(0.17, 0.17, 0.12, 9),
+        '#171b1b',
+        [side * 0.52, 0.17, axle * 0.5],
+        [1, 1, 1],
+        [0, 0, Math.PI / 2],
+      ));
+    });
+  });
+  return mergeTintedParts(parts);
 }
 
 type BatchedCityBuildingsProps = Pick<
@@ -2046,6 +2188,11 @@ function BatchedCityBuildings({
 
 const COMPACT_PEDESTRIAN_COUNT = 24;
 const COMPACT_TRAFFIC_COUNT = 6;
+const COMPACT_BUILDING_COUNTS = [
+  CITY_BLOCKS.filter((block) => block.row % 2 === 0).length,
+  CITY_BLOCKS.filter((block) => block.row % 2 === 1).length,
+] as const;
+const COMPACT_OPENINGS_PER_BUILDING = 7;
 
 function CompactNexusCity({
   progressRef,
@@ -2058,26 +2205,38 @@ function CompactNexusCity({
   const rootRef = useRef<THREE.Group>(null);
   const cityRef = useRef<THREE.Group>(null);
   const streetRef = useRef<THREE.InstancedMesh>(null);
-  const buildingRef = useRef<THREE.InstancedMesh>(null);
-  const roofRef = useRef<THREE.InstancedMesh>(null);
+  const buildingRefs = useRef<Array<THREE.InstancedMesh | null>>([]);
   const windowRef = useRef<THREE.InstancedMesh>(null);
   const personRef = useRef<THREE.InstancedMesh>(null);
   const trafficRef = useRef<THREE.InstancedMesh>(null);
   const scratch = useMemo(() => new THREE.Object3D(), []);
   const scratchColor = useMemo(() => new THREE.Color(), []);
-  const pedestrians = useMemo(() => Array.from({ length: COMPACT_PEDESTRIAN_COUNT }, (_, index) => ({
-    phase: seeded(index + 1201),
-    speed: 0.82 + seeded(index + 1301) * 0.72,
-    side: index % 2 === 0 ? -1 : 1,
-    cross: index % 6 === 0,
-    crossingZ: index % 12 === 0 ? -9 : -29,
-    offset: (seeded(index + 1401) - 0.5) * 0.52,
-    color: ['#b7b3a8', '#8e9d98', '#aa765d', '#d0b86f', '#687b7b'][index % 5],
-  })), []);
+  const pedestrians = useMemo(() => Array.from(
+    { length: COMPACT_PEDESTRIAN_COUNT },
+    (_, index) => {
+      const stationary = index % 4 === 0;
+      const cluster = Math.floor(index / 4);
+      return {
+        phase: seeded(index + 1201),
+        speed: 0.82 + seeded(index + 1301) * 0.72,
+        side: index % 2 === 0 ? -1 : 1,
+        cross: index % 6 === 0,
+        crossingZ: index % 12 === 0 ? -9 : -29,
+        offset: (seeded(index + 1401) - 0.5) * 0.52,
+        stationary,
+        anchorX: [-2.92, -2.58, 2.75, 3.03, -2.78, 0.72][cluster],
+        anchorZ: [-8.65, -8.92, -28.65, -28.92, -17.2, -36.4][cluster],
+        facing: [-0.25, 0.42, Math.PI + 0.24, Math.PI - 0.35, 0.15, -1.1][cluster],
+        color: ['#b7b3a8', '#8e9d98', '#aa765d', '#d0b86f', '#687b7b'][index % 5],
+      };
+    },
+  ), []);
   const geometries = useMemo(() => ({
     box: new THREE.BoxGeometry(1, 1, 1),
-    roof: createGableRoofGeometry(),
-    person: new THREE.CapsuleGeometry(0.19, 0.82, 3, 6),
+    buildingA: createCompactBuildingGeometry(0),
+    buildingB: createCompactBuildingGeometry(1),
+    person: createCompactPedestrianGeometry(),
+    traffic: createCompactVehicleGeometry(),
     horizon: new THREE.ShapeGeometry(createMountainShape(67)),
   }), []);
   const materials = useMemo(() => ({
@@ -2101,60 +2260,68 @@ function CompactNexusCity({
     setInstanceTransform(streetRef.current, 3, scratch, -3.76, 0.15, -20, 0.14, 0.3, 58);
     setInstanceTransform(streetRef.current, 4, scratch, 3.76, 0.15, -20, 0.14, 0.3, 58);
 
+    const buildingIndices = [0, 0];
     let windowIndex = 0;
     CITY_BLOCKS.forEach((block, index) => {
       const [x, , z] = block.position;
       const [width, height, depth] = block.scale;
       const facadeX = x - block.side * (width / 2 + 0.04);
+      const archetype = block.row % 2;
+      const buildingIndex = buildingIndices[archetype];
+      buildingIndices[archetype] += 1;
       setInstanceTransform(
-        buildingRef.current,
-        index,
+        buildingRefs.current[archetype],
+        buildingIndex,
         scratch,
         x,
-        height / 2,
+        0,
         z,
         width,
         height,
         depth,
       );
-      setInstanceTransform(
-        roofRef.current,
-        index,
-        scratch,
-        x,
-        height,
-        z,
-        width * 1.08,
-        1.25 + (index % 4) * 0.11,
-        depth * 1.08,
-      );
-      buildingRef.current?.setColorAt(
-        index,
+      buildingRefs.current[archetype]?.setColorAt(
+        buildingIndex,
         scratchColor.set(['#586763', '#68706a', '#495b59'][index % 3]),
       );
-      roofRef.current?.setColorAt(
-        index,
-        scratchColor.set(index % 5 === 0 ? '#5a292b' : '#202827'),
-      );
 
-      [-0.24, 0.24].forEach((columnOffset, column) => {
-        setInstanceTransform(
-          windowRef.current,
-          windowIndex,
-          scratch,
-          facadeX - block.side * 0.07,
-          Math.min(height - 0.42, 1.05 + column * 0.88),
-          z + columnOffset * Math.min(depth, 2.2),
-          0.08,
-          0.46,
-          0.38,
-        );
-        windowRef.current?.setColorAt(
-          windowIndex,
-          scratchColor.set((index + column) % 4 === 0 ? '#8ab6ad' : '#d0aa68'),
-        );
-        windowIndex += 1;
-      });
+      for (let row = 0; row < 3; row += 1) {
+        for (let column = 0; column < 2; column += 1) {
+          setInstanceTransform(
+            windowRef.current,
+            windowIndex,
+            scratch,
+            facadeX - block.side * 0.07,
+            height * (0.3 + row * 0.24),
+            z + (column === 0 ? -1 : 1) * Math.min(depth * 0.24, 0.52),
+            0.08,
+            Math.max(0.34, height * 0.115),
+            Math.min(0.42, depth * 0.24),
+          );
+          windowRef.current?.setColorAt(
+            windowIndex,
+            scratchColor.set((index + row + column) % 5 === 0 ? '#8ab6ad' : '#d0aa68'),
+          );
+          windowIndex += 1;
+        }
+      }
+
+      setInstanceTransform(
+        windowRef.current,
+        windowIndex,
+        scratch,
+        facadeX - block.side * 0.08,
+        Math.min(0.55, height * 0.2),
+        z,
+        0.1,
+        Math.min(0.88, height * 0.3),
+        Math.min(0.58, depth * 0.34),
+      );
+      windowRef.current?.setColorAt(
+        windowIndex,
+        scratchColor.set(index % 4 === 0 ? '#80aaa3' : '#bf9254'),
+      );
+      windowIndex += 1;
     });
 
     pedestrians.forEach((pedestrian, index) => {
@@ -2167,12 +2334,11 @@ function CompactNexusCity({
       );
     }
 
-    [streetRef.current, buildingRef.current, roofRef.current, windowRef.current]
-      .forEach(markInstanceMatrixDirty);
+    [streetRef.current, ...buildingRefs.current, windowRef.current].forEach(markInstanceMatrixDirty);
     [personRef.current, trafficRef.current].forEach((mesh) => {
       mesh?.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     });
-    [buildingRef.current, roofRef.current, windowRef.current, personRef.current, trafficRef.current]
+    [...buildingRefs.current, windowRef.current, personRef.current, trafficRef.current]
       .forEach((mesh) => {
         if (mesh?.instanceColor) mesh.instanceColor.needsUpdate = true;
       });
@@ -2204,29 +2370,41 @@ function CompactNexusCity({
     pedestrians.forEach((pedestrian, index) => {
       const travel = (
         pedestrian.phase
-        + (reducedMotion ? 0 : clock.elapsedTime * pedestrian.speed * 0.028 + progress * 0.66)
+        + (reducedMotion ? 0 : progress * pedestrian.speed * 1.45)
       ) % 1;
       const direction = index % 4 < 2 ? 1 : -1;
       const directedTravel = direction > 0 ? travel : 1 - travel;
-      const x = pedestrian.cross
-        ? THREE.MathUtils.lerp(-3.05, 3.05, directedTravel)
-        : pedestrian.side * (2.75 + pedestrian.offset);
-      const z = pedestrian.cross
-        ? pedestrian.crossingZ
-        : THREE.MathUtils.lerp(6, -49, directedTravel);
-      const bob = reducedMotion ? 0 : Math.sin((travel * 10 + index) * Math.PI) * 0.035;
+      const x = pedestrian.stationary
+        ? pedestrian.anchorX
+        : pedestrian.cross
+          ? THREE.MathUtils.lerp(-3.05, 3.05, directedTravel)
+          : pedestrian.side * (2.75 + pedestrian.offset);
+      const z = pedestrian.stationary
+        ? pedestrian.anchorZ
+        : pedestrian.cross
+          ? pedestrian.crossingZ
+          : THREE.MathUtils.lerp(6, -49, directedTravel);
+      const bob = reducedMotion
+        ? 0
+        : pedestrian.stationary
+          ? Math.sin(clock.elapsedTime * 1.2 + index) * 0.008
+          : Math.sin((travel * 10 + index) * Math.PI) * 0.035;
       setInstanceTransform(
         personRef.current,
         index,
         scratch,
         x,
-        0.78 + bob,
+        bob,
         z,
         0.92,
         1,
         0.92,
         0,
-        pedestrian.cross ? Math.PI / 2 : direction > 0 ? Math.PI : 0,
+        pedestrian.stationary
+          ? pedestrian.facing
+          : pedestrian.cross
+            ? Math.PI / 2
+            : direction > 0 ? Math.PI : 0,
       );
     });
 
@@ -2234,7 +2412,7 @@ function CompactNexusCity({
       const direction = index % 2 === 0 ? -1 : 1;
       const travel = (
         index * 9.35
-        + (reducedMotion ? 0 : clock.elapsedTime * 4.6 + progress * 76)
+        + (reducedMotion ? 0 : progress * 168)
       ) % 56;
       const z = direction < 0 ? 8 - travel : -48 + travel;
       setInstanceTransform(
@@ -2242,11 +2420,11 @@ function CompactNexusCity({
         index,
         scratch,
         index % 2 === 0 ? -1.35 : 1.35,
-        0.35,
+        0.02,
         z,
         1.05,
-        0.7,
-        1.78,
+        0.95,
+        1.08,
         0,
         direction < 0 ? 0 : Math.PI,
       );
@@ -2260,11 +2438,27 @@ function CompactNexusCity({
       <mesh geometry={geometries.horizon} material={materials.horizon} position={[0, -0.1, -51]} scale={[1.15, 0.82, 1]} />
       <group ref={cityRef} scale={[1, 0.001, 1]}>
         <instancedMesh ref={streetRef} args={[geometries.box, materials.street, 5]} frustumCulled={false} />
-        <instancedMesh ref={buildingRef} args={[geometries.box, materials.architecture, CITY_BLOCKS.length]} frustumCulled={false} />
-        <instancedMesh ref={roofRef} args={[geometries.roof, materials.architecture, CITY_BLOCKS.length]} frustumCulled={false} />
-        <instancedMesh ref={windowRef} args={[geometries.box, materials.opening, CITY_BLOCKS.length * 2]} frustumCulled={false} />
+        <instancedMesh
+          ref={(mesh) => { buildingRefs.current[0] = mesh; }}
+          args={[geometries.buildingA, materials.architecture, COMPACT_BUILDING_COUNTS[0]]}
+          frustumCulled={false}
+        />
+        <instancedMesh
+          ref={(mesh) => { buildingRefs.current[1] = mesh; }}
+          args={[geometries.buildingB, materials.architecture, COMPACT_BUILDING_COUNTS[1]]}
+          frustumCulled={false}
+        />
+        <instancedMesh
+          ref={windowRef}
+          args={[
+            geometries.box,
+            materials.opening,
+            CITY_BLOCKS.length * COMPACT_OPENINGS_PER_BUILDING,
+          ]}
+          frustumCulled={false}
+        />
         <instancedMesh ref={personRef} args={[geometries.person, materials.person, COMPACT_PEDESTRIAN_COUNT]} frustumCulled={false} />
-        <instancedMesh ref={trafficRef} args={[geometries.box, materials.traffic, COMPACT_TRAFFIC_COUNT]} frustumCulled={false} />
+        <instancedMesh ref={trafficRef} args={[geometries.traffic, materials.traffic, COMPACT_TRAFFIC_COUNT]} frustumCulled={false} />
       </group>
     </group>
   );
@@ -2775,7 +2969,7 @@ function EvidenceCoreField({
   );
 }
 
-function createEvidenceLabelTexture() {
+function createEvidenceLabelTexture(title: string, subtitle: string, accent: string) {
   const canvas = document.createElement('canvas');
   canvas.width = 1024;
   canvas.height = 144;
@@ -2785,10 +2979,10 @@ function createEvidenceLabelTexture() {
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.fillStyle = '#e7e3d8';
     context.font = '600 36px ui-monospace, monospace';
-    context.fillText('AUTHENTIC UE5 CAPTURE', 34, 58);
-    context.fillStyle = '#82d6d0';
+    context.fillText(title, 34, 58);
+    context.fillStyle = accent;
     context.font = '500 24px ui-monospace, monospace';
-    context.fillText('PROJECT NEXUS / SOURCE SURFACE', 34, 105);
+    context.fillText(subtitle, 34, 105);
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -2805,23 +2999,50 @@ function EvidencePanel({
 }: Pick<NexusActSceneProps, 'progressRef' | 'lensMode'> & { reducedMotion: boolean }) {
   const rootRef = useRef<THREE.Group>(null);
   const frameRef = useRef<THREE.InstancedMesh>(null);
-  const sourceTexture = useTexture(NEXUS_FIELD_TEXTURE);
-  const texture = useMemo(() => {
-    const clone = sourceTexture.clone();
-    clone.colorSpace = THREE.SRGBColorSpace;
-    clone.anisotropy = 8;
-    clone.needsUpdate = true;
-    return clone;
-  }, [sourceTexture]);
-  const labelTexture = useMemo(createEvidenceLabelTexture, []);
+  const loadedTextures = useTexture([
+    NEXUS_EVIDENCE_TEXTURES.raw,
+    NEXUS_EVIDENCE_TEXTURES.segmentation,
+    NEXUS_EVIDENCE_TEXTURES.detection,
+  ]);
+  const textures = useMemo(() => {
+    const entries = loadedTextures.map((sourceTexture) => {
+      const clone = sourceTexture.clone();
+      clone.colorSpace = THREE.SRGBColorSpace;
+      clone.anisotropy = 8;
+      clone.needsUpdate = true;
+      return clone;
+    });
+    return {
+      raw: entries[0],
+      segmentation: entries[1],
+      detection: entries[2],
+    } satisfies Record<MacroLensMode, THREE.Texture>;
+  }, [loadedTextures]);
+  const labelTextures = useMemo(() => ({
+    raw: createEvidenceLabelTexture(
+      'AUTHENTIC UE5 CAPTURE',
+      'PROJECT NEXUS / SOURCE SURFACE',
+      '#82d6d0',
+    ),
+    segmentation: createEvidenceLabelTexture(
+      'AUTHENTIC SEGMENTATION EXPORT',
+      'PROJECT NEXUS / SYNTHETIC CLASS SURFACE',
+      '#e1bd67',
+    ),
+    detection: createEvidenceLabelTexture(
+      'AUTHENTIC DETECTION EXPORT',
+      'PROJECT NEXUS / SYNTHETIC BOUNDARY SURFACE',
+      '#df6553',
+    ),
+  }), []);
   const scratch = useMemo(() => new THREE.Object3D(), []);
   const accent = useMemo(() => new THREE.Color(), []);
   const frameGeometry = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
   const planeGeometry = useMemo(() => new THREE.PlaneGeometry(6.4, 4.8), []);
   const labelGeometry = useMemo(() => new THREE.PlaneGeometry(6.4, 0.72), []);
   const materials = useMemo(() => ({
-    surface: new THREE.MeshBasicMaterial({ map: texture, color: '#ffffff', toneMapped: false }),
-    label: new THREE.MeshBasicMaterial({ map: labelTexture, transparent: true, toneMapped: false }),
+    surface: new THREE.MeshBasicMaterial({ map: textures.raw, color: '#ffffff', toneMapped: false }),
+    label: new THREE.MeshBasicMaterial({ map: labelTextures.raw, transparent: true, toneMapped: false }),
     frame: new THREE.MeshStandardMaterial({
       color: '#1d292a',
       emissive: '#72d9d6',
@@ -2829,16 +3050,23 @@ function EvidencePanel({
       metalness: 0.52,
       roughness: 0.38,
     }),
-  }), [labelTexture, texture]);
+  }), [labelTextures, textures]);
+
+  useEffect(() => {
+    materials.surface.map = textures[lensMode];
+    materials.surface.needsUpdate = true;
+    materials.label.map = labelTextures[lensMode];
+    materials.label.needsUpdate = true;
+  }, [labelTextures, lensMode, materials, textures]);
 
   useEffect(() => () => {
-    texture.dispose();
-    labelTexture.dispose();
+    Object.values(textures).forEach((texture) => texture.dispose());
+    Object.values(labelTextures).forEach((texture) => texture.dispose());
     frameGeometry.dispose();
     planeGeometry.dispose();
     labelGeometry.dispose();
     Object.values(materials).forEach((material) => material.dispose());
-  }, [frameGeometry, labelGeometry, labelTexture, materials, planeGeometry, texture]);
+  }, [frameGeometry, labelGeometry, labelTextures, materials, planeGeometry, textures]);
 
   useLayoutEffect(() => {
     setInstanceTransform(frameRef.current, 0, scratch, 0, 2.46, -0.035, 6.62, 0.09, 0.09);
@@ -2854,8 +3082,8 @@ function EvidencePanel({
 
   useFrame((_, delta) => {
     if (!rootRef.current) return;
-    const reveal = motionRange(progressRef.current, 0.137, 0.149, reducedMotion);
-    const departure = motionRange(progressRef.current, 0.166, 0.18, reducedMotion);
+    const reveal = motionRange(progressRef.current, 0.118, 0.128, reducedMotion);
+    const departure = motionRange(progressRef.current, 0.166, 0.175, reducedMotion);
     const scale = reveal * (1 - departure);
     rootRef.current.scale.setScalar(Math.max(0.001, scale));
 
@@ -3036,6 +3264,18 @@ export function NexusActScene(props: NexusActSceneProps) {
 
   return (
     <group ref={rootRef} visible={false}>
+      {fieldProfile || lensProfile ? (
+        props.compact ? (
+          <CompactNexusCity
+            progressRef={props.progressRef}
+            lensMode={props.lensMode}
+            lensPointerRef={props.lensPointerRef}
+            reducedMotion={reducedMotion}
+          />
+        ) : (
+          <NexusCity {...props} reducedMotion={reducedMotion} />
+        )
+      ) : null}
       {fieldProfile ? (
         <>
           <NexusThresholdEcho
@@ -3043,42 +3283,25 @@ export function NexusActScene(props: NexusActSceneProps) {
             reducedMotion={reducedMotion}
           />
           {props.compact ? (
-            <>
-              <CompactNexusCity
-                progressRef={props.progressRef}
-                lensMode={props.lensMode}
-                lensPointerRef={props.lensPointerRef}
-                reducedMotion={reducedMotion}
-              />
-              <NexusLivingSignals
-                progressRef={props.progressRef}
-                lensMode={props.lensMode}
-                reducedMotion={reducedMotion}
-                compact
-              />
-            </>
+            <NexusLivingSignals
+              progressRef={props.progressRef}
+              lensMode={props.lensMode}
+              reducedMotion={reducedMotion}
+              compact
+            />
           ) : (
-            <>
-              <NexusCity {...props} reducedMotion={reducedMotion} />
-              <SurveyDrone
-                progressRef={props.progressRef}
-                lensMode={props.lensMode}
-                nexusFlightInputRef={props.nexusFlightInputRef}
-                dronePositionRef={dronePositionRef}
-                reducedMotion={reducedMotion}
-              />
-            </>
+            <SurveyDrone
+              progressRef={props.progressRef}
+              lensMode={props.lensMode}
+              nexusFlightInputRef={props.nexusFlightInputRef}
+              dronePositionRef={dronePositionRef}
+              reducedMotion={reducedMotion}
+            />
           )}
         </>
       ) : null}
       {lensProfile ? (
         <>
-          <CompactNexusCity
-            progressRef={props.progressRef}
-            lensMode={props.lensMode}
-            lensPointerRef={props.lensPointerRef}
-            reducedMotion={reducedMotion}
-          />
           <SurveyDroneLite
             progressRef={props.progressRef}
             lensMode={props.lensMode}
