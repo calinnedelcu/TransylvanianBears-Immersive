@@ -244,9 +244,9 @@ body.mf-lab-mode {
 
 .mf-lab[data-active-chapter='threshold'] .mf-world__grade {
   background:
-    linear-gradient(180deg, rgb(7 10 11 / 0.18), transparent 24%, transparent 72%, rgb(12 8 8 / 0.5)),
-    linear-gradient(90deg, rgb(7 10 11 / 0.28), transparent 36%),
-    radial-gradient(ellipse at 72% 38%, rgb(196 74 42 / 0.08), transparent 42%);
+    linear-gradient(180deg, rgb(6 8 14 / 0.2), transparent 20%, transparent 48%, rgb(10 8 12 / 0.55) 78%, rgb(8 6 10 / 0.88)),
+    linear-gradient(90deg, rgb(6 8 14 / 0.36), transparent 40%),
+    radial-gradient(ellipse at 74% 34%, rgb(196 74 42 / 0.06), transparent 38%);
 }
 
 .mf-lab[data-active-chapter='field'] .mf-world__grade,
@@ -328,12 +328,16 @@ body.mf-lab-mode {
 
 .mf-lab[data-active-chapter='threshold'] .mf-header {
   border-bottom-color: transparent;
-  background: linear-gradient(180deg, rgb(7 10 11 / 0.28), transparent);
+  background: linear-gradient(180deg, rgb(7 10 11 / 0.18), transparent);
   backdrop-filter: none;
 }
 
+.mf-lab[data-active-chapter='threshold'] .mf-header > p {
+  opacity: 0;
+}
+
 .mf-lab[data-active-chapter='threshold'] .mf-rail {
-  opacity: 0.55;
+  opacity: 0.22;
 }
 
 .mf-header > p {
@@ -546,10 +550,10 @@ body.mf-lab-mode {
 }
 
 .mf-copy--hero {
-  width: min(480px, 36vw);
+  width: min(560px, 40vw);
   max-width: none;
   align-content: start;
-  padding: 11vh 0 0 4.8vw;
+  padding: 8.5vh 0 0 4.2vw;
   isolation: isolate;
 }
 
@@ -701,11 +705,11 @@ body.mf-lab-mode {
   display: grid;
   width: max-content;
   max-width: 100%;
-  font-size: clamp(58px, 7.6vw, 112px);
-  line-height: 0.8;
+  font-size: clamp(68px, 8.8vw, 136px);
+  line-height: 0.78;
   letter-spacing: 0.01em;
   text-transform: uppercase;
-  text-shadow: 0 8px 28px rgb(7 10 11 / 0.42);
+  text-shadow: 0 10px 36px rgb(7 10 11 / 0.55);
 }
 
 .mf-copy--hero h1 span {
@@ -2886,13 +2890,19 @@ body.mf-lab-mode {
     align-content: end;
   }
 
+  .mf-lab[data-active-chapter='threshold'] .mf-world__grade {
+    background:
+      linear-gradient(180deg, rgb(6 8 14 / 0.28), transparent 26%, transparent 64%, rgb(10 8 12 / 0.4)),
+      linear-gradient(90deg, rgb(6 8 14 / 0.18), transparent 46%);
+  }
+
   .mf-copy--hero {
     width: 100%;
     max-width: none;
     margin: 0;
     align-content: start;
     padding: 72px 20px 0;
-    background: linear-gradient(180deg, rgb(7 10 11 / 0.28), transparent 58%);
+    background: linear-gradient(180deg, rgb(7 10 11 / 0.22), transparent 58%);
   }
 
   .mf-copy--hero::before {

@@ -1,4 +1,4 @@
-import { Environment, Lightformer, PerformanceMonitor, useGLTF } from '@react-three/drei';
+import { Environment, Lightformer, PerformanceMonitor, useGLTF, useTexture } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Bloom, EffectComposer, Noise, Vignette } from '@react-three/postprocessing';
 import {
@@ -45,6 +45,8 @@ import {
 } from './verticalSliceCamera';
 
 export type { MacroLensMode, MacroTraceOutcome } from './macroFlowTypes';
+
+useTexture.preload('/assets/world/threshold-sky.jpg');
 
 type MacroFlowSceneProps = {
   activeChapter: JourneyChapter;
@@ -327,20 +329,20 @@ function CameraDirector({
     if (thresholdIdle > 0) {
       const idleTime = sceneTime;
       const scale = compact ? 0.62 : 1;
-      targetPosition.x -= 20 * scale * thresholdIdle;
-      targetPosition.y -= 1.6 * scale * thresholdIdle;
-      targetPosition.z += 12 * scale * thresholdIdle;
-      targetPosition.x += Math.sin(idleTime * 0.12) * 0.28 * thresholdIdle;
-      targetPosition.y += Math.sin(idleTime * 0.17 + 0.7) * 0.16 * thresholdIdle;
-      targetPosition.z += Math.sin(idleTime * 0.09 + 1.2) * 0.22 * thresholdIdle;
-      lookTarget.x += 3.8 * scale * thresholdIdle;
-      lookTarget.y += 2.4 * scale * thresholdIdle;
-      lookTarget.x += Math.sin(idleTime * 0.11 + 0.5) * 0.22 * thresholdIdle;
-      lookTarget.y += Math.sin(idleTime * 0.15) * 0.12 * thresholdIdle;
-      directedRoll = (directedRoll ?? genericRoll) + Math.sin(idleTime * 0.1) * 0.004 * thresholdIdle;
+      targetPosition.x -= 28 * scale * thresholdIdle;
+      targetPosition.y -= (compact ? 2.4 : 4.1) * thresholdIdle;
+      targetPosition.z += 16 * scale * thresholdIdle;
+      targetPosition.x += Math.sin(idleTime * 0.09) * 0.22 * thresholdIdle;
+      targetPosition.y += Math.sin(idleTime * 0.13 + 0.7) * 0.1 * thresholdIdle;
+      targetPosition.z += Math.sin(idleTime * 0.07 + 1.2) * 0.16 * thresholdIdle;
+      lookTarget.x += 6.4 * scale * thresholdIdle;
+      lookTarget.y += (compact ? 0.6 : 1.35) * thresholdIdle;
+      lookTarget.x += Math.sin(idleTime * 0.08 + 0.5) * 0.16 * thresholdIdle;
+      lookTarget.y += Math.sin(idleTime * 0.11) * 0.08 * thresholdIdle;
+      directedRoll = (directedRoll ?? genericRoll) + Math.sin(idleTime * 0.08) * 0.003 * thresholdIdle;
       directedFov = (directedFov ?? genericFov)
-        + 8.5 * thresholdIdle
-        + Math.sin(idleTime * 0.08) * 0.28 * thresholdIdle;
+        + 10.5 * thresholdIdle
+        + Math.sin(idleTime * 0.06) * 0.18 * thresholdIdle;
     }
 
     const parallax = reducedMotion || isBuriedChapter
@@ -386,14 +388,20 @@ function WorldAtmosphere({
   progressRef,
   qualityTier,
   reducedMotion,
-}: Pick<MacroFlowSceneProps, 'progressRef' | 'qualityTier' | 'reducedMotion'>) {
+  monumental = false,
+}: Pick<MacroFlowSceneProps, 'progressRef' | 'qualityTier' | 'reducedMotion'> & {
+  monumental?: boolean;
+}) {
   const skyRef = useRef<THREE.Mesh>(null);
   const skyMaterialRef = useRef<THREE.ShaderMaterial>(null);
   const dustRef = useRef<THREE.Points>(null);
+  const monumentalRef = useRef(monumental);
+  monumentalRef.current = monumental;
   const skyUniforms = useMemo(() => ({
     uTime: { value: 0 },
     uFlash: { value: 0 },
-  }), []);
+    uMonumental: { value: monumental ? 1 : 0 },
+  }), [monumental]);
   const dustGeometry = useMemo(() => {
     const count = reducedMotion || qualityTier === 'editorial' ? 0 : qualityTier === 'cinematic' ? 420 : 180;
     const positions = new Float32Array(count * 3);
@@ -424,6 +432,7 @@ function WorldAtmosphere({
       const flashB = reducedMotion ? 0 : Math.max(0, 1 - Math.abs(cycle - 2.32) / 0.045);
       skyMaterialRef.current.uniforms.uTime.value = reducedMotion ? 0 : clock.elapsedTime;
       skyMaterialRef.current.uniforms.uFlash.value = Math.max(flashA, flashB * 0.72);
+      skyMaterialRef.current.uniforms.uMonumental.value = monumentalRef.current ? 1 : 0;
     }
     if (dustRef.current) {
       dustRef.current.rotation.y = progressRef.current * 0.018 + clock.elapsedTime * 0.006;
@@ -452,47 +461,33 @@ function WorldAtmosphere({
           fragmentShader={`
             uniform float uTime;
             uniform float uFlash;
+            uniform float uMonumental;
             varying vec3 vDirection;
             void main() {
-              float horizon = pow(1.0 - abs(vDirection.y), 3.2);
+              float horizon = pow(1.0 - abs(vDirection.y), mix(3.2, 7.4, uMonumental));
               float upper = smoothstep(-0.18, 0.72, vDirection.y);
-              vec3 ember = vec3(0.42, 0.14, 0.08);
-              vec3 low = vec3(0.09, 0.06, 0.08);
-              vec3 high = vec3(0.012, 0.016, 0.04);
+              vec3 ember = mix(vec3(0.18, 0.08, 0.06), vec3(0.46, 0.18, 0.08), uMonumental);
+              vec3 low = mix(vec3(0.07, 0.09, 0.09), vec3(0.05, 0.045, 0.07), uMonumental);
+              vec3 high = mix(vec3(0.012, 0.02, 0.03), vec3(0.02, 0.03, 0.07), uMonumental);
               vec3 color = mix(low, high, upper);
-              color += ember * pow(horizon, 1.6) * 0.72;
-              color += vec3(0.04, 0.03, 0.05) * horizon;
+              color += ember * pow(horizon, mix(1.6, 2.4, uMonumental)) * mix(0.28, 0.55, uMonumental);
+              color += vec3(0.03, 0.02, 0.04) * horizon;
 
               float longitude = atan(vDirection.z, vDirection.x);
               float cloudField = 0.5
-                + 0.24 * sin(longitude * 3.2 + vDirection.y * 15.0 + uTime * 0.026)
-                + 0.16 * sin(longitude * 7.4 - vDirection.y * 23.0 - uTime * 0.041)
-                + 0.1 * sin(longitude * 13.0 + vDirection.y * 41.0 + uTime * 0.018);
-              float cloudAltitude = smoothstep(-0.16, 0.18, vDirection.y)
-                * (1.0 - smoothstep(0.28, 0.78, vDirection.y));
-              float cloudVeil = smoothstep(0.46, 0.7, cloudField) * cloudAltitude;
-              color = mix(color, vec3(0.08, 0.045, 0.05), cloudVeil * 0.55);
-              color += vec3(0.22, 0.08, 0.04) * cloudVeil * horizon * 0.45;
-              color += vec3(0.42, 0.28, 0.24)
-                * uFlash
-                * (0.32 + cloudVeil * 0.68);
+                + 0.2 * sin(longitude * 2.8 + vDirection.y * 12.0 + uTime * 0.02)
+                + 0.12 * sin(longitude * 6.6 - vDirection.y * 18.0 - uTime * 0.03);
+              float cloudAltitude = smoothstep(-0.08, 0.16, vDirection.y)
+                * (1.0 - smoothstep(0.32, 0.82, vDirection.y));
+              float cloudVeil = smoothstep(0.5, 0.74, cloudField) * cloudAltitude;
+              color = mix(color, vec3(0.06, 0.045, 0.07), cloudVeil * 0.4);
+              color += vec3(0.28, 0.12, 0.06) * uFlash * (0.22 + cloudVeil * 0.4);
 
-              float gateGlow = pow(
-                max(0.0, dot(normalize(vDirection), normalize(vec3(0.24, -0.08, -0.96)))),
-                6.2
-              ) * horizon;
-              color += vec3(0.38, 0.12, 0.04) * gateGlow;
-              float moonAlignment = dot(normalize(vDirection), normalize(vec3(-0.22, 0.48, -0.78)));
-              float moon = smoothstep(0.978, 0.991, moonAlignment);
-              float moonHalo = smoothstep(0.88, 0.988, moonAlignment) * 0.34;
-              color += vec3(0.72, 0.74, 0.7) * moonHalo;
-              color = mix(color, vec3(0.92, 0.9, 0.82), moon * 0.78);
-
-              float sky = smoothstep(0.08, 0.55, vDirection.y);
-              vec2 starCell = floor(vDirection.xz * 92.0);
+              float sky = smoothstep(0.18, 0.62, vDirection.y);
+              vec2 starCell = floor(vDirection.xz * 88.0);
               float starHash = fract(sin(dot(starCell, vec2(12.9898, 78.233))) * 43758.5453);
-              float star = step(0.9935, starHash) * sky * (0.45 + 0.55 * fract(starHash * 17.0));
-              color += vec3(0.78, 0.86, 0.9) * star;
+              float star = step(0.994, starHash) * sky * (0.35 + 0.45 * fract(starHash * 17.0));
+              color += vec3(0.78, 0.84, 0.9) * star;
               gl_FragColor = vec4(color, 1.0);
             }
           `}
@@ -542,7 +537,13 @@ function FirstLightCitadel({
       if (!(child instanceof THREE.Mesh)) return;
       const materials = Array.isArray(child.material) ? child.material : [child.material];
       const assetLabel = `${child.name} ${child.geometry.name} ${child.parent?.name ?? ''}`;
-      if (/bat flight|bear|crest|emblem|herald|far carpathians|near ridge|earth|ground|yard|courtyard|terrain|soil|plaza|lawn|base disc|floor/i.test(assetLabel)) {
+      const earthMaterial = materials.some((material) => (
+        /night earth|worn stone path/i.test(material.name)
+      ));
+      if (
+        earthMaterial
+        || /bat flight|bear|crest|emblem|herald|far carpathians|near ridge|earth|ground|yard|courtyard|terrain|soil|plaza|lawn|base disc|floor/i.test(assetLabel)
+      ) {
         child.visible = false;
         const hiddenMaterials = materials.map((source) => {
           const cached = materialCache.get(source.uuid);
@@ -580,15 +581,11 @@ function FirstLightCitadel({
         if (!hasAuthoredPbrMaps && fallbackColor) material.color.set(fallbackColor);
         material.envMapIntensity = structuralMaterial ? (compact ? 0.68 : 0.58) : (compact ? 0.5 : 0.44);
         if (structuralMaterial) {
-          material.color.offsetHSL(0.015, 0.04, compact ? 0.07 : 0.055);
-          if (material.emissiveIntensity < 0.2) {
-            material.emissive.set('#2a2118');
-            material.emissiveIntensity = compact ? 0.38 : 0.28;
+          material.color.offsetHSL(0.018, 0.05, compact ? 0.08 : 0.07);
+          if (material.emissiveIntensity < 0.28) {
+            material.emissive.set('#3a2a1c');
+            material.emissiveIntensity = compact ? 0.42 : 0.34;
           }
-        }
-        if (compact && structuralMaterial) {
-          material.emissive.set('#101a19');
-          material.emissiveIntensity = Math.max(material.emissiveIntensity, 0.62);
         }
         if (compact && /brass|iron/i.test(material.name)) {
           material.emissive.set('#24190d');
@@ -1020,13 +1017,13 @@ function PostEffects({
   return (
     <EffectComposer multisampling={0} enableNormalPass={false}>
       <Bloom
-        intensity={threshold ? 0.72 : 0.42}
-        luminanceThreshold={threshold ? 0.48 : 0.82}
-        luminanceSmoothing={0.28}
+        intensity={threshold ? 0.92 : 0.42}
+        luminanceThreshold={threshold ? 0.38 : 0.82}
+        luminanceSmoothing={0.32}
         mipmapBlur
       />
-      <Noise opacity={threshold ? 0.04 : 0.027} premultiply blendFunction={BlendFunction.SOFT_LIGHT} />
-      <Vignette offset={threshold ? 0.16 : 0.22} darkness={threshold ? 0.68 : 0.5} eskil={false} />
+      <Noise opacity={threshold ? 0.035 : 0.027} premultiply blendFunction={BlendFunction.SOFT_LIGHT} />
+      <Vignette offset={threshold ? 0.12 : 0.22} darkness={threshold ? 0.74 : 0.5} eskil={false} />
     </EffectComposer>
   );
 }
@@ -1215,61 +1212,88 @@ function useFirstActLifecycle(
   };
 }
 
-function ThresholdGroundMist({ reducedMotion }: { reducedMotion: boolean }) {
+function ThresholdSkyPlate({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>) {
+  const texture = useTexture('/assets/world/threshold-sky.jpg');
+  const meshRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.MeshBasicMaterial>(null);
-  const texture = useMemo(() => {
-    const size = 64;
-    const data = new Uint8Array(size * size * 4);
-    for (let y = 0; y < size; y += 1) {
-      for (let x = 0; x < size; x += 1) {
-        const nx = (x / (size - 1) - 0.5) * 2;
-        const ny = (y / (size - 1) - 0.5) * 2;
-        const radial = Math.max(0, 1 - Math.sqrt(nx * nx + ny * ny));
-        const value = Math.round(radial * radial * 255);
-        const offset = (y * size + x) * 4;
-        data[offset] = 255;
-        data[offset + 1] = 255;
-        data[offset + 2] = 255;
-        data[offset + 3] = value;
-      }
+
+  useLayoutEffect(() => {
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = 8;
+    texture.needsUpdate = true;
+  }, [texture]);
+
+  useFrame(({ camera }) => {
+    const mesh = meshRef.current;
+    if (mesh) {
+      mesh.position.copy(camera.position);
+      mesh.quaternion.copy(camera.quaternion);
+      mesh.translateZ(-96);
     }
-    const next = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
-    next.needsUpdate = true;
-    return next;
-  }, []);
-
-  useEffect(() => () => texture.dispose(), [texture]);
-
-  useFrame(({ clock }) => {
-    if (!materialRef.current || reducedMotion) return;
-    materialRef.current.opacity = 0.22 + Math.sin(clock.elapsedTime * 0.18) * 0.04;
+    if (materialRef.current) {
+      materialRef.current.opacity = 1 - smooth(range(progressRef.current, 0.038, 0.07));
+    }
   });
 
   return (
-    <group>
-      <mesh position={[0, -0.35, 12]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[160, 160]} />
-        <meshBasicMaterial color="#100c0c" depthWrite={false} />
+    <mesh ref={meshRef} renderOrder={-80} frustumCulled={false}>
+      <planeGeometry args={[300, 170]} />
+      <meshBasicMaterial
+        ref={materialRef}
+        map={texture}
+        transparent
+        depthWrite={false}
+        fog={false}
+        toneMapped={false}
+      />
+    </mesh>
+  );
+}
+
+function ThresholdExposure() {
+  const gl = useThree((state) => state.gl);
+
+  useEffect(() => {
+    const previous = gl.toneMappingExposure;
+    gl.toneMappingExposure = 1.08;
+    return () => {
+      gl.toneMappingExposure = previous;
+    };
+  }, [gl]);
+
+  return null;
+}
+
+function ThresholdGroundMist({ reducedMotion }: { reducedMotion: boolean }) {
+  const veilRef = useRef<THREE.Group>(null);
+  const mistRef = useRef<THREE.MeshBasicMaterial>(null);
+
+  useFrame(({ camera, clock }) => {
+    if (veilRef.current) {
+      veilRef.current.position.copy(camera.position);
+      veilRef.current.quaternion.copy(camera.quaternion);
+    }
+    if (mistRef.current && !reducedMotion) {
+      mistRef.current.opacity = 0.28 + Math.sin(clock.elapsedTime * 0.16) * 0.04;
+    }
+  });
+
+  return (
+    <group ref={veilRef}>
+      <mesh position={[0, -2.4, -11]} rotation={[-0.16, 0, 0]}>
+        <planeGeometry args={[80, 20]} />
+        <meshBasicMaterial color="#121018" transparent opacity={0.22} depthWrite={false} />
       </mesh>
-      {([
-        [0, 0.55, 16, 52],
-        [-10, 0.9, 22, 40],
-        [12, 0.72, 20, 36],
-        [2, 1.25, 10, 48],
-      ] as const).map(([x, y, z, width]) => (
-        <mesh key={`${x}-${z}`} position={[x, y, z]} rotation={[-Math.PI / 2, 0, 0.08]}>
-          <planeGeometry args={[width, width * 0.62]} />
-          <meshBasicMaterial
-            ref={materialRef}
-            color="#6e5644"
-            map={texture}
-            transparent
-            opacity={0.3}
-            depthWrite={false}
-            fog
-          />
-        </mesh>
-      ))}
+      <mesh position={[0, -1.3, -10]} rotation={[-0.06, 0, 0]}>
+        <planeGeometry args={[72, 12]} />
+        <meshBasicMaterial
+          ref={mistRef}
+          color="#3a3542"
+          transparent
+          opacity={0.12}
+          depthWrite={false}
+        />
+      </mesh>
     </group>
   );
 }
@@ -1335,12 +1359,13 @@ function World({
 
   return (
     <>
-      <color attach="background" args={[showBuried ? '#070707' : showSchool ? '#0c1211' : '#071011']} />
-      <fog attach="fog" args={[showBuried ? '#0b0908' : showSchool ? '#141916' : showThreshold ? '#1a1214' : '#0a1719', showBuried ? 12 : showSchool ? 18 : showThreshold ? 22 : 26, showBuried ? 70 : showSchool ? 78 : showThreshold ? 88 : 94]} />
+      <color attach="background" args={[showBuried ? '#070707' : showSchool ? '#0c1211' : showThreshold ? '#0b1020' : '#071011']} />
+      <fog attach="fog" args={[showBuried ? '#0b0908' : showSchool ? '#141916' : showThreshold ? '#1a1824' : '#0a1719', showBuried ? 12 : showSchool ? 18 : showThreshold ? 18 : 26, showBuried ? 70 : showSchool ? 78 : showThreshold ? 76 : 94]} />
       <WorldAtmosphere
         progressRef={progressRef}
         qualityTier={qualityTier}
         reducedMotion={reducedMotion}
+        monumental={showThreshold}
       />
       <WorldLookdevRig
         qualityTier={qualityTier}
@@ -1349,7 +1374,7 @@ function World({
       />
       {showHemisphere ? (
         <hemisphereLight
-          intensity={showBuried ? 0.16 : showThreshold ? (compact ? 0.7 : 0.52) : showSchool ? 0.46 : 0.38}
+          intensity={showBuried ? 0.16 : showThreshold ? (compact ? 0.86 : 0.68) : showSchool ? 0.46 : 0.38}
           color={showBuried ? '#b8ac98' : showThreshold ? '#d7b39a' : showSchool ? '#d2c6a4' : '#b9cfcd'}
           groundColor={showBuried ? '#130f0d' : showThreshold ? '#1a1410' : showSchool ? '#1b1712' : '#191b17'}
         />
@@ -1403,14 +1428,17 @@ function World({
       />
       <RenderBudgetMonitor />
       {mountThreshold ? (
-        <group ref={firstAct.thresholdGroupRef} visible>
+        <group ref={firstAct.thresholdGroupRef} visible position={[0, showThreshold ? -1.35 : 0, 0]}>
           {showThreshold ? (
             <FirstLightCitadel progressRef={progressRef} qualityTier={qualityTier} />
           ) : null}
           {showThreshold ? (
             <>
-              <directionalLight position={[-12, 22, -18]} intensity={compact ? 1.35 : 1.7} color="#d5deea" />
-              <pointLight position={[0, 5.2, 17.2]} intensity={compact ? 22 : 28} distance={18} decay={2} color="#ee8b4f" />
+              <ThresholdExposure />
+              <ThresholdSkyPlate progressRef={progressRef} />
+              <directionalLight position={[18, 24, -22]} intensity={compact ? 1.55 : 1.95} color="#d7deea" />
+              <directionalLight position={[-6, 4, -28]} intensity={compact ? 0.85 : 1.15} color="#d36a3a" />
+              <pointLight position={[0, 5.2, 17.2]} intensity={compact ? 28 : 36} distance={20} decay={2} color="#ee8b4f" />
               <ThresholdGroundMist reducedMotion={reducedMotion} />
             </>
           ) : null}
@@ -1487,7 +1515,7 @@ function World({
         </>
       ) : null}
 
-      <mesh visible={!showBuried} position={[0, -0.08, -56]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh visible={!showBuried && !showThreshold} position={[0, -0.08, -56]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[36, 190]} />
         <meshStandardMaterial color="#101516" roughness={0.98} />
       </mesh>
@@ -1627,7 +1655,7 @@ export function MacroFlowScene(props: MacroFlowSceneProps) {
         className="mf-canvas"
         dpr={dpr}
         shadows={props.qualityTier === 'cinematic'}
-        camera={{ fov: 48, near: 0.1, far: 190, position: [18, 11.5, 38] }}
+        camera={{ fov: 48, near: 0.1, far: 280, position: [18, 11.5, 38] }}
         gl={{ antialias: props.qualityTier !== 'cinematic', alpha: false, powerPreference: 'high-performance' }}
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;

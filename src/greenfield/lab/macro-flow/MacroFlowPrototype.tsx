@@ -729,30 +729,9 @@ function MacroFlowExperience() {
       <section id="mf-threshold" className="mf-beat mf-beat--threshold" data-chapter="threshold">
         <div className="mf-copy mf-copy--hero">
           <div className="mf-hero-plate">
-            <div className="mf-hero-mark" aria-hidden="true">
-              <svg viewBox="-140 -140 280 280" role="presentation">
-                <circle cx="0" cy="0" r="128" fill="none" stroke="currentColor" strokeOpacity="0.22" />
-                <circle cx="0" cy="0" r="104" fill="none" stroke="currentColor" strokeOpacity="0.12" />
-                <path
-                  fillRule="evenodd"
-                  d="M0-110 44-104 62-124 96-120 120-96 124-62 102-44 114-8 108 48 78 88 30 112 22 116-22 116-30 112-78 88-108 48-114-8-102-44-124-62-120-96-96-120-62-124-44-104 0-110ZM-91-82-82-100-61-105-45-91-49-68-70-58-89-67Z M91-82 82-100 61-105 45-91 49-68 70-58 89-67Z M0-70 42-61 69-34 78 8 65 50 31 78 22 86 22 116-22 116-22 86-31 78-65 50-78 8-69-34-42-61 0-70Z"
-                />
-                <path className="mf-hero-mark__pivot" d="M-10 4 0-8 10 4 0 16Z" />
-              </svg>
-            </div>
-            <div className="mf-hero-readout" aria-hidden="true">
-              <span>46° 46′ N / 23° 35′ E</span>
-            </div>
             <p className="mf-kicker">Șapte sisteme. O singură cetate.</p>
             <h1><span>Transylvanian</span><span>Bears</span></h1>
             <p className="mf-hero-line">Software, jocuri, machine learning și cercetare, în aceeași cetate.</p>
-            <div className="mf-hero-domains" aria-label="Domeniile echipei">
-              <span>Games</span><span>Machine learning</span><span>Research</span><span>Software</span>
-            </div>
-          </div>
-          <div className="mf-scroll-entry" aria-hidden="true">
-            <i />
-            <span>Traversează poarta</span>
           </div>
         </div>
       </section>
