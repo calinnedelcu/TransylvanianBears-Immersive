@@ -468,10 +468,11 @@ function WorldAtmosphere({
                 + 0.24 * sin(longitude * 3.2 + vDirection.y * 15.0 + uTime * 0.026)
                 + 0.16 * sin(longitude * 7.4 - vDirection.y * 23.0 - uTime * 0.041)
                 + 0.1 * sin(longitude * 13.0 + vDirection.y * 41.0 + uTime * 0.018);
-              float cloudAltitude = smoothstep(-0.2, 0.12, vDirection.y)
-                * (1.0 - smoothstep(0.24, 0.62, vDirection.y));
-              float cloudVeil = smoothstep(0.54, 0.76, cloudField) * cloudAltitude;
-              color = mix(color, vec3(0.16, 0.1, 0.11), cloudVeil * 0.28);
+              float cloudAltitude = smoothstep(-0.16, 0.18, vDirection.y)
+                * (1.0 - smoothstep(0.28, 0.78, vDirection.y));
+              float cloudVeil = smoothstep(0.46, 0.7, cloudField) * cloudAltitude;
+              color = mix(color, vec3(0.08, 0.045, 0.05), cloudVeil * 0.55);
+              color += vec3(0.22, 0.08, 0.04) * cloudVeil * horizon * 0.45;
               color += vec3(0.42, 0.28, 0.24)
                 * uFlash
                 * (0.32 + cloudVeil * 0.68);
@@ -541,7 +542,7 @@ function FirstLightCitadel({
       if (!(child instanceof THREE.Mesh)) return;
       const materials = Array.isArray(child.material) ? child.material : [child.material];
       const assetLabel = `${child.name} ${child.geometry.name} ${child.parent?.name ?? ''}`;
-      if (/bat flight|bear|crest|emblem|herald|far carpathians|near ridge/i.test(assetLabel)) {
+      if (/bat flight|bear|crest|emblem|herald|far carpathians|near ridge|earth|ground|yard|courtyard|terrain|soil|plaza|lawn|base disc|floor/i.test(assetLabel)) {
         child.visible = false;
         const hiddenMaterials = materials.map((source) => {
           const cached = materialCache.get(source.uuid);
@@ -579,10 +580,10 @@ function FirstLightCitadel({
         if (!hasAuthoredPbrMaps && fallbackColor) material.color.set(fallbackColor);
         material.envMapIntensity = structuralMaterial ? (compact ? 0.68 : 0.58) : (compact ? 0.5 : 0.44);
         if (structuralMaterial) {
-          material.color.offsetHSL(0, -0.012, compact ? 0.042 : 0.024);
+          material.color.offsetHSL(0.015, 0.04, compact ? 0.07 : 0.055);
           if (material.emissiveIntensity < 0.2) {
-            material.emissive.set('#111b19');
-            material.emissiveIntensity = compact ? 0.28 : 0.16;
+            material.emissive.set('#2a2118');
+            material.emissiveIntensity = compact ? 0.38 : 0.28;
           }
         }
         if (compact && structuralMaterial) {
@@ -1012,17 +1013,20 @@ function PostEffects({
   qualityTier,
   activeChapter,
 }: Pick<MacroFlowSceneProps, 'qualityTier' | 'activeChapter'>) {
-  if (
-    qualityTier !== 'cinematic'
-    || activeChapter === 'lens'
-    || activeChapter === 'proof'
-  ) return null;
+  if (activeChapter === 'lens' || activeChapter === 'proof') return null;
+  if (qualityTier !== 'cinematic' && activeChapter !== 'threshold') return null;
 
+  const threshold = activeChapter === 'threshold';
   return (
     <EffectComposer multisampling={0} enableNormalPass={false}>
-      <Bloom intensity={0.42} luminanceThreshold={0.82} luminanceSmoothing={0.24} mipmapBlur />
-      <Noise opacity={0.027} premultiply blendFunction={BlendFunction.SOFT_LIGHT} />
-      <Vignette offset={0.22} darkness={0.5} eskil={false} />
+      <Bloom
+        intensity={threshold ? 0.72 : 0.42}
+        luminanceThreshold={threshold ? 0.48 : 0.82}
+        luminanceSmoothing={0.28}
+        mipmapBlur
+      />
+      <Noise opacity={threshold ? 0.04 : 0.027} premultiply blendFunction={BlendFunction.SOFT_LIGHT} />
+      <Vignette offset={threshold ? 0.16 : 0.22} darkness={threshold ? 0.68 : 0.5} eskil={false} />
     </EffectComposer>
   );
 }
@@ -1036,31 +1040,31 @@ function WorldLookdevRig({
   showThreshold: boolean;
   showNexus: boolean;
 }>) {
-  if (qualityTier !== 'cinematic' || (!showThreshold && !showNexus)) return null;
+  if ((!showThreshold && !showNexus) || (qualityTier === 'editorial')) return null;
 
   return (
-    <Environment resolution={128} frames={1} background={false} environmentIntensity={0.82}>
+    <Environment resolution={showThreshold ? 64 : 128} frames={1} background={false} environmentIntensity={showThreshold ? 1.05 : 0.82}>
       <group rotation={[0, showThreshold ? -0.28 : 0.18, 0]}>
         <Lightformer
           form="rect"
-          color={showThreshold ? '#c9d5d0' : '#8fe0dc'}
-          intensity={showThreshold ? 3.2 : 4.2}
+          color={showThreshold ? '#e7d7c2' : '#8fe0dc'}
+          intensity={showThreshold ? 5.4 : 4.2}
           position={[-7, 8, -5]}
           rotation={[0, 0.62, 0]}
           scale={[7, 3.5, 1]}
         />
         <Lightformer
           form="rect"
-          color={showThreshold ? '#b86b45' : '#d5b263'}
-          intensity={showThreshold ? 4.6 : 3.4}
+          color={showThreshold ? '#d36a3a' : '#d5b263'}
+          intensity={showThreshold ? 6.2 : 3.4}
           position={[8, 1.5, 2]}
           rotation={[0, -1.1, 0]}
           scale={[3.5, 6.5, 1]}
         />
         <Lightformer
           form="ring"
-          color={showThreshold ? '#f1e3bd' : '#74d9d5'}
-          intensity={2.2}
+          color={showThreshold ? '#f6e7c2' : '#74d9d5'}
+          intensity={showThreshold ? 3.4 : 2.2}
           position={[0, 9, -12]}
           rotation={[Math.PI / 2, 0, 0]}
           scale={3.5}
@@ -1243,19 +1247,24 @@ function ThresholdGroundMist({ reducedMotion }: { reducedMotion: boolean }) {
 
   return (
     <group>
+      <mesh position={[0, -0.35, 12]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[160, 160]} />
+        <meshBasicMaterial color="#100c0c" depthWrite={false} />
+      </mesh>
       {([
-        [0, 0.42, 18, 28],
-        [-8, 0.58, 26, 22],
-        [7, 0.5, 24, 20],
+        [0, 0.55, 16, 52],
+        [-10, 0.9, 22, 40],
+        [12, 0.72, 20, 36],
+        [2, 1.25, 10, 48],
       ] as const).map(([x, y, z, width]) => (
         <mesh key={`${x}-${z}`} position={[x, y, z]} rotation={[-Math.PI / 2, 0, 0.08]}>
-          <planeGeometry args={[width, width * 0.55]} />
+          <planeGeometry args={[width, width * 0.62]} />
           <meshBasicMaterial
             ref={materialRef}
-            color="#c4b09a"
+            color="#6e5644"
             map={texture}
             transparent
-            opacity={0.22}
+            opacity={0.3}
             depthWrite={false}
             fog
           />

@@ -70,25 +70,16 @@ const MOON_FRAGMENT_SHADER = /* glsl */ `
   void main() {
     vec2 point = vUv - 0.5;
     float radius = length(point) * 2.0;
-    float limb = 1.0 - smoothstep(0.65, 0.71, radius);
-    float halo = (1.0 - smoothstep(0.69, 1.0, radius)) * 0.07;
-    vec2 moonUv = point / 0.7 + 0.5;
-    float terrain = valueNoise(moonUv * 8.0) * 0.12 + valueNoise(moonUv * 19.0) * 0.055;
-    terrain += crater(moonUv, vec2(0.31, 0.63), 0.18);
-    terrain += crater(moonUv, vec2(0.62, 0.7), 0.1);
-    terrain += crater(moonUv, vec2(0.68, 0.37), 0.15);
-    terrain += crater(moonUv, vec2(0.43, 0.29), 0.085);
-    float cloudVeil = smoothstep(
-      0.46,
-      0.72,
-      valueNoise(vec2(moonUv.x * 3.2, moonUv.y * 14.0 + 2.7))
-    );
-    vec3 coldStone = vec3(0.61, 0.67, 0.64);
-    vec3 litStone = vec3(0.82, 0.84, 0.78);
-    vec3 color = mix(coldStone, litStone, 0.52 + terrain);
-    color *= 0.72 + limb * 0.34;
-    color = mix(color, vec3(0.43, 0.52, 0.51), cloudVeil * 0.2);
-    gl_FragColor = vec4(color, max(limb * 0.86, halo));
+    float limb = 1.0 - smoothstep(0.42, 0.62, radius);
+    float halo = (1.0 - smoothstep(0.48, 1.35, radius)) * 0.22;
+    vec2 moonUv = point / 0.58 + 0.5;
+    float terrain = valueNoise(moonUv * 5.0) * 0.05 + valueNoise(moonUv * 13.0) * 0.02;
+    terrain += crater(moonUv, vec2(0.34, 0.6), 0.12) * 0.35;
+    terrain += crater(moonUv, vec2(0.64, 0.38), 0.08) * 0.28;
+    vec3 color = vec3(0.93, 0.9, 0.8) * (0.86 + terrain);
+    color *= limb;
+    color += vec3(0.95, 0.86, 0.68) * halo;
+    gl_FragColor = vec4(color, max(limb, halo));
   }
 `;
 
@@ -337,7 +328,7 @@ function CinematicRain({ progressRef, qualityTier }: CinematicRainProps) {
       varying float vFade;
 
       void main() {
-        gl_FragColor = vec4(0.68, 0.79, 0.78, uOpacity * vFade);
+        gl_FragColor = vec4(0.78, 0.7, 0.62, uOpacity * vFade);
       }
     `,
     transparent: true,
@@ -354,7 +345,7 @@ function CinematicRain({ progressRef, qualityTier }: CinematicRainProps) {
   useFrame(({ clock }) => {
     const departure = smooth(range(progressRef.current, 0.044, 0.072));
     material.uniforms.uTime.value = clock.elapsedTime;
-    material.uniforms.uOpacity.value = (compact ? 0.28 : 0.38) * (1 - departure);
+    material.uniforms.uOpacity.value = (compact ? 0.14 : 0.18) * (1 - departure);
   });
 
   return (
@@ -655,9 +646,9 @@ export function CarpathianThreshold({
           {!reducedMotion ? (
             <CinematicRain progressRef={progressRef} qualityTier={qualityTier} />
           ) : null}
-          <group position={compact ? [-7.2, 13.15, 4.2] : [-9.3, 12.8, 4.2]} scale={compact ? 0.5 : 1}>
+          <group position={compact ? [2.4, 18.5, -22] : [6.8, 21.5, -28]} scale={compact ? 1.15 : 2.15}>
             <mesh>
-              <circleGeometry args={[4.35, 48]} />
+              <circleGeometry args={[4.35, 64]} />
               <shaderMaterial
                 vertexShader={MOON_VERTEX_SHADER}
                 fragmentShader={MOON_FRAGMENT_SHADER}
