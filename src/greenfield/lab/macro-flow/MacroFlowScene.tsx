@@ -26,7 +26,6 @@ import {
   type BuriedActCameraCurve,
 } from './buried-act/buriedActCamera';
 import { FirstLightLayer } from './FirstLightLayer';
-import { ThresholdTitle } from './ThresholdTitle';
 import { NexusActScene } from './NexusActScene';
 import { VerticalSliceLoader } from './VerticalSliceLoader';
 import { VerticalSliceLoadingGate } from './VerticalSliceLoadingGate';
@@ -323,23 +322,25 @@ function CameraDirector({
     }
 
     const thresholdIdle = activeChapter === 'threshold' && !reducedMotion
-      ? 1 - smooth(range(worldProgress, 0.002, 0.038))
+      ? 1 - smooth(range(worldProgress, 0.002, 0.052))
       : 0;
     if (thresholdIdle > 0) {
       const idleTime = sceneTime;
-      const arrival = 1 - smooth(range(idleTime, 0.15, 3.4));
-      targetPosition.x += arrival * 1.4 * thresholdIdle;
-      targetPosition.y += arrival * 0.72 * thresholdIdle;
-      targetPosition.z += arrival * 4.2 * thresholdIdle;
-      targetPosition.x += Math.sin(idleTime * 0.16) * 0.2 * thresholdIdle;
-      targetPosition.y += Math.sin(idleTime * 0.21 + 0.7) * 0.12 * thresholdIdle;
-      targetPosition.z += Math.sin(idleTime * 0.11 + 1.2) * 0.16 * thresholdIdle;
-      lookTarget.x += Math.sin(idleTime * 0.13 + 0.5) * 0.26 * thresholdIdle;
-      lookTarget.y += Math.sin(idleTime * 0.18) * 0.1 * thresholdIdle;
-      directedRoll = (directedRoll ?? genericRoll) + Math.sin(idleTime * 0.12) * 0.0035 * thresholdIdle;
+      const scale = compact ? 0.62 : 1;
+      targetPosition.x -= 20 * scale * thresholdIdle;
+      targetPosition.y -= 1.6 * scale * thresholdIdle;
+      targetPosition.z += 12 * scale * thresholdIdle;
+      targetPosition.x += Math.sin(idleTime * 0.12) * 0.28 * thresholdIdle;
+      targetPosition.y += Math.sin(idleTime * 0.17 + 0.7) * 0.16 * thresholdIdle;
+      targetPosition.z += Math.sin(idleTime * 0.09 + 1.2) * 0.22 * thresholdIdle;
+      lookTarget.x += 3.8 * scale * thresholdIdle;
+      lookTarget.y += 2.4 * scale * thresholdIdle;
+      lookTarget.x += Math.sin(idleTime * 0.11 + 0.5) * 0.22 * thresholdIdle;
+      lookTarget.y += Math.sin(idleTime * 0.15) * 0.12 * thresholdIdle;
+      directedRoll = (directedRoll ?? genericRoll) + Math.sin(idleTime * 0.1) * 0.004 * thresholdIdle;
       directedFov = (directedFov ?? genericFov)
-        + arrival * 2.1 * thresholdIdle
-        + Math.sin(idleTime * 0.1) * 0.32 * thresholdIdle;
+        + 8.5 * thresholdIdle
+        + Math.sin(idleTime * 0.08) * 0.28 * thresholdIdle;
     }
 
     const parallax = reducedMotion || isBuriedChapter
@@ -455,10 +456,12 @@ function WorldAtmosphere({
             void main() {
               float horizon = pow(1.0 - abs(vDirection.y), 3.2);
               float upper = smoothstep(-0.18, 0.72, vDirection.y);
-              vec3 low = vec3(0.07, 0.086, 0.11);
-              vec3 high = vec3(0.01, 0.018, 0.038);
+              vec3 ember = vec3(0.42, 0.14, 0.08);
+              vec3 low = vec3(0.09, 0.06, 0.08);
+              vec3 high = vec3(0.012, 0.016, 0.04);
               vec3 color = mix(low, high, upper);
-              color += vec3(0.05, 0.05, 0.07) * horizon;
+              color += ember * pow(horizon, 1.6) * 0.72;
+              color += vec3(0.04, 0.03, 0.05) * horizon;
 
               float longitude = atan(vDirection.z, vDirection.x);
               float cloudField = 0.5
@@ -468,21 +471,21 @@ function WorldAtmosphere({
               float cloudAltitude = smoothstep(-0.2, 0.12, vDirection.y)
                 * (1.0 - smoothstep(0.24, 0.62, vDirection.y));
               float cloudVeil = smoothstep(0.54, 0.76, cloudField) * cloudAltitude;
-              color = mix(color, vec3(0.11, 0.14, 0.18), cloudVeil * 0.22);
-              color += vec3(0.34, 0.44, 0.46)
+              color = mix(color, vec3(0.16, 0.1, 0.11), cloudVeil * 0.28);
+              color += vec3(0.42, 0.28, 0.24)
                 * uFlash
                 * (0.32 + cloudVeil * 0.68);
 
               float gateGlow = pow(
                 max(0.0, dot(normalize(vDirection), normalize(vec3(0.24, -0.08, -0.96)))),
-                7.0
+                6.2
               ) * horizon;
-              color += vec3(0.28, 0.1, 0.04) * gateGlow;
-              float moonAlignment = dot(normalize(vDirection), normalize(vec3(-0.18, 0.52, -0.84)));
-              float moon = smoothstep(0.982, 0.993, moonAlignment);
-              float moonHalo = smoothstep(0.92, 0.99, moonAlignment) * 0.22;
-              color += vec3(0.62, 0.7, 0.78) * moonHalo;
-              color = mix(color, vec3(0.86, 0.9, 0.88), moon * 0.62);
+              color += vec3(0.38, 0.12, 0.04) * gateGlow;
+              float moonAlignment = dot(normalize(vDirection), normalize(vec3(-0.22, 0.48, -0.78)));
+              float moon = smoothstep(0.978, 0.991, moonAlignment);
+              float moonHalo = smoothstep(0.88, 0.988, moonAlignment) * 0.34;
+              color += vec3(0.72, 0.74, 0.7) * moonHalo;
+              color = mix(color, vec3(0.92, 0.9, 0.82), moon * 0.78);
 
               float sky = smoothstep(0.08, 0.55, vDirection.y);
               vec2 starCell = floor(vDirection.xz * 92.0);
@@ -1208,6 +1211,60 @@ function useFirstActLifecycle(
   };
 }
 
+function ThresholdGroundMist({ reducedMotion }: { reducedMotion: boolean }) {
+  const materialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const texture = useMemo(() => {
+    const size = 64;
+    const data = new Uint8Array(size * size * 4);
+    for (let y = 0; y < size; y += 1) {
+      for (let x = 0; x < size; x += 1) {
+        const nx = (x / (size - 1) - 0.5) * 2;
+        const ny = (y / (size - 1) - 0.5) * 2;
+        const radial = Math.max(0, 1 - Math.sqrt(nx * nx + ny * ny));
+        const value = Math.round(radial * radial * 255);
+        const offset = (y * size + x) * 4;
+        data[offset] = 255;
+        data[offset + 1] = 255;
+        data[offset + 2] = 255;
+        data[offset + 3] = value;
+      }
+    }
+    const next = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+    next.needsUpdate = true;
+    return next;
+  }, []);
+
+  useEffect(() => () => texture.dispose(), [texture]);
+
+  useFrame(({ clock }) => {
+    if (!materialRef.current || reducedMotion) return;
+    materialRef.current.opacity = 0.22 + Math.sin(clock.elapsedTime * 0.18) * 0.04;
+  });
+
+  return (
+    <group>
+      {([
+        [0, 0.42, 18, 28],
+        [-8, 0.58, 26, 22],
+        [7, 0.5, 24, 20],
+      ] as const).map(([x, y, z, width]) => (
+        <mesh key={`${x}-${z}`} position={[x, y, z]} rotation={[-Math.PI / 2, 0, 0.08]}>
+          <planeGeometry args={[width, width * 0.55]} />
+          <meshBasicMaterial
+            ref={materialRef}
+            color="#c4b09a"
+            map={texture}
+            transparent
+            opacity={0.22}
+            depthWrite={false}
+            fog
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 type WorldProps = MacroFlowSceneProps & {
   authoredCameraCurves: VerticalSliceCameraCurves;
   schoolCameraCurve: SchoolActCameraCurve | null;
@@ -1256,10 +1313,10 @@ function World({
       const flashA = reducedMotion ? 0 : Math.max(0, 1 - Math.abs(cycle - 2.1) / 0.07);
       const flashB = reducedMotion ? 0 : Math.max(0, 1 - Math.abs(cycle - 2.32) / 0.045);
       const weatherPulse = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.72) * 0.12;
-      light.intensity = (compact ? 2.45 : 2.18) + weatherPulse + flashA * 3.6 + flashB * 2.4;
-      light.position.x = -18 + (reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.1) * 3.4);
-      light.position.y = 13 + (reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.14) * 1.2);
-      light.color.set(flashA + flashB > 0.05 ? '#dcebea' : '#c9d9d5');
+      light.intensity = (compact ? 1.85 : 1.55) + weatherPulse + flashA * 2.8 + flashB * 1.8;
+      light.position.x = 16 + (reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.08) * 2.2);
+      light.position.y = 11 + (reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.12) * 0.9);
+      light.color.set(flashA + flashB > 0.05 ? '#f0e6d8' : '#e0b48a');
       return;
     }
     light.intensity = showBuried ? 0.58 : 1.75;
@@ -1270,7 +1327,7 @@ function World({
   return (
     <>
       <color attach="background" args={[showBuried ? '#070707' : showSchool ? '#0c1211' : '#071011']} />
-      <fog attach="fog" args={[showBuried ? '#0b0908' : showSchool ? '#141916' : '#0a1719', showBuried ? 12 : showSchool ? 18 : 26, showBuried ? 70 : showSchool ? 78 : 94]} />
+      <fog attach="fog" args={[showBuried ? '#0b0908' : showSchool ? '#141916' : showThreshold ? '#1a1214' : '#0a1719', showBuried ? 12 : showSchool ? 18 : showThreshold ? 22 : 26, showBuried ? 70 : showSchool ? 78 : showThreshold ? 88 : 94]} />
       <WorldAtmosphere
         progressRef={progressRef}
         qualityTier={qualityTier}
@@ -1283,17 +1340,17 @@ function World({
       />
       {showHemisphere ? (
         <hemisphereLight
-          intensity={showBuried ? 0.16 : showThreshold ? (compact ? 0.82 : 0.68) : showSchool ? 0.46 : 0.38}
-          color={showBuried ? '#b8ac98' : showThreshold ? '#b8cecd' : showSchool ? '#d2c6a4' : '#b9cfcd'}
-          groundColor={showBuried ? '#130f0d' : showThreshold ? '#263029' : showSchool ? '#1b1712' : '#191b17'}
+          intensity={showBuried ? 0.16 : showThreshold ? (compact ? 0.7 : 0.52) : showSchool ? 0.46 : 0.38}
+          color={showBuried ? '#b8ac98' : showThreshold ? '#d7b39a' : showSchool ? '#d2c6a4' : '#b9cfcd'}
+          groundColor={showBuried ? '#130f0d' : showThreshold ? '#1a1410' : showSchool ? '#1b1712' : '#191b17'}
         />
       ) : null}
       <directionalLight
         ref={keyLightRef}
         castShadow={qualityTier === 'cinematic' && !showBuried && !showThreshold && !showNexus}
-        position={showThreshold ? [-18, 13, 10] : [10, 18, 18]}
-        intensity={showBuried ? 0.58 : showThreshold ? (compact ? 2.45 : 2.18) : 1.75}
-        color={showBuried ? '#bbae98' : showThreshold ? '#d7e1dc' : '#dae3d9'}
+        position={showThreshold ? [16, 11, 8] : [10, 18, 18]}
+        intensity={showBuried ? 0.58 : showThreshold ? (compact ? 1.85 : 1.55) : 1.75}
+        color={showBuried ? '#bbae98' : showThreshold ? '#e0b48a' : '#dae3d9'}
         shadow-mapSize-width={qualityTier === 'cinematic' ? 1536 : 512}
         shadow-mapSize-height={qualityTier === 'cinematic' ? 1536 : 512}
         shadow-camera-near={2}
@@ -1341,7 +1398,13 @@ function World({
           {showThreshold ? (
             <FirstLightCitadel progressRef={progressRef} qualityTier={qualityTier} />
           ) : null}
-          {showThreshold ? <ThresholdTitle progressRef={progressRef} /> : null}
+          {showThreshold ? (
+            <>
+              <directionalLight position={[-12, 22, -18]} intensity={compact ? 1.35 : 1.7} color="#d5deea" />
+              <pointLight position={[0, 5.2, 17.2]} intensity={compact ? 22 : 28} distance={18} decay={2} color="#ee8b4f" />
+              <ThresholdGroundMist reducedMotion={reducedMotion} />
+            </>
+          ) : null}
           {!compact && showThreshold ? (
             <FirstLightLayer
               progressRef={progressRef}
