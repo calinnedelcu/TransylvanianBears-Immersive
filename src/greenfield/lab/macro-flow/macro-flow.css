@@ -331,6 +331,16 @@ body.mf-lab-mode {
   backdrop-filter: none;
 }
 
+.mf-lab[data-renderer='webgl'][data-active-chapter='threshold'] .mf-copy--hero {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .mf-header > p {
   margin: 0;
   color: rgb(228 225 217 / 0.5);

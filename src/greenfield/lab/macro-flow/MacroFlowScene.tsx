@@ -26,6 +26,7 @@ import {
   type BuriedActCameraCurve,
 } from './buried-act/buriedActCamera';
 import { FirstLightLayer } from './FirstLightLayer';
+import { ThresholdTitle } from './ThresholdTitle';
 import { NexusActScene } from './NexusActScene';
 import { VerticalSliceLoader } from './VerticalSliceLoader';
 import { VerticalSliceLoadingGate } from './VerticalSliceLoadingGate';
@@ -1340,6 +1341,7 @@ function World({
           {showThreshold ? (
             <FirstLightCitadel progressRef={progressRef} qualityTier={qualityTier} />
           ) : null}
+          {showThreshold ? <ThresholdTitle progressRef={progressRef} /> : null}
           {!compact && showThreshold ? (
             <FirstLightLayer
               progressRef={progressRef}

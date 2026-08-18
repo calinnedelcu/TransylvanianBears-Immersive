@@ -147,7 +147,6 @@ function CarpathianBackdrop({ progressRef, qualityTier, reducedMotion }: Carpath
   const towerRef = useRef<THREE.InstancedMesh>(null);
   const roofRef = useRef<THREE.InstancedMesh>(null);
   const lightRef = useRef<THREE.InstancedMesh>(null);
-  const mistRef = useRef<THREE.InstancedMesh>(null);
   const scratch = useMemo(() => new THREE.Object3D(), []);
   const treeCount = compact ? 34 : qualityTier === 'cinematic' ? 74 : 52;
   const towerCount = compact ? 7 : 12;
@@ -177,7 +176,6 @@ function CarpathianBackdrop({ progressRef, qualityTier, reducedMotion }: Carpath
     tower: new THREE.BoxGeometry(1, 1, 1),
     roof: new THREE.ConeGeometry(0.72, 1.8, 4),
     light: new THREE.PlaneGeometry(1, 1),
-    mist: new THREE.PlaneGeometry(1, 1),
   }), []);
   const materials = useMemo(() => ({
     tree: new THREE.MeshBasicMaterial({ color: '#091412', fog: true }),
@@ -189,13 +187,6 @@ function CarpathianBackdrop({ progressRef, qualityTier, reducedMotion }: Carpath
       opacity: 0.92,
       depthWrite: false,
       toneMapped: false,
-    }),
-    mist: new THREE.MeshBasicMaterial({
-      color: '#6f918d',
-      transparent: true,
-      opacity: 0.075,
-      depthWrite: false,
-      side: THREE.DoubleSide,
     }),
   }), []);
 
@@ -234,18 +225,7 @@ function CarpathianBackdrop({ progressRef, qualityTier, reducedMotion }: Carpath
       );
     }
 
-    for (let index = 0; index < 4; index += 1) {
-      setInstanceTransform(
-        mistRef.current,
-        index,
-        scratch,
-        [-12 + index * 8, 3.1 + index * 0.35, 10.8 + index * 0.42],
-        [12 + index * 2.4, 2.8 + index * 0.7, 1],
-        [0, 0, -0.06 + index * 0.035],
-      );
-    }
-
-    [treeRef.current, towerRef.current, roofRef.current, lightRef.current, mistRef.current]
+    [treeRef.current, towerRef.current, roofRef.current, lightRef.current]
       .forEach(markInstanceMatrixDirty);
   }, [lightCount, scratch, towerCount, treeCount]);
 
@@ -264,16 +244,9 @@ function CarpathianBackdrop({ progressRef, qualityTier, reducedMotion }: Carpath
     if (!root.visible) return;
     root.position.y = -departure * 4.8;
     root.position.x = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.08) * 0.34;
-    if (mistRef.current && !reducedMotion) {
-      mistRef.current.position.x = Math.sin(clock.elapsedTime * 0.12) * 2.2;
-      mistRef.current.position.y = Math.sin(clock.elapsedTime * 0.19) * 0.18;
-    }
     if (lightRef.current && !reducedMotion) {
       lightRef.current.position.y = Math.sin(clock.elapsedTime * 0.7) * 0.035;
     }
-    materials.mist.opacity = (compact ? 0.075 : 0.11)
-      * (0.82 + Math.sin(clock.elapsedTime * 0.22) * 0.18)
-      * (1 - departure);
     const villageFlicker = 0.84
       + Math.sin(clock.elapsedTime * 1.35) * 0.08
       + Math.sin(clock.elapsedTime * 3.7) * 0.04;
@@ -287,7 +260,6 @@ function CarpathianBackdrop({ progressRef, qualityTier, reducedMotion }: Carpath
       <instancedMesh ref={roofRef} args={[geometries.roof, materials.roof, towerCount]} frustumCulled={false} />
       <instancedMesh ref={treeRef} args={[geometries.tree, materials.tree, treeCount]} frustumCulled={false} />
       <instancedMesh ref={lightRef} args={[geometries.light, materials.light, lightCount]} frustumCulled={false} />
-      <instancedMesh ref={mistRef} args={[geometries.mist, materials.mist, 4]} frustumCulled={false} renderOrder={1} />
     </group>
   );
 }
