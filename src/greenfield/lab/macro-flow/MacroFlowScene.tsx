@@ -393,16 +393,19 @@ function WorldAtmosphere({
     uFlash: { value: 0 },
   }), []);
   const dustGeometry = useMemo(() => {
-    const count = qualityTier === 'cinematic' && !reducedMotion ? 280 : 0;
+    const count = reducedMotion || qualityTier === 'editorial' ? 0 : qualityTier === 'cinematic' ? 420 : 180;
     const positions = new Float32Array(count * 3);
     for (let index = 0; index < count; index += 1) {
       const seed = index * 12.9898;
       const unitA = Math.abs(Math.sin(seed) * 43758.5453) % 1;
       const unitB = Math.abs(Math.sin(seed + 17.17) * 24634.6345) % 1;
       const unitC = Math.abs(Math.sin(seed + 41.73) * 12414.1545) % 1;
-      positions[index * 3] = (unitA - 0.5) * 34;
-      positions[index * 3 + 1] = 0.4 + unitB * 13;
-      positions[index * 3 + 2] = 38 - unitC * 175;
+      const radius = 48 + unitC * 70;
+      const phi = unitA * Math.PI * 2;
+      const theta = 0.18 + unitB * 1.15;
+      positions[index * 3] = Math.cos(phi) * Math.sin(theta) * radius;
+      positions[index * 3 + 1] = Math.cos(theta) * radius * 0.72 + 8;
+      positions[index * 3 + 2] = Math.sin(phi) * Math.sin(theta) * radius;
     }
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -451,10 +454,10 @@ function WorldAtmosphere({
             void main() {
               float horizon = pow(1.0 - abs(vDirection.y), 3.2);
               float upper = smoothstep(-0.18, 0.72, vDirection.y);
-              vec3 low = vec3(0.064, 0.108, 0.112);
-              vec3 high = vec3(0.018, 0.039, 0.047);
+              vec3 low = vec3(0.07, 0.086, 0.11);
+              vec3 high = vec3(0.01, 0.018, 0.038);
               vec3 color = mix(low, high, upper);
-              color += vec3(0.038, 0.062, 0.058) * horizon;
+              color += vec3(0.05, 0.05, 0.07) * horizon;
 
               float longitude = atan(vDirection.z, vDirection.x);
               float cloudField = 0.5
@@ -464,21 +467,27 @@ function WorldAtmosphere({
               float cloudAltitude = smoothstep(-0.2, 0.12, vDirection.y)
                 * (1.0 - smoothstep(0.24, 0.62, vDirection.y));
               float cloudVeil = smoothstep(0.54, 0.76, cloudField) * cloudAltitude;
-              color = mix(color, vec3(0.12, 0.17, 0.17), cloudVeil * 0.2);
+              color = mix(color, vec3(0.11, 0.14, 0.18), cloudVeil * 0.22);
               color += vec3(0.34, 0.44, 0.46)
                 * uFlash
                 * (0.32 + cloudVeil * 0.68);
 
               float gateGlow = pow(
                 max(0.0, dot(normalize(vDirection), normalize(vec3(0.24, -0.08, -0.96)))),
-                8.0
+                7.0
               ) * horizon;
-              color += vec3(0.12, 0.045, 0.022) * gateGlow;
+              color += vec3(0.28, 0.1, 0.04) * gateGlow;
               float moonAlignment = dot(normalize(vDirection), normalize(vec3(-0.18, 0.52, -0.84)));
-              float moon = smoothstep(0.986, 0.994, moonAlignment);
-              float moonHalo = smoothstep(0.94, 0.992, moonAlignment) * 0.13;
-              color += vec3(0.48, 0.62, 0.6) * moonHalo;
-              color = mix(color, vec3(0.7, 0.77, 0.73), moon * 0.32);
+              float moon = smoothstep(0.982, 0.993, moonAlignment);
+              float moonHalo = smoothstep(0.92, 0.99, moonAlignment) * 0.22;
+              color += vec3(0.62, 0.7, 0.78) * moonHalo;
+              color = mix(color, vec3(0.86, 0.9, 0.88), moon * 0.62);
+
+              float sky = smoothstep(0.08, 0.55, vDirection.y);
+              vec2 starCell = floor(vDirection.xz * 92.0);
+              float starHash = fract(sin(dot(starCell, vec2(12.9898, 78.233))) * 43758.5453);
+              float star = step(0.9935, starHash) * sky * (0.45 + 0.55 * fract(starHash * 17.0));
+              color += vec3(0.78, 0.86, 0.9) * star;
               gl_FragColor = vec4(color, 1.0);
             }
           `}
@@ -487,10 +496,10 @@ function WorldAtmosphere({
       {dustGeometry.getAttribute('position').count > 0 ? (
         <points ref={dustRef} geometry={dustGeometry} frustumCulled={false}>
           <pointsMaterial
-            color="#a8cfca"
-            size={0.026}
+            color="#d7e6ee"
+            size={0.085}
             transparent
-            opacity={0.16}
+            opacity={0.42}
             depthWrite={false}
             sizeAttenuation
           />
