@@ -244,9 +244,16 @@ body.mf-lab-mode {
 
 .mf-lab[data-active-chapter='threshold'] .mf-world__grade {
   background:
-    linear-gradient(112deg, transparent 28%, rgb(190 220 215 / 0.055) 48%, transparent 66%),
-    linear-gradient(180deg, rgb(7 10 11 / 0.34), transparent 24%, transparent 72%, rgb(7 10 11 / 0.66)),
-    linear-gradient(90deg, rgb(7 10 11 / 0.48), transparent 36%, transparent 78%, rgb(7 10 11 / 0.18));
+    linear-gradient(112deg, transparent 28%, rgb(190 220 215 / 0.04) 48%, transparent 66%),
+    linear-gradient(180deg, rgb(7 10 11 / 0.22), transparent 18%, transparent 82%, rgb(7 10 11 / 0.36)),
+    linear-gradient(90deg, rgb(7 10 11 / 0.16), transparent 28%, transparent 82%, rgb(7 10 11 / 0.1));
+}
+
+.mf-lab[data-active-chapter='field'] .mf-world__grade,
+.mf-lab[data-active-chapter='lens'] .mf-world__grade {
+  background:
+    linear-gradient(180deg, rgb(7 10 11 / 0.26), transparent 16%, transparent 84%, rgb(7 10 11 / 0.32)),
+    linear-gradient(90deg, rgb(7 10 11 / 0.14), transparent 20%, transparent 82%, rgb(7 10 11 / 0.1));
 }
 
 .mf-lab[data-active-chapter='threshold'] .mf-world__grade::after {
@@ -527,32 +534,24 @@ body.mf-lab-mode {
 }
 
 .mf-copy--hero {
-  width: min(760px, 55vw);
+  width: min(460px, 40vw);
   max-width: none;
-  align-content: end;
-  padding-bottom: clamp(76px, 11vh, 132px);
+  align-content: start;
+  padding: 88px 28px 0 32px;
   isolation: isolate;
 }
 
 .mf-copy--hero::before {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  bottom: 0;
-  left: 0;
-  width: min(980px, 72vw);
-  height: min(620px, 68vh);
-  background: radial-gradient(ellipse at 18% 78%, rgb(4 8 9 / 0.88) 0 20%, rgb(4 8 9 / 0.58) 46%, transparent 76%);
-  pointer-events: none;
+  content: none;
 }
 
 .mf-hero-readout {
   display: grid;
-  width: min(560px, 43vw);
-  grid-template-columns: auto minmax(48px, 1fr) auto;
-  gap: 13px;
+  width: 100%;
+  grid-template-columns: auto minmax(32px, 1fr) auto;
+  gap: 10px;
   align-items: center;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
   color: rgb(228 225 217 / 0.48);
   font-family: 'JetBrains Mono', monospace;
   font-size: 7px;
@@ -566,10 +565,24 @@ body.mf-lab-mode {
 }
 
 .mf-copy--side {
-  width: min(620px, 52vw);
+  width: min(340px, 30vw);
   margin-left: auto;
-  background: linear-gradient(90deg, transparent, rgb(7 10 11 / 0.68) 28%, rgb(7 10 11 / 0.82));
+  align-content: start;
+  padding: 92px 88px 48px 16px;
+  background: none;
   transition: opacity 240ms ease, transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.mf-copy--side h2 {
+  font-size: clamp(22px, 2.2vw, 32px);
+  line-height: 1.02;
+}
+
+.mf-copy--side > p:not(.mf-kicker) {
+  max-width: none;
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .mf-lab[data-active-chapter='lens'] .mf-copy--side,
@@ -600,6 +613,12 @@ body.mf-lab-mode {
   text-transform: uppercase;
 }
 
+.mf-copy--hero .mf-kicker,
+.mf-copy--side .mf-kicker,
+.mf-lens-knot__heading .mf-kicker {
+  margin-bottom: 8px;
+}
+
 .mf-copy h1,
 .mf-copy h2 {
   max-width: 720px;
@@ -619,10 +638,11 @@ body.mf-lab-mode {
   display: grid;
   width: min-content;
   max-width: 100%;
-  font-size: clamp(56px, 5.2vw, 88px);
-  line-height: 0.82;
+  font-size: clamp(26px, 2.8vw, 40px);
+  line-height: 0.86;
   letter-spacing: 0;
   text-transform: uppercase;
+  text-shadow: 0 1px 18px rgb(7 10 11 / 0.55);
 }
 
 .mf-copy--hero h1 span {
@@ -640,12 +660,12 @@ body.mf-lab-mode {
 
 .mf-hero-statement {
   display: grid;
-  width: min(490px, 76vw);
-  grid-template-columns: 0.62fr 1.38fr;
-  gap: 20px;
+  width: 100%;
+  grid-template-columns: 1fr;
+  gap: 8px;
   align-items: start;
-  margin-top: 30px;
-  padding-top: 17px;
+  margin-top: 16px;
+  padding-top: 12px;
   border-top: 1px solid rgb(228 225 217 / 0.28);
   animation: mf-hero-fade 900ms 420ms both;
 }
@@ -667,10 +687,10 @@ body.mf-lab-mode {
 
 .mf-hero-domains {
   display: flex;
-  width: min(560px, 43vw);
+  width: 100%;
   flex-wrap: wrap;
-  gap: 7px 18px;
-  margin-top: 22px;
+  gap: 7px 14px;
+  margin-top: 14px;
   color: rgb(228 225 217 / 0.5);
   font-family: 'JetBrains Mono', monospace;
   font-size: 7px;
@@ -689,10 +709,13 @@ body.mf-lab-mode {
 }
 
 .mf-scroll-entry {
+  position: absolute;
+  bottom: 36px;
+  left: 8vw;
   display: flex;
   gap: 10px;
   align-items: center;
-  margin-top: 34px;
+  margin-top: 0;
   color: rgb(228 225 217 / 0.48);
   font-family: 'JetBrains Mono', monospace;
   font-size: 7px;
@@ -717,6 +740,12 @@ body.mf-lab-mode {
 .mf-copy h2 {
   font-size: clamp(34px, 4.4vw, 68px);
   line-height: 0.98;
+}
+
+.mf-beat--field .mf-copy h2,
+.mf-copy.mf-copy--side h2 {
+  font-size: clamp(22px, 2.2vw, 32px);
+  line-height: 1.04;
 }
 
 .mf-copy > p:not(.mf-kicker) {
@@ -858,14 +887,14 @@ body.mf-lab-mode {
 
 .mf-lens-knot__heading {
   position: absolute;
-  top: clamp(116px, 15vh, 168px);
-  left: 7vw;
-  width: min(430px, 36vw);
+  top: 92px;
+  left: 28px;
+  width: min(260px, 28vw);
 }
 
 .mf-lens-knot__heading h2 {
   margin: 0;
-  font-size: clamp(28px, 3.2vw, 46px);
+  font-size: clamp(22px, 2.2vw, 32px);
   font-weight: 620;
   line-height: 1.02;
   text-wrap: balance;
@@ -885,11 +914,11 @@ body.mf-lab-mode {
 .mf-lens-control button {
   display: grid;
   min-width: 0;
-  min-height: 62px;
+  min-height: 52px;
   grid-template-columns: 24px 1fr;
   align-items: center;
   gap: 9px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border: 0;
   border-right: 1px solid var(--mf-line);
   background: transparent;
@@ -2759,8 +2788,6 @@ body.mf-lab-mode {
     padding: 92px 28px 54px;
   }
 
-  .mf-copy--hero,
-  .mf-copy--side,
   .mf-copy--passage,
   .mf-copy--descent {
     width: 100%;
@@ -2770,20 +2797,42 @@ body.mf-lab-mode {
     align-content: end;
   }
 
+  .mf-copy--hero {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    align-content: start;
+    padding: 76px 20px 0;
+    background: linear-gradient(180deg, rgb(7 10 11 / 0.4), transparent 62%);
+  }
+
+  .mf-copy--hero::before {
+    content: none;
+  }
+
+  .mf-copy--side {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    align-content: start;
+    padding: 76px 20px 0;
+    background: linear-gradient(180deg, rgb(7 10 11 / 0.34), transparent 64%);
+  }
+
   .mf-copy h1 {
     font-size: 49px;
   }
 
   .mf-copy--hero h1 {
     max-width: calc(100vw - 78px);
-    font-size: 35px;
+    font-size: 26px;
   }
 
   .mf-hero-statement {
-    width: calc(100% - 24px);
+    width: 100%;
     grid-template-columns: 1fr;
-    gap: 9px;
-    margin-top: 22px;
+    gap: 8px;
+    margin-top: 14px;
   }
 
   .mf-hero-statement p {
@@ -2813,9 +2862,26 @@ body.mf-lab-mode {
     font-size: 37px;
   }
 
+  .mf-beat--field .mf-copy h2,
+  .mf-copy.mf-copy--side h2,
+  .mf-copy--side h2 {
+    font-size: 22px;
+  }
+
+  .mf-copy--side > p:not(.mf-kicker) {
+    max-width: calc(100% - 28px);
+    margin-top: 10px;
+    font-size: 12px;
+  }
+
   .mf-copy > p:not(.mf-kicker) {
     max-width: calc(100% - 28px);
     font-size: 13px;
+  }
+
+  .mf-scroll-entry {
+    left: 28px;
+    bottom: calc(var(--mf-mobile-rail-clearance, 56px) + 16px);
   }
 
   .mf-lens-knot {
@@ -2824,13 +2890,13 @@ body.mf-lab-mode {
 
   .mf-lens-knot__heading {
     position: absolute;
-    top: 104px;
+    top: 78px;
     left: 18px;
-    width: min(50vw, 195px);
+    width: min(58vw, 210px);
   }
 
   .mf-lens-knot__heading h2 {
-    font-size: 32px;
+    font-size: 22px;
   }
 
   .mf-lens-control {
@@ -2840,11 +2906,11 @@ body.mf-lab-mode {
 
   .mf-lens-control button {
     min-width: 0;
-    min-height: 74px;
+    min-height: 56px;
     grid-template-columns: 1fr;
     justify-items: center;
     gap: 6px;
-    padding: 10px 5px;
+    padding: 8px 5px;
     border-right: 1px solid var(--mf-line);
     border-bottom: 0;
     text-align: center;
@@ -3400,7 +3466,7 @@ body.mf-lab-mode {
 
 @media (max-width: 360px) {
   .mf-copy--hero h1 {
-    font-size: 30px;
+    font-size: 22px;
   }
 }
 
@@ -3455,11 +3521,12 @@ body.mf-lab-mode {
 
   .mf-copy--hero {
     width: min(520px, 54vw);
-    align-content: end;
+    align-content: start;
+    padding-top: 68px;
   }
 
   .mf-copy--hero h1 {
-    font-size: clamp(34px, 6.5vw, 54px);
+    font-size: clamp(22px, 4.2vw, 32px);
   }
 
   .mf-hero-statement {
@@ -3479,9 +3546,9 @@ body.mf-lab-mode {
   }
 
   .mf-lens-knot__heading {
-    top: 68px;
+    top: 62px;
     left: 18px;
-    width: min(310px, 38vw);
+    width: min(240px, 42vw);
   }
 
   .mf-lens-knot__heading .mf-kicker {
@@ -3489,7 +3556,7 @@ body.mf-lab-mode {
   }
 
   .mf-lens-knot__heading h2 {
-    font-size: clamp(24px, 4.2vw, 34px);
+    font-size: 20px;
   }
 
   .mf-lens-control {

@@ -242,6 +242,28 @@ export function SchoolActOverlay({
       </section>
 
       <section
+        className="sa-secretariat-passage"
+        data-chapter="schoolmate"
+        data-reduced-motion={reducedMotion || undefined}
+        aria-labelledby="sa-secretariat-passage-title"
+      >
+        <div className="sa-secretariat-passage__frame">
+          <div className="sa-secretariat-passage__route" aria-hidden="true">
+            <span>Clasă</span>
+            <i />
+            <strong>Secretariat</strong>
+            <i />
+            <span>Dovadă</span>
+          </div>
+          <div className="sa-secretariat-passage__copy">
+            <p className="sa-kicker">07 / Secretariat passage</p>
+            <h2 id="sa-secretariat-passage-title">Cererea ajunge pe birou.</h2>
+            <p>Monitorul, teancul de hârtii și dulapurile sunt același birou administrativ, înainte de pagina de dovezi.</p>
+          </div>
+        </div>
+      </section>
+
+      <section
         id="mf-schoolmate"
         className="sa-clearing"
         data-chapter="schoolmate"

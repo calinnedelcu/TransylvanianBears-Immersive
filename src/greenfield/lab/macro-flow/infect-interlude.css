@@ -33,12 +33,30 @@
   height: 100%;
 }
 
+.ix-arrival {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  opacity: calc(1 - min(1, var(--ix-route-progress) * 14));
+}
+
+.ix-arrival i {
+  width: 9px;
+  aspect-ratio: 1;
+  background: #f2c36a;
+  box-shadow: 0 0 34px #f2a33f;
+  transform: scale(calc(1 + min(18, var(--ix-route-progress) * 220)));
+}
+
 .ix-canvas {
   z-index: -3;
   object-fit: cover;
   image-rendering: pixelated;
-  opacity: 0.68;
-  filter: contrast(1.28);
+  opacity: 0.92;
+  filter: contrast(1.18);
 }
 
 .ix-grid {
@@ -63,8 +81,8 @@
   z-index: -1;
   inset: 0;
   background:
-    linear-gradient(90deg, #000 0, rgb(0 0 0 / 0.88) 7vw, transparent 38%, transparent 68%, rgb(0 0 0 / 0.82) 100%),
-    linear-gradient(180deg, #000 0, transparent 24%, transparent 70%, #000 100%);
+    linear-gradient(90deg, rgb(0 0 0 / 0.72) 0, rgb(0 0 0 / 0.28) 8vw, transparent 32%, transparent 72%, rgb(0 0 0 / 0.42) 100%),
+    linear-gradient(180deg, rgb(0 0 0 / 0.42) 0, transparent 18%, transparent 78%, rgb(0 0 0 / 0.55) 100%);
 }
 
 .ix-stage::after {
@@ -77,9 +95,9 @@
 .ix-head {
   position: absolute;
   z-index: 10;
-  top: 14dvh;
-  left: 7vw;
-  max-width: 610px;
+  top: 10dvh;
+  left: 5vw;
+  max-width: 420px;
 }
 
 .ix-head p,
@@ -97,10 +115,10 @@
 }
 
 .ix-head h2 {
-  margin: 18px 0 0;
-  font-size: clamp(62px, 8vw, 122px);
+  margin: 12px 0 0;
+  font-size: clamp(34px, 4.4vw, 62px);
   font-weight: 500;
-  line-height: 0.79;
+  line-height: 0.86;
   text-transform: uppercase;
   text-wrap: balance;
 }
@@ -118,11 +136,11 @@
 .ix-topology {
   position: absolute;
   z-index: 10;
-  top: 14dvh;
-  right: 7vw;
+  top: 10dvh;
+  right: 5vw;
   display: grid;
-  width: min(420px, 34vw);
-  gap: 14px;
+  width: min(280px, 24vw);
+  gap: 10px;
 }
 
 .ix-topology > div {
@@ -198,22 +216,22 @@
 .ix-nodes {
   position: absolute;
   z-index: 10;
-  right: 7vw;
-  bottom: 13dvh;
+  right: 5vw;
+  bottom: 11dvh;
   display: grid;
-  width: min(520px, 42vw);
+  width: min(360px, 34vw);
   grid-template-columns: repeat(3, 1fr);
   border: 2px solid #fff;
 }
 
 .ix-nodes button {
   display: grid;
-  min-height: 100px;
+  min-height: 56px;
   grid-template-columns: auto 1fr;
   grid-template-rows: auto 1fr;
   align-items: center;
-  gap: 8px 12px;
-  padding: 14px;
+  gap: 4px 8px;
+  padding: 8px 10px;
   border: 0;
   border-right: 2px solid #fff;
   background: #000;
@@ -250,23 +268,23 @@
 .ix-nodes button strong {
   grid-column: 1 / -1;
   align-self: end;
-  font-size: 22px;
+  font-size: 14px;
 }
 
 .ix-readout {
   position: absolute;
   z-index: 10;
-  bottom: 10dvh;
-  left: 7vw;
+  bottom: 9dvh;
+  left: 5vw;
   display: grid;
-  width: min(430px, 34vw);
-  gap: 11px;
-  padding-top: 18px;
+  width: min(280px, 28vw);
+  gap: 7px;
+  padding-top: 12px;
   border-top: 2px solid #fff;
 }
 
 .ix-readout strong {
-  font-size: 20px;
+  font-size: 15px;
   text-transform: uppercase;
 }
 
@@ -281,10 +299,10 @@
 .ix-progress {
   position: absolute;
   z-index: 10;
-  right: 7vw;
-  bottom: 7dvh;
+  right: 5vw;
+  bottom: 5dvh;
   display: grid;
-  width: min(520px, 42vw);
+  width: min(360px, 34vw);
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 13px;
@@ -455,7 +473,7 @@
   }
 
   .ix-canvas {
-    opacity: 0.56;
+    opacity: 0.88;
   }
 
   .ix-stage::after {

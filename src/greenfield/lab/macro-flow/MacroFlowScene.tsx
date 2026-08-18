@@ -1095,23 +1095,36 @@ function RenderBudgetMonitor() {
 
 function SchoolTransitionLights({
   handoffProgressRef,
-}: Readonly<{ handoffProgressRef: MutableRefObject<number> }>) {
+  schoolActProgressRef,
+}: Readonly<{
+  handoffProgressRef: MutableRefObject<number>;
+  schoolActProgressRef: MutableRefObject<number>;
+}>) {
   const entryRef = useRef<THREE.PointLight>(null);
   const accessRef = useRef<THREE.PointLight>(null);
   const corridorRef = useRef<THREE.PointLight>(null);
+  const cyan = useMemo(() => new THREE.Color('#75dcda'), []);
+  const warm = useMemo(() => new THREE.Color('#e0c27a'), []);
 
   useFrame(() => {
     const intensity = 1 - smooth(range(handoffProgressRef.current, 0.52, 0.96));
+    const occupied = smooth(range(schoolActProgressRef.current, 0.34, 0.66));
     if (entryRef.current) entryRef.current.intensity = 30 * intensity;
-    if (accessRef.current) accessRef.current.intensity = 24 * intensity;
-    if (corridorRef.current) corridorRef.current.intensity = 38 * intensity;
+    if (accessRef.current) {
+      accessRef.current.intensity = (22 + occupied * 10) * intensity;
+      accessRef.current.color.copy(cyan).lerp(warm, occupied);
+    }
+    if (corridorRef.current) {
+      corridorRef.current.intensity = (18 + occupied * 28) * intensity;
+      corridorRef.current.color.copy(cyan).lerp(warm, occupied);
+    }
   });
 
   return (
     <>
       <pointLight ref={entryRef} position={[0, 5, -54]} intensity={30} distance={24} color="#c0a66b" />
       <pointLight ref={accessRef} position={[0, 5, -79]} intensity={24} distance={22} color="#75dcda" />
-      <pointLight ref={corridorRef} position={[0, 6, -99]} intensity={38} distance={24} color="#8dded8" />
+      <pointLight ref={corridorRef} position={[0, 6, -99]} intensity={38} distance={26} color="#8dded8" />
     </>
   );
 }
@@ -1246,8 +1259,8 @@ function World({
 
   return (
     <>
-      <color attach="background" args={[showBuried ? '#070707' : '#071011']} />
-      <fog attach="fog" args={[showBuried ? '#0b0908' : '#0a1719', showBuried ? 12 : 26, showBuried ? 70 : 94]} />
+      <color attach="background" args={[showBuried ? '#070707' : showSchool ? '#0c1211' : '#071011']} />
+      <fog attach="fog" args={[showBuried ? '#0b0908' : showSchool ? '#141916' : '#0a1719', showBuried ? 12 : showSchool ? 18 : 26, showBuried ? 70 : showSchool ? 78 : 94]} />
       <WorldAtmosphere
         progressRef={progressRef}
         qualityTier={qualityTier}
@@ -1260,9 +1273,9 @@ function World({
       />
       {showHemisphere ? (
         <hemisphereLight
-          intensity={showBuried ? 0.16 : showThreshold ? (compact ? 0.82 : 0.68) : 0.38}
-          color={showBuried ? '#b8ac98' : showThreshold ? '#b8cecd' : '#b9cfcd'}
-          groundColor={showBuried ? '#130f0d' : showThreshold ? '#263029' : '#191b17'}
+          intensity={showBuried ? 0.16 : showThreshold ? (compact ? 0.82 : 0.68) : showSchool ? 0.46 : 0.38}
+          color={showBuried ? '#b8ac98' : showThreshold ? '#b8cecd' : showSchool ? '#d2c6a4' : '#b9cfcd'}
+          groundColor={showBuried ? '#130f0d' : showThreshold ? '#263029' : showSchool ? '#1b1712' : '#191b17'}
         />
       ) : null}
       <directionalLight
@@ -1291,7 +1304,10 @@ function World({
         />
       ) : null}
       {showSchool ? (
-        <SchoolTransitionLights handoffProgressRef={descentHandoffProgressRef} />
+        <SchoolTransitionLights
+          handoffProgressRef={descentHandoffProgressRef}
+          schoolActProgressRef={schoolActProgressRef}
+        />
       ) : null}
       {showBuried ? <BuriedTransitionLight handoffProgressRef={descentHandoffProgressRef} /> : null}
 
@@ -1362,6 +1378,7 @@ function World({
       {showSchool ? (
         <SchoolActPackage
           localProgressRef={schoolActProgressRef}
+          reducedMotion={reducedMotion}
           handoffProgressRef={descentHandoffProgressRef}
           traceProgress={traceProgress}
           traceOutcome={traceOutcome}

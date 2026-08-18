@@ -19,17 +19,37 @@
   top: 0;
   min-height: 100dvh;
   overflow: hidden;
-  background: #efeee9;
+  background: #e6e1d3;
   isolation: isolate;
   touch-action: pan-y;
 }
 
+.rc-world,
 .rc-canvas {
   position: absolute;
   z-index: -2;
   inset: 0;
   width: 100%;
   height: 100%;
+}
+
+.rc-world-canvas,
+.rc-world canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.rc-instrument:has(.rc-world) .rc-source-block,
+.rc-instrument:has(.rc-world) .rc-projection--economy-timeline,
+.rc-instrument:has(.rc-world) .rc-projection--economy-drift,
+.rc-instrument:has(.rc-world) .rc-projection--automation-shap {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+.rc-instrument:has(.rc-world) .rc-projection-reticle {
+  opacity: 0.28;
 }
 
 .rc-instrument::before,
@@ -258,8 +278,8 @@
 .rc-instrument::before {
   inset: 0;
   background:
-    linear-gradient(90deg, #efeee9 0, transparent 22%, transparent 78%, #efeee9 100%),
-    linear-gradient(180deg, #efeee9 0, transparent 22%, transparent 78%, #efeee9 100%);
+    linear-gradient(90deg, rgb(230 225 211 / 0.55) 0, transparent 18%, transparent 82%, rgb(230 225 211 / 0.42) 100%),
+    linear-gradient(180deg, rgb(230 225 211 / 0.38) 0, transparent 16%, transparent 80%, rgb(230 225 211 / 0.55) 100%);
 }
 
 .rc-instrument::after {
@@ -273,9 +293,9 @@
 .rc-heading {
   position: absolute;
   z-index: 4;
-  top: 12dvh;
-  left: 7vw;
-  max-width: 680px;
+  top: 10dvh;
+  left: 5vw;
+  max-width: 460px;
 }
 
 .rc-heading p,
@@ -296,11 +316,11 @@
 }
 
 .rc-heading h2 {
-  margin: 17px 0 0;
+  margin: 12px 0 0;
   font-family: 'Manrope', sans-serif;
-  font-size: clamp(60px, 8vw, 124px);
+  font-size: clamp(34px, 4.4vw, 64px);
   font-weight: 300;
-  line-height: 0.82;
+  line-height: 0.88;
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -308,17 +328,17 @@
 .rc-lenses {
   position: absolute;
   z-index: 4;
-  top: 12dvh;
-  right: 7vw;
+  top: 10dvh;
+  right: 5vw;
   display: grid;
-  width: min(520px, 39vw);
+  width: min(360px, 32vw);
   grid-template-columns: repeat(2, 1fr);
   border: 1px solid #0f1114;
 }
 
 .rc-lenses button {
   display: grid;
-  min-height: 94px;
+  min-height: 58px;
   grid-template-columns: 1fr auto;
   align-content: space-between;
   gap: 10px;
@@ -372,10 +392,10 @@
 .rc-readout {
   position: absolute;
   z-index: 4;
-  bottom: 9dvh;
-  left: 7vw;
+  bottom: 8dvh;
+  left: 5vw;
   display: grid;
-  width: min(520px, 38vw);
+  width: min(340px, 30vw);
   gap: 10px;
   padding: 18px 0 0;
   border-top: 2px solid #0f1114;
@@ -409,10 +429,10 @@
 .rc-phases {
   position: absolute;
   z-index: 4;
-  right: 7vw;
-  bottom: 9dvh;
+  right: 5vw;
+  bottom: 8dvh;
   display: grid;
-  width: min(520px, 39vw);
+  width: min(360px, 32vw);
   grid-template-columns: repeat(3, 1fr);
   margin: 0;
   padding: 0;
@@ -745,51 +765,69 @@
 }
 
 .rc-handoff {
+  position: relative;
   display: grid;
   min-height: 100dvh;
   place-content: center;
   justify-items: center;
-  gap: 22px;
+  gap: 18px;
   padding: 80px 7vw;
-  background: #f0efea;
-  color: #0f1114;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, #efeee9 0%, #8d8a82 18%, #2a2e2d 48%, #101413 72%, #030708 100%);
+  color: #e7e8e0;
   text-align: center;
 }
 
+.rc-handoff__axis {
+  position: absolute;
+  top: 6%;
+  bottom: 6%;
+  left: 50%;
+  width: 1px;
+  background: linear-gradient(180deg, rgb(196 166 95 / 0.04), rgb(196 166 95 / 0.62) 36%, rgb(114 217 214 / 0.78) 68%, rgb(114 217 214 / 0.08));
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
 .rc-handoff > svg {
-  width: 42px;
-  height: 42px;
+  position: relative;
+  width: 28px;
+  height: 28px;
   stroke-width: 1;
 }
 
 .rc-handoff > strong {
-  max-width: 960px;
+  position: relative;
+  max-width: 640px;
   font-family: 'Manrope', sans-serif;
-  font-size: clamp(56px, 8vw, 118px);
+  font-size: clamp(28px, 4vw, 48px);
   font-weight: 300;
-  line-height: 0.84;
+  line-height: 0.92;
   letter-spacing: 0;
   text-transform: uppercase;
   text-wrap: balance;
 }
 
 .rc-handoff p {
-  max-width: 590px;
+  position: relative;
+  max-width: 520px;
   margin: 0;
-  color: rgb(15 17 20 / 0.64);
+  color: rgb(231 232 224 / 0.58);
   font-family: 'Manrope', sans-serif;
   font-size: 13px;
   line-height: 1.6;
 }
 
 .rc-handoff__next {
+  position: relative;
   display: inline-flex;
   min-height: 44px;
   align-items: center;
   gap: 10px;
   margin-top: 20px;
   padding: 0 14px;
-  border: 1px solid #0f1114;
+  border: 1px solid rgb(231 232 224 / 0.42);
   font-size: 8px;
   text-transform: uppercase;
 }
@@ -978,7 +1016,7 @@
   }
 
   .rc-handoff > strong {
-    font-size: 47px;
+    font-size: 28px;
   }
 }
 

@@ -100,7 +100,8 @@ function makeMapLabelTexture(label: string, meta: string, color: string) {
 function CameraDirector({ progressRef, reducedMotion }: Pick<EvidenceWeaveSceneProps, 'progressRef' | 'reducedMotion'>) {
   const { camera, size } = useThree();
   const cameraPath = useMemo(() => new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0, 0.4, 15.5),
+    new THREE.Vector3(0.16, 0.08, 7.7),
+    new THREE.Vector3(2.2, 0.9, 9.4),
     new THREE.Vector3(5.8, 2.4, 10.5),
     new THREE.Vector3(-6.7, 2.1, 8.5),
     new THREE.Vector3(6.4, 0.3, 8.2),
@@ -127,7 +128,7 @@ function CameraDirector({ progressRef, reducedMotion }: Pick<EvidenceWeaveSceneP
     else returnPath.getPointAt(returnProgress, desired);
     if (mobile && progress <= 0.78) {
       desired.x *= 0.42;
-      desired.z += 3.2;
+      desired.z += THREE.MathUtils.lerp(0.9, 3.2, THREE.MathUtils.smoothstep(progress, 0.04, 0.2));
     } else if (mobile) {
       desired.y += 1.2;
       desired.z += 2.8;
@@ -135,7 +136,8 @@ function CameraDirector({ progressRef, reducedMotion }: Pick<EvidenceWeaveSceneP
     const damping = reducedMotion ? 1 : 1 - Math.exp(-delta * 4.8);
     camera.position.lerp(desired, damping);
 
-    if (progress < 0.29) target.set(mobile ? -1.6 : -2.8 * progress, 0.45, 0);
+    if (progress < 0.08) target.set(0, 0.06, 0);
+    else if (progress < 0.29) target.set(mobile ? -1.6 : -2.8 * ((progress - 0.08) / 0.21), 0.45, 0);
     else if (progress < 0.5) target.set(mobile ? 3.55 : 2.1, 0.1, 0);
     else if (progress < 0.7) target.set(-0.2, mobile ? -2.5 : -1.75, 0);
     else if (progress < 0.82) target.set(0, 0, 0);
@@ -206,9 +208,10 @@ function ArtifactScreen({
     group.lookAt(camera.position);
     group.rotateZ(layout.tilt);
     const mobile = size.width < 760;
+    const arrive = THREE.MathUtils.smoothstep(progressRef.current, 0.05, 0.16);
     const mapVisibility = 1 - THREE.MathUtils.smoothstep(progressRef.current, 0.6, 0.72);
     const baseScale = active ? (mobile ? 0.88 : 1.12) : (mobile ? 0.68 : 0.88);
-    const targetScale = Math.max(0.001, baseScale * mapVisibility);
+    const targetScale = Math.max(0.001, baseScale * mapVisibility * arrive);
     const next = THREE.MathUtils.damp(group.scale.x, targetScale, 6, delta);
     group.scale.setScalar(next);
     group.position.y = layout.position[1] + Math.sin(clock.elapsedTime * 0.65 + Number(artifact.index)) * 0.08;
@@ -579,6 +582,7 @@ function Loom({
   const rootRef = useRef<THREE.Group>(null);
   const ringRefs = useRef<Array<THREE.Mesh | null>>([]);
   const hubRef = useRef<THREE.Group>(null);
+  const axisRef = useRef<THREE.Mesh>(null);
   const artifactById = useMemo(() => Object.fromEntries(EVIDENCE_ARTIFACTS.map((item) => [item.id, item])), []);
 
   useFrame(({ clock }, delta) => {
@@ -588,8 +592,16 @@ function Loom({
     const open = THREE.MathUtils.smoothstep(progress, 0.02, 0.18);
     const flatten = THREE.MathUtils.smoothstep(progress, 0.65, 0.78);
     const mapAlignment = THREE.MathUtils.smoothstep(progress, 0.61, 0.77);
-    root.rotation.y = THREE.MathUtils.damp(root.rotation.y, (1 - open) * 1.5, 5, delta);
-    root.rotation.x = THREE.MathUtils.damp(root.rotation.x, flatten * -Math.PI / 2, 4, delta);
+    root.rotation.y = THREE.MathUtils.damp(root.rotation.y, (1 - open) * 1.58, 5, delta);
+    root.rotation.x = THREE.MathUtils.damp(root.rotation.x, (1 - open) * 0.18 + flatten * -Math.PI / 2, 4, delta);
+    if (axisRef.current) {
+      const axisMaterial = axisRef.current.material;
+      if (axisMaterial instanceof THREE.MeshBasicMaterial) {
+        axisMaterial.opacity = THREE.MathUtils.damp(axisMaterial.opacity, (1 - open) * 0.78, 5, delta);
+      }
+      const axisScale = THREE.MathUtils.damp(axisRef.current.scale.y, THREE.MathUtils.lerp(1, 0.16, open), 5, delta);
+      axisRef.current.scale.set(1, axisScale, 1);
+    }
     root.rotation.z = THREE.MathUtils.damp(root.rotation.z, progress * 0.24, 3, delta);
     ringRefs.current.forEach((ring, index) => {
       if (!ring) return;
@@ -636,6 +648,11 @@ function Loom({
           />
         </mesh>
       ))}
+
+      <mesh ref={axisRef} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.018, 0.018, 22, 10]} />
+        <meshBasicMaterial color="#c4a65f" transparent opacity={0.78} depthWrite={false} />
+      </mesh>
 
       <group ref={hubRef}>
         <mesh>
@@ -1050,7 +1067,7 @@ export default function EvidenceWeaveScene(props: EvidenceWeaveSceneProps) {
     <Canvas
       className="ew-canvas"
       dpr={dpr}
-      camera={{ fov: 47, near: 0.1, far: 110, position: [0, 0.4, 15.5] }}
+      camera={{ fov: 47, near: 0.1, far: 110, position: [0.16, 0.08, 7.7] }}
       gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
       fallback={<div className="ew-fallback">Evidence scene unavailable</div>}
     >

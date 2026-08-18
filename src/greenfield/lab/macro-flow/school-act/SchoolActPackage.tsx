@@ -60,6 +60,7 @@ export type SchoolActPackageProps = Readonly<{
   traceProgress: number;
   traceOutcome: MacroTraceOutcome;
   qualityTier: QualityTier;
+  reducedMotion?: boolean;
 }>;
 
 type AnimatedMaterial = THREE.MeshStandardMaterial | THREE.MeshBasicMaterial;
@@ -81,6 +82,10 @@ type RuntimeNodes = Readonly<{
   requestThread: THREE.Object3D | null;
   requestPacket: THREE.Object3D | null;
   descentGuide: THREE.Object3D | null;
+  noticePapers: THREE.Object3D[];
+  practicalLights: THREE.Mesh[];
+  tokenField: THREE.Object3D | null;
+  crestBrass: THREE.Mesh[];
 }>;
 
 type RuntimePackage = Readonly<{
@@ -117,6 +122,7 @@ type RuntimePackage = Readonly<{
     pivotRotationY: number;
     contactScales: THREE.Vector3[];
     packetScale: THREE.Vector3 | null;
+    noticePaperPositions: THREE.Vector3[];
   }>;
   requiredNodeCount: number;
   nodeCount: number;
@@ -293,6 +299,20 @@ function makeRuntimePackage(
     ].filter((mesh): mesh is THREE.Mesh => Boolean(mesh)),
   };
 
+  const noticePapers: THREE.Object3D[] = [];
+  const practicalLights: THREE.Mesh[] = [];
+  const crestBrass: THREE.Mesh[] = [];
+  scene.traverse((child) => {
+    if (child.name.startsWith('Notice paper')) noticePapers.push(child);
+    if (child instanceof THREE.Mesh && child.name.startsWith('Civic ceiling light diffuser')) {
+      practicalLights.push(child);
+    }
+    if (child instanceof THREE.Mesh && /bear crest brass/i.test(child.name)) {
+      crestBrass.push(child);
+    }
+  });
+  practicalLights.sort((left, right) => left.position.z - right.position.z);
+
   const nodes: RuntimeNodes = {
     modelRoot,
     staticEnvironment: scene.getObjectByName('EXPORT_School_StaticEnvironment') ?? null,
@@ -305,6 +325,10 @@ function makeRuntimePackage(
     requestThread,
     requestPacket: scene.getObjectByName('SchoolMate request packet') ?? null,
     descentGuide,
+    noticePapers,
+    practicalLights,
+    tokenField: scene.getObjectByName('Aegis phone token field') ?? null,
+    crestBrass,
   };
 
   const contactMaterials = transactionContacts.map((contact) => materialList(contact));
@@ -359,6 +383,7 @@ function makeRuntimePackage(
       pivotRotationY: nodes.turnstilePivot?.rotation.y ?? 0,
       contactScales: transactionContacts.map((contact) => contact.scale.clone()),
       packetScale: nodes.requestPacket?.scale.clone() ?? null,
+      noticePaperPositions: noticePapers.map((paper) => paper.position.clone()),
     },
     requiredNodeCount: REQUIRED_NODE_NAMES.filter((name) => scene.getObjectByName(name)).length,
     nodeCount,
@@ -379,6 +404,7 @@ export function SchoolActPackage({
   traceProgress,
   traceOutcome,
   qualityTier,
+  reducedMotion = false,
 }: SchoolActPackageProps) {
   const { scene: sourceScene } = useGLTF(SCHOOL_ACT_MODEL_URL, false, true);
   const [aegisTexture, schoolMateTexture] = useTexture([
@@ -432,6 +458,7 @@ export function SchoolActPackage({
     const canonicalTrace = Math.max(explicitTrace, scrollResolvedTrace);
     const isAllowed = traceOutcome === 'allowed' || canonicalTrace >= 0.999;
     const entryReveal = range(progress, 0, 0.12);
+    const gateOpen = isAllowed ? 1 : range(canonicalTrace, 0.82, 1);
 
     runtime.materialStates.forEach(({ material, opacity, visible }) => {
       material.opacity = opacity;
@@ -504,24 +531,53 @@ export function SchoolActPackage({
     });
 
     if (runtime.nodes.turnstilePivot) {
-      const gateOpen = isAllowed ? 1 : range(canonicalTrace, 0.82, 1);
       runtime.nodes.turnstilePivot.rotation.y = runtime.base.pivotRotationY
         + TURNSTILE_OPEN_RADIANS * gateOpen;
     }
 
     if (runtime.nodes.student && runtime.base.studentPosition) {
       const crossing = range(progress, 0.455, 0.58) * (isAllowed ? 1 : 0);
+      const waitBreath = reducedMotion || crossing > 0.02
+        ? 0
+        : Math.sin(state.clock.elapsedTime * 1.55) * 0.016;
       runtime.nodes.student.position.copy(runtime.base.studentPosition);
+      runtime.nodes.student.position.y += waitBreath;
       runtime.nodes.student.position.z -= crossing * 6.2;
       runtime.nodes.student.position.x += crossing * 1.15;
+      runtime.nodes.student.rotation.y = crossing * 0.22;
     }
 
-    const ambience = qualityTier === 'editorial'
+    if (runtime.nodes.tokenField) {
+      const tokenReady = Math.max(range(progress, 0.12, 0.24), range(canonicalTrace, 0, 0.18));
+      runtime.nodes.tokenField.visible = tokenReady > 0.02;
+      materialList(runtime.nodes.tokenField).forEach((material) => {
+        if (material instanceof THREE.MeshStandardMaterial) {
+          material.emissiveIntensity = 1.1 + tokenReady * 5.4 + canonicalTrace * 2.2;
+        }
+      });
+    }
+
+    runtime.nodes.crestBrass.forEach((mesh) => {
+      const material = mesh.material;
+      if (material instanceof THREE.MeshStandardMaterial) {
+        material.emissive = material.emissive ?? new THREE.Color('#b29a59');
+        material.emissiveIntensity = 0.08 + gateOpen * 1.15;
+      }
+    });
+
+    const ambience = qualityTier === 'editorial' || reducedMotion
       ? 1
       : 0.985 + Math.sin(state.clock.elapsedTime * 1.37) * 0.015;
     const occupiedLight = range(progress, 0.34, 0.66);
     runtime.warmMaterials.forEach((material) => {
       material.emissiveIntensity = (0.72 + occupiedLight * 4.08) * ambience;
+    });
+    runtime.nodes.practicalLights.forEach((mesh, index) => {
+      const turnOn = range(progress, 0.33 + index * 0.032, 0.41 + index * 0.032);
+      const material = mesh.material;
+      if (material instanceof THREE.MeshStandardMaterial) {
+        material.emissiveIntensity = (0.28 + turnOn * (1.6 + gateOpen * 3.4)) * ambience;
+      }
     });
 
     const requestProgress = range(progress, 0.565, 0.875);
@@ -537,6 +593,19 @@ export function SchoolActPackage({
       );
       runtime.nodes.requestPacket.visible = requestProgress > 0.001;
     }
+    runtime.nodes.noticePapers.forEach((paper, index) => {
+      const base = runtime.base.noticePaperPositions[index];
+      if (!base) return;
+      const pass = range(requestProgress, index * 0.14, index * 0.14 + 0.2);
+      paper.position.copy(base);
+      paper.position.x -= pass * 0.035;
+      paper.rotation.z = (index - 2) * 0.015 + pass * 0.04;
+      materialList(paper).forEach((material) => {
+        if (material instanceof THREE.MeshStandardMaterial) {
+          material.emissiveIntensity = pass * 0.55;
+        }
+      });
+    });
 
     const aegisEvidence = range(progress, 0.12, 0.32);
     runtime.screenMaterials.aegis.opacity = 0.08 + aegisEvidence * 0.92;

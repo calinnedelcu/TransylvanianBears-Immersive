@@ -182,6 +182,7 @@ export default function InfectInterlude() {
     journeyProgressRef.current = progress;
     journey.style.setProperty('--ix-route-progress', progress.toFixed(4));
     journey.style.setProperty('--ix-stage-progress', ((progress * STAGES.length) % 1).toFixed(4));
+    journey.dataset.arrival = progress < 0.08 ? 'true' : 'false';
     drawStaticFrameRef.current?.();
 
     if (nextStageIndex !== lastStageIndexRef.current) {
@@ -264,7 +265,28 @@ export default function InfectInterlude() {
       context.fillStyle = '#000';
       context.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      if (currentImage) {
+      const arrival = currentIndex === 0
+        ? (reducedMotion ? 1 : smoothstep(0, 0.2, localProgress))
+        : 1;
+
+      if (currentImage && arrival < 1) {
+        const size = Math.max(4, arrival * Math.max(CANVAS_WIDTH, CANVAS_HEIGHT) * 1.2);
+        context.save();
+        context.beginPath();
+        context.rect(
+          (CANVAS_WIDTH - size) / 2,
+          (CANVAS_HEIGHT - size) / 2,
+          size,
+          size,
+        );
+        context.clip();
+        drawCover(context, currentImage, 0, 1.02);
+        context.restore();
+        if (arrival < 0.42) {
+          context.fillStyle = '#f2c36a';
+          context.fillRect(CANVAS_WIDTH / 2 - 2, CANVAS_HEIGHT / 2 - 2, 4, 4);
+        }
+      } else if (currentImage) {
         drawCover(context, currentImage, -transition * CANVAS_WIDTH, 1.025 + localProgress * 0.035);
       }
       if (transition > 0 && nextImage) {
@@ -272,7 +294,9 @@ export default function InfectInterlude() {
       }
 
       const tracerProgress = clamp(localProgress / 0.7);
-      drawVirusRoute(context, currentStage.id, tracerProgress, reducedMotion ? 0 : time);
+      if (arrival > 0.55) {
+        drawVirusRoute(context, currentStage.id, tracerProgress, reducedMotion ? 0 : time);
+      }
 
       if (transition > 0.03 && !reducedMotion) {
         context.save();
@@ -369,6 +393,7 @@ export default function InfectInterlude() {
     <section id="mf-infect" className="ix-section" data-chapter="infect">
       <div id="ix-route" ref={journeyRef} className="ix-journey">
         <div className="ix-stage" onPointerMove={moveSignal} onPointerLeave={leaveSignal}>
+          <div className="ix-arrival" aria-hidden="true"><i /></div>
           <canvas
             ref={canvasRef}
             className="ix-canvas"

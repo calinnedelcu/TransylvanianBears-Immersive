@@ -1,14 +1,41 @@
 import { ArrowDown, ExternalLink, LineChart, Network, Orbit, ScanSearch } from 'lucide-react';
 import {
+  Component,
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useRef,
   useState,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from 'react';
+import { effectiveQuality } from '../../experience/experienceMachine';
+import { useExperienceSelector } from '../../experience/useExperience';
 import { usePrefersReducedMotion } from '../../../hooks/usePrefersReducedMotion';
 import './research-crossing.css';
+
+const ResearchActScene = lazy(() => import('./research-act/ResearchActScene'));
+
+class ResearchWorldBoundary extends Component<
+  { children: ReactNode; onError: () => void },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch() {
+    this.props.onError();
+  }
+
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
 
 type ResearchLens = 'economy' | 'automation';
 type ResearchPhase = 'collect' | 'compare' | 'qualify';
@@ -88,8 +115,14 @@ export default function ResearchCrossing() {
   const frameRef = useRef(0);
   const [lens, setLens] = useState<ResearchLens>('economy');
   const [phase, setPhase] = useState<ResearchPhase>('collect');
+  const [worldFailed, setWorldFailed] = useState(false);
+  const [nearViewport, setNearViewport] = useState(false);
+  const lensRef = useRef<ResearchLens>('economy');
   const reducedMotion = usePrefersReducedMotion();
+  const qualityTier = useExperienceSelector((state) => effectiveQuality(state.context));
   const readout = READOUTS[lens][phase];
+  const useWorld = !worldFailed && !reducedMotion && qualityTier !== 'editorial';
+  lensRef.current = lens;
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -218,8 +251,9 @@ export default function ResearchCrossing() {
     if (!section) return;
     const observer = new IntersectionObserver(([entry]) => {
       visibleRef.current = entry.isIntersecting;
+      setNearViewport(entry.isIntersecting);
       if (entry.isIntersecting) updateProgress();
-    }, { rootMargin: '20% 0px', threshold: 0 });
+    }, { rootMargin: '80% 0px', threshold: 0 });
     observer.observe(section);
 
     const handleViewportChange = () => {
@@ -272,9 +306,25 @@ export default function ResearchCrossing() {
           onPointerMove={moveLens}
           onPointerLeave={leaveLens}
         >
-          <canvas ref={canvasRef} className="rc-canvas" role="img" aria-label="Câmp abstract de observații care leagă evenimente financiare și ocupații analizate">
-            Două cercetări compară observații: 2.449 evenimente financiare și 654 ocupații COR mapate.
-          </canvas>
+          {useWorld && nearViewport ? (
+            <div className="rc-world" role="img" aria-label="Câmp 3D de observații: evenimente financiare și ocupații analizate">
+              <ResearchWorldBoundary onError={() => setWorldFailed(true)}>
+                <Suspense fallback={null}>
+                  <ResearchActScene
+                    progressRef={progressRef}
+                    lensRef={lensRef}
+                    pointerRef={pointerRef}
+                    qualityTier={qualityTier}
+                    reducedMotion={reducedMotion}
+                  />
+                </Suspense>
+              </ResearchWorldBoundary>
+            </div>
+          ) : (
+            <canvas ref={canvasRef} className="rc-canvas" role="img" aria-label="Câmp abstract de observații care leagă evenimente financiare și ocupații analizate">
+              Două cercetări compară observații: 2.449 evenimente financiare și 654 ocupații COR mapate.
+            </canvas>
+          )}
 
           <div className="rc-projection-field" aria-hidden="true">
             <div className="rc-source-block">
@@ -430,6 +480,7 @@ export default function ResearchCrossing() {
         </article>
 
         <footer id="rc-handoff" className="rc-handoff">
+          <i className="rc-handoff__axis" aria-hidden="true" />
           <Orbit aria-hidden="true" />
           <span>Continuity / axis → evidence timeline</span>
           <strong>Metoda capătă istorie.</strong>

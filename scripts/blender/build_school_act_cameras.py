@@ -16,7 +16,7 @@ CLASSROOM_FOCUS_TARGET = (-12.2, 2.2, -102.1)
 SECRETARIAT_SCREEN_TARGET = (10.55, 2.72, -109.2)
 DESKTOP_SCAN_HOLD_RANGE = (0.18333333, 0.25833333)
 DESKTOP_SCHOOLMATE_START = 0.328
-DESKTOP_CLASSROOM_HOLD_RANGE = (0.405, 0.475)
+DESKTOP_CLASSROOM_HOLD_RANGE = (0.36, 0.42)
 MOBILE_SCAN_HOLD_RANGE = (0.153, 0.232)
 MOBILE_SCHOOLMATE_START = 0.291
 MOBILE_CLASSROOM_HOLD_RANGE = (0.325, 0.355)
@@ -301,18 +301,18 @@ DESKTOP_BEATS = (
     CameraBeat("proof-handoff", 0.0, (1.8, 4.6, -72.0), (-0.2, 4.1, -80.0), 48.0),
     CameraBeat("detection-residue", 0.0625, (3.8, 4.65, -75.2), AEGIS_SCAN_TARGET, 47.5, -0.12),
     CameraBeat("gate-materialises", 0.1, (4.3, 4.3, -77.6), AEGIS_SCAN_TARGET, 46.0, -0.24),
-    CameraBeat("student-enters", 0.13333333, (3.8, 4.0, -79.5), AEGIS_SCAN_TARGET, 44.0, 0.32),
-    CameraBeat("over-shoulder", 0.16666667, (2.8, 3.75, -80.9), AEGIS_SCAN_TARGET, 43.0, -0.48),
-    CameraBeat("scanner-hold-in", 0.18333333, (2.0, 3.6, -81.5), AEGIS_SCAN_TARGET, 48.0, -0.2, 0.0),
-    CameraBeat("scanner-hold-out", 0.25833333, (2.0, 3.6, -81.5), AEGIS_SCAN_TARGET, 48.0, -0.2, 0.0),
+    CameraBeat("student-enters", 0.13333333, (1.15, 3.4, -80.4), AEGIS_SCAN_TARGET, 45.0, 0.12),
+    CameraBeat("over-shoulder", 0.16666667, (0.2, 3.25, -81.15), AEGIS_SCAN_TARGET, 46.0, -0.06),
+    CameraBeat("scanner-hold-in", 0.18333333, (-0.2, 3.2, -81.7), AEGIS_SCAN_TARGET, 47.0, -0.04, 0.0),
+    CameraBeat("scanner-hold-out", 0.25833333, (-0.2, 3.2, -81.7), AEGIS_SCAN_TARGET, 47.0, -0.04, 0.0),
     CameraBeat("transaction-resolves", 0.27916667, (4.15, 4.1, -81.8), (3.72, 0.7, -84.0), 44.0, 0.34),
     CameraBeat("gate-opens", 0.30416667, (1.2, 4.35, -84.0), (0.0, 2.8, -89.5), 46.5, 0.1),
     CameraBeat("corridor-wakes", 0.325, (-1.0, 4.85, -89.0), (-0.2, 3.65, -95.0), 48.5, -0.18),
-    CameraBeat("classroom-threshold", 0.365, (-4.6, 4.45, -96.4), (-10.8, 3.15, -101.5), 47.0, 0.12, 0.7),
-    CameraBeat("classroom-hold-in", 0.405, (-8.4, 4.15, -99.4), CLASSROOM_FOCUS_TARGET, 48.0, 0.08, 0.0),
-    CameraBeat("classroom-hold-out", 0.475, (-8.4, 4.15, -99.4), CLASSROOM_FOCUS_TARGET, 48.0, 0.08, 0.0),
-    CameraBeat("secretariat-arrival", 0.68, (7.0, 3.7, -104.8), SECRETARIAT_SCREEN_TARGET, 43.0, 0.3),
-    CameraBeat("editorial-wide", 0.91, (2.8, 5.9, -113.0), (0.0, 3.5, -118.0), 49.0),
+    CameraBeat("classroom-threshold", 0.345, (-4.4, 3.55, -96.2), (-10.8, 2.55, -101.5), 47.0, 0.08, 0.7),
+    CameraBeat("classroom-hold-in", 0.36, (-7.35, 2.95, -98.4), CLASSROOM_FOCUS_TARGET, 47.0, 0.04, 0.0),
+    CameraBeat("classroom-hold-out", 0.42, (-7.35, 2.95, -98.4), CLASSROOM_FOCUS_TARGET, 47.0, 0.04, 0.0),
+    CameraBeat("secretariat-arrival", 0.46, (6.35, 3.05, -104.0), SECRETARIAT_SCREEN_TARGET, 44.0, 0.12, 0.0),
+    CameraBeat("secretariat-hold-out", 0.585, (6.35, 3.05, -104.0), SECRETARIAT_SCREEN_TARGET, 44.0, 0.12, 0.0),
     CameraBeat("descent-handoff", 1.0, (0.0, 3.8, -120.0), (0.0, 1.65, -128.0), 50.0),
 )
 
@@ -322,17 +322,17 @@ MOBILE_BEATS = (
     CameraBeat("detection-residue", 0.05416667, (4.4, 4.6, -75.7), AEGIS_SCAN_TARGET, 57.5, -0.04),
     CameraBeat("gate-vertical", 0.10833333, (3.4, 4.0, -80.8), AEGIS_SCAN_TARGET, 62.0, -0.08),
     CameraBeat("student-enters", 0.12916667, (1.7, 3.7, -82.1), AEGIS_SCAN_TARGET, 58.0, 0.1),
-    CameraBeat("portrait-shoulder", 0.145, (0.2, 3.55, -82.55), AEGIS_SCAN_TARGET, 60.0, -0.14),
-    CameraBeat("scanner-hold-in", 0.153, (-0.6, 3.5, -82.5), AEGIS_SCAN_TARGET, 60.0, -0.06, 0.0),
-    CameraBeat("scanner-hold-out", 0.232, (-0.6, 3.5, -82.5), AEGIS_SCAN_TARGET, 60.0, -0.06, 0.0),
+    CameraBeat("portrait-shoulder", 0.145, (0.1, 3.3, -81.9), AEGIS_SCAN_TARGET, 59.0, -0.06),
+    CameraBeat("scanner-hold-in", 0.153, (-0.3, 3.2, -81.9), AEGIS_SCAN_TARGET, 58.0, -0.03, 0.0),
+    CameraBeat("scanner-hold-out", 0.232, (-0.3, 3.2, -81.9), AEGIS_SCAN_TARGET, 58.0, -0.03, 0.0),
     CameraBeat("transaction-stacked", 0.25, (-0.2, 4.0, -83.2), (3.72, 0.7, -84.0), 60.0, 0.12),
     CameraBeat("gate-opens", 0.27083333, (0.05, 4.5, -85.0), (0.0, 3.0, -91.0), 61.0, 0.04),
     CameraBeat("corridor-vertical", 0.289, (0.2, 5.1, -88.8), (0.0, 3.6, -94.8), 63.0, -0.08),
-    CameraBeat("classroom-threshold", 0.305, (-3.1, 4.75, -96.0), (-10.8, 3.3, -101.5), 64.0, 0.05, 0.65),
-    CameraBeat("classroom-hold-in", 0.325, (-8.6, 4.2, -99.7), CLASSROOM_FOCUS_TARGET, 64.0, 0.04, 0.0),
-    CameraBeat("classroom-hold-out", 0.355, (-8.6, 4.2, -99.7), CLASSROOM_FOCUS_TARGET, 64.0, 0.04, 0.0),
-    CameraBeat("secretariat-crop", 0.69, (7.0, 3.7, -103.0), SECRETARIAT_SCREEN_TARGET, 60.0, 0.1),
-    CameraBeat("editorial-vertical", 0.91, (0.0, 6.35, -113.5), (0.0, 3.3, -119.0), 64.0),
+    CameraBeat("classroom-threshold", 0.305, (-3.2, 3.6, -96.0), (-10.8, 2.6, -101.5), 62.0, 0.04, 0.65),
+    CameraBeat("classroom-hold-in", 0.325, (-7.55, 3.05, -98.6), CLASSROOM_FOCUS_TARGET, 60.0, 0.02, 0.0),
+    CameraBeat("classroom-hold-out", 0.355, (-7.55, 3.05, -98.6), CLASSROOM_FOCUS_TARGET, 60.0, 0.02, 0.0),
+    CameraBeat("secretariat-crop", 0.42, (6.2, 3.1, -103.4), SECRETARIAT_SCREEN_TARGET, 58.0, 0.08, 0.0),
+    CameraBeat("secretariat-hold-out", 0.56, (6.2, 3.1, -103.4), SECRETARIAT_SCREEN_TARGET, 58.0, 0.08, 0.0),
     CameraBeat("descent-handoff", 1.0, (0.0, 4.25, -120.0), (0.0, 1.7, -128.0), 60.0),
 )
 
