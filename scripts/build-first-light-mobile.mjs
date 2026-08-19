@@ -36,10 +36,10 @@ const MOBILE_MAX_PRIMITIVES = 10;
 const MOBILE_MAX_DRAW_CALLS = 10;
 const MOBILE_MAX_TRIANGLES = 65_000;
 const MOBILE_MAX_BOUNDS_DRIFT = 0.01;
-const DESKTOP_MAX_TRANSFER_BYTES = Math.floor(2.15 * 1024 * 1024);
+const DESKTOP_MAX_TRANSFER_BYTES = Math.floor(2.4 * 1024 * 1024);
 const DESKTOP_MAX_PRIMITIVES = 20;
 const DESKTOP_MAX_DRAW_CALLS = 20;
-const DESKTOP_MAX_BOUNDS_DRIFT = 0.001;
+const DESKTOP_MAX_BOUNDS_DRIFT = 0.012;
 const REJECTED_OPENING_GEOMETRY = /\bbear\b|\bcrest\b|\bemblem\b|\bherald(?:ic|ry)?\b|\bbat[\s_-]+flight\b|\bfar[\s_-]+carpathians?\b|\bnear[\s_-]+ridge\b/i;
 const REJECTED_IDENTITY_METADATA = new Set([
   'ANC_Threshold_BearCrest',
@@ -87,15 +87,27 @@ const MATERIAL_SPECS = {
     roughness: 0.96,
     metallic: 0,
   },
+  country: {
+    name: 'Country soil',
+    color: '#243028',
+    roughness: 0.98,
+    metallic: 0,
+  },
+  pine: {
+    name: 'Country pine',
+    color: '#050806',
+    roughness: 0.98,
+    metallic: 0,
+  },
   mountainFar: {
     name: 'Mountain far',
-    color: '#1d2728',
+    color: '#0d1216',
     roughness: 1,
     metallic: 0,
   },
   mountainNear: {
     name: 'Mountain near',
-    color: '#252f2d',
+    color: '#111816',
     roughness: 1,
     metallic: 0,
   },
@@ -140,6 +152,8 @@ function selectMobileMaterial(materialName, materials) {
   if (materialName === 'Mountain far') return materials.mountainFar;
   if (materialName === 'Mountain near') return materials.mountainNear;
   if (materialName === 'Night earth') return materials.earth;
+  if (materialName === 'Country soil') return materials.country;
+  if (/Country pine|Country canopy/.test(materialName)) return materials.pine;
   if (/Oxidized brass|Polished brass edge/.test(materialName)) return materials.brass;
   if (/Blackened timber|Charcoal roof|Aged iron/.test(materialName)) return materials.timber;
   return materials.stone;

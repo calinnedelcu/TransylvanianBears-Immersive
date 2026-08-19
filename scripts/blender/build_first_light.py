@@ -1262,6 +1262,226 @@ def mountain_ridge(
     return obj
 
 
+def shade_smooth(obj: bpy.types.Object) -> None:
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
+    obj.data.update()
+
+
+def _hill(x: float, y: float, cx: float, cy: float, radius: float, height: float) -> float:
+    return height * math.exp(-((x - cx) ** 2 + (y - cy) ** 2) / (radius * radius))
+
+
+def landscape_elevation(x: float, y: float) -> float:
+    """Citadel on a mound inside rolling Transylvanian folds. Gate faces -Y."""
+    radius = math.hypot(x, y)
+    yard = 0.16
+    if radius < 16.2:
+        return yard
+
+    unit_x = (x + 140.0) / 280.0
+    unit_y = (y + 140.0) / 280.0
+    broad = tiled_noise(unit_x, unit_y, 4, 2.2)
+    medium = tiled_noise(unit_x, unit_y, 9, 6.1)
+    fine = tiled_noise(unit_x, unit_y, 22, 11.4)
+
+    valley = -2.2 * math.exp(-((radius - 21.0) ** 2) / 24.0)
+    hills = 0.0
+    hills += _hill(x, y, -34.0, 12.0, 18.0, 16.8)
+    hills += _hill(x, y, -58.0, 40.0, 26.0, 22.0)
+    hills += _hill(x, y, 38.0, 18.0, 20.0, 15.4)
+    hills += _hill(x, y, 62.0, 46.0, 28.0, 21.0)
+    hills += _hill(x, y, -4.0, 52.0, 24.0, 20.0)
+    hills += _hill(x, y, 18.0, 74.0, 32.0, 26.5)
+    hills += _hill(x, y, -32.0, 84.0, 34.0, 24.0)
+    hills += _hill(x, y, 8.0, 104.0, 44.0, 31.0)
+    hills += _hill(x, y, -70.0, -8.0, 22.0, 12.8)
+    hills += _hill(x, y, 54.0, -12.0, 20.0, 11.6)
+    hills += _hill(x, y, -24.0, -38.0, 13.0, 11.2)
+    hills += _hill(x, y, 28.0, -40.0, 12.5, 10.4)
+    hills += _hill(x, y, -42.0, -26.0, 15.0, 9.6)
+    hills += _hill(x, y, 46.0, -22.0, 14.0, 8.8)
+    if abs(x) < 8.6 and -34.0 < y < -10.0:
+        hills *= 0.16
+
+    rise = 14.0 * max(0.0, min(1.0, (radius - 48.0) / 72.0))
+    rolling = (broad - 0.45) * 5.2 + (medium - 0.5) * 2.2 + (fine - 0.5) * 0.55
+    if abs(x) < 8.4 and -32.0 < y < -10.0:
+        rolling *= 0.1
+
+    blend = max(0.0, min(1.0, (radius - 16.2) / 6.4))
+    return yard + (valley + hills + rise + rolling) * blend
+
+
+def forest_cover(x: float, y: float) -> float:
+    radius = math.hypot(x, y)
+    if radius < 18.6 or radius > 108.0:
+        return 0.0
+    if abs(x) < 7.2 and -34.0 < y < -8.0:
+        return 0.0
+    density = tiled_noise((x + 140.0) / 280.0, (y + 140.0) / 280.0, 10, 21.6)
+    elevation = landscape_elevation(x, y)
+    return density * (0.28 + 0.72 * max(0.0, min(1.0, elevation / 7.0)))
+
+
+def add_rolling_landscape(material: bpy.types.Material, size: float = 260.0, segments: int = 80) -> bpy.types.Object:
+    half = size / 2.0
+    step = size / segments
+    vertices: list[tuple[float, float, float]] = []
+    for row in range(segments + 1):
+        y = -half + row * step
+        for column in range(segments + 1):
+            x = -half + column * step
+            vertices.append((x, y, landscape_elevation(x, y) - 0.16))
+    faces: list[tuple[int, int, int, int]] = []
+    stride = segments + 1
+    for row in range(segments):
+        for column in range(segments):
+            start = row * stride + column
+            faces.append((start, start + 1, start + stride + 1, start + stride))
+    mesh = bpy.data.meshes.new("Country groundMesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new("Country ground", mesh)
+    bpy.context.collection.objects.link(obj)
+    assign_material(obj, material)
+    shade_smooth(obj)
+    return obj
+
+
+def add_forest_canopy(material: bpy.types.Material, size: float = 200.0, segments: int = 64) -> bpy.types.Object | None:
+    half = size / 2.0
+    step = size / segments
+    vertices: list[tuple[float, float, float]] = []
+    index_grid: list[list[int | None]] = []
+    for row in range(segments + 1):
+        y = -half + row * step
+        grid_row: list[int | None] = []
+        for column in range(segments + 1):
+            x = -half + column * step
+            cover = forest_cover(x, y)
+            if cover > 0.38:
+                lift = 0.85 + cover * 1.7 + tiled_noise((x + 80.0) / 160.0, (y + 80.0) / 160.0, 16, 4.8) * 0.45
+                grid_row.append(len(vertices))
+                vertices.append((x, y, landscape_elevation(x, y) + lift))
+            else:
+                grid_row.append(None)
+        index_grid.append(grid_row)
+    faces: list[tuple[int, int, int, int]] = []
+    for row in range(segments):
+        for column in range(segments):
+            a = index_grid[row][column]
+            b = index_grid[row][column + 1]
+            c = index_grid[row + 1][column + 1]
+            d = index_grid[row + 1][column]
+            if None not in (a, b, c, d):
+                faces.append((a, b, c, d))
+    if not faces:
+        return None
+    mesh = bpy.data.meshes.new("Country canopyMesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new("Country canopy", mesh)
+    bpy.context.collection.objects.link(obj)
+    assign_material(obj, material)
+    shade_smooth(obj)
+    return obj
+
+
+def add_country_mass(
+    name: str,
+    location: tuple[float, float, float],
+    scale: tuple[float, float, float],
+    material: bpy.types.Material,
+) -> bpy.types.Object:
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=1.0, location=location)
+    obj = bpy.context.object
+    obj.name = name
+    obj.scale = scale
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    assign_material(obj, material)
+    shade_smooth(obj)
+    return obj
+
+
+def add_country_pine_source(material: bpy.types.Material) -> bpy.types.Object:
+    trunk = cylinder("Country pine trunk", (0.0, 0.0, 0.42), 0.07, 0.84, 6, material, bevel=0.0)
+    lower = cone("Country pine crown a", (0.0, 0.0, 1.12), 0.7, 1.28, 7, material, tip_radius=0.16)
+    mid = cone("Country pine crown b", (0.0, 0.0, 1.82), 0.5, 1.12, 7, material, tip_radius=0.1)
+    tip = cone("Country pine crown c", (0.0, 0.0, 2.42), 0.3, 0.92, 7, material, tip_radius=0.03)
+    bpy.ops.object.select_all(action="DESELECT")
+    for part in (trunk, lower, mid, tip):
+        part.select_set(True)
+    bpy.context.view_layer.objects.active = trunk
+    bpy.ops.object.join()
+    pine = bpy.context.object
+    pine.name = "Country pine 1"
+    pine.data.name = "Country pineMesh"
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    lowest = min(vertex.co.z for vertex in pine.data.vertices)
+    for vertex in pine.data.vertices:
+        vertex.co.z -= lowest
+    pine.data.update()
+    return pine
+
+
+def add_pine_cover(modules: dict[str, bpy.types.Object], material: bpy.types.Material) -> None:
+    source = add_country_pine_source(material)
+    modules["country-pine"] = source
+    placed = 1
+    golden = math.pi * (3.0 - math.sqrt(5.0))
+    for index in range(1, 360):
+        seed_c = tiled_noise((index + 21) / 360, 0.33, 9, 12.7)
+        angle = index * golden
+        radius = 19.0 + ((index * 0.6180339887) % 1.0) * 46.0
+        jitter = 1.4 * (tiled_noise((index + 5) / 360, 0.44, 13, 7.2) - 0.5)
+        x = math.cos(angle) * radius + jitter
+        y = math.sin(angle) * radius + jitter * 0.8
+        if forest_cover(x, y) < 0.18:
+            continue
+        if placed > 240:
+            break
+        ground = landscape_elevation(x, y)
+        scale = 0.78 + seed_c * 1.05
+        linked_copy(
+            source,
+            f"Country pine {placed + 1}",
+            (x, y, ground),
+            (0.0, 0.0, angle),
+            (scale, scale, scale),
+        )
+        placed += 1
+
+    groves = (
+        (-24.0, -34.0, 10.0, 28),
+        (26.0, -32.0, 10.0, 26),
+        (-30.0, -12.0, 11.0, 22),
+        (32.0, -10.0, 11.0, 22),
+        (-20.0, 20.0, 13.0, 24),
+        (22.0, 22.0, 13.0, 24),
+    )
+    for grove_index, (grove_x, grove_y, spread, count) in enumerate(groves):
+        for index in range(count):
+            seed = tiled_noise((grove_index + 1) * 0.17, (index + 3) / 40.0, 14, 5.6)
+            seed_b = tiled_noise((index + 7) / 40.0, grove_index * 0.23, 11, 9.1)
+            angle = seed * math.tau
+            radius = 1.2 + seed_b * spread
+            x = grove_x + math.cos(angle) * radius
+            y = grove_y + math.sin(angle) * radius
+            if abs(x) < 7.2 and -34.0 < y < -8.0:
+                continue
+            ground = landscape_elevation(x, y)
+            scale = 0.85 + seed * 1.1
+            linked_copy(
+                source,
+                f"Country pine {placed + 1}",
+                (x, y, ground),
+                (0.0, 0.0, seed * math.tau),
+                (scale, scale, scale),
+            )
+            placed += 1
+
+
 def point_light(name: str, location: tuple[float, float, float], color: str, energy: float, radius: float) -> None:
     data = bpy.data.lights.new(name=name, type="POINT")
     data.color = hex_color(color)[:3]
@@ -1398,6 +1618,7 @@ def build_world() -> None:
     timber = make_material("Blackened timber", "#1b1916", 0.68, textures=textures["timber"])
     roof = make_material("Charcoal roof", "#252722", 0.7, metallic=0.05, textures=textures["roof"])
     earth = make_material("Night earth", "#242823", 0.96, textures=textures["earth"])
+    country = make_material("Country soil", "#243028", 0.98)
     path = make_material("Worn stone path", "#4f5047", 0.92, textures=textures["path"])
     brass = make_material("Oxidized brass", "#81724e", 0.38, metallic=0.72, textures=textures["brass"])
     polished_brass = make_material("Polished brass edge", "#b49d64", 0.28, metallic=0.82)
@@ -1405,8 +1626,8 @@ def build_world() -> None:
     bat_iron = make_material("Bat silhouette", "#171c1b", 0.46, metallic=0.76)
     window = make_material("Occupied light", "#d6b56d", 0.32, emission="#e5bd6f", emission_strength=5.2)
     cyan = make_material("Signal anchor", "#67d8d2", 0.24, metallic=0.15, emission="#69e1dc", emission_strength=7.0)
-    mountain_far = make_material("Mountain far", "#1d2728", 1.0)
-    mountain_near = make_material("Mountain near", "#252f2d", 1.0)
+    mountain_far = make_material("Mountain far", "#0d1216", 1.0)
+    mountain_near = make_material("Mountain near", "#111816", 1.0)
     EDGE_WEAR_MATERIALS.clear()
     EDGE_WEAR_MATERIALS.update({
         "Limestone": "Limestone light",
@@ -1417,9 +1638,8 @@ def build_world() -> None:
     modules: dict[str, bpy.types.Object] = {}
 
     garnet = make_material("Garnet pivot", "#7a2426", 0.32, metallic=0.28, emission="#9a2d2f", emission_strength=0.55)
-    wordmark_metal = make_material("Wordmark metal", "#e8dcc4", 0.34, metallic=0.62, emission="#f3eee2", emission_strength=0.18)
-    cylinder("Approach earth", (0, 4.0, -0.55), 78.0, 0.9, 72, earth, bevel=0.0)
-    cylinder("Terrain", (0, 1.5, -0.28), 42.0, 0.62, 64, earth, bevel=0.0)
+    pine = make_material("Country pine", "#0b120e", 0.98)
+    add_rolling_landscape(country)
 
     ring_segments = 28
     turret_angles = (-2.42, -0.72, 0.72, 2.42)
@@ -2076,26 +2296,9 @@ def build_world() -> None:
         y = math.sin(angle) * radius
         cylinder(f"Ring signal anchor {index + 1}", (x, y, 5.98), 0.18, 0.22, 12, brass, bevel=0.02)
 
-    mountain_ridge(
-        "Horizon massif",
-        27.0,
-        -0.1,
-        [(-34, 2.5), (-26, 7.2), (-20, 4.8), (-13, 10.2), (-6, 5.6), (1, 8.7), (9, 4.9), (17, 9.4), (25, 5.5), (34, 7.0)],
-        mountain_far,
-    )
-    mountain_ridge(
-        "Foreground hill",
-        20.0,
-        -0.1,
-        [(-32, 1.6), (-24, 4.8), (-17, 3.1), (-10, 6.4), (-2, 2.8), (7, 5.3), (15, 2.4), (24, 5.8), (32, 2.2)],
-        mountain_near,
-    )
-
+    add_pine_cover(modules, pine)
     add_gate_leaves(timber, aged_iron)
     add_gate_lock_apparatus(limestone_light, brass, garnet)
-    add_wordmark("Lintel kicker", "SAPTE SISTEME", (-9.4, -22.4, 4.55), 0.38, brass, 0.02)
-    add_wordmark("Foreground word TRANSYLVANIAN", "TRANSYLVANIAN", (-9.6, -22.8, 3.55), 0.62, wordmark_metal, 0.028)
-    add_wordmark("Foreground word BEARS", "BEARS", (-9.2, -23.4, 2.15), 1.85, wordmark_metal, 0.055)
 
     triangulate_textured_meshes()
 
@@ -2106,46 +2309,46 @@ def setup_lighting_and_camera() -> None:
     world.use_nodes = True
     background = world.node_tree.nodes.get("Background")
     if background:
-        background.inputs["Color"].default_value = hex_color("#081012")
-        background.inputs["Strength"].default_value = 0.42
+        background.inputs["Color"].default_value = hex_color("#060b12")
+        background.inputs["Strength"].default_value = 0.28
 
     sun_data = bpy.data.lights.new(name="Cold blue-hour sun", type="SUN")
-    sun_data.color = hex_color("#b8cbc9")[:3]
-    sun_data.energy = 2.65
-    sun_data.angle = math.radians(18)
+    sun_data.color = hex_color("#c5d4dc")[:3]
+    sun_data.energy = 2.15
+    sun_data.angle = math.radians(22)
     sun = bpy.data.objects.new("Cold blue-hour sun", sun_data)
-    sun.rotation_euler = (math.radians(38), math.radians(-24), math.radians(-28))
+    sun.rotation_euler = (math.radians(52), math.radians(-18), math.radians(-32))
     bpy.context.collection.objects.link(sun)
 
     area_data = bpy.data.lights.new(name="Warm gate wash", type="AREA")
     area_data.color = hex_color("#d6ba80")[:3]
-    area_data.energy = 1650
+    area_data.energy = 980
     area_data.shape = "DISK"
-    area_data.size = 10
+    area_data.size = 8
     area = bpy.data.objects.new("Warm gate wash", area_data)
     area.location = (-6.5, -21.0, 13.0)
     look_at(area, (0, -8, 3.8))
     bpy.context.collection.objects.link(area)
 
-    point_light("Workshop occupation", (0, 0.2, 4.0), "#e5bb6f", 950, 4.0)
-    point_light("Gate signal", (0, -15.0, 5.0), "#69d9d5", 620, 2.0)
+    point_light("Workshop occupation", (0, 0.2, 4.0), "#e5bb6f", 1100, 4.0)
+    point_light("Gate signal", (0, -15.0, 5.0), "#69d9d5", 520, 2.0)
 
     fill_data = bpy.data.lights.new(name="Camera-side mineral fill", type="AREA")
-    fill_data.color = hex_color("#9bc4c1")[:3]
-    fill_data.energy = 1150
+    fill_data.color = hex_color("#8aa4b4")[:3]
+    fill_data.energy = 720
     fill_data.shape = "DISK"
-    fill_data.size = 15
+    fill_data.size = 18
     fill = bpy.data.objects.new("Camera-side mineral fill", fill_data)
-    fill.location = (20.0, -19.0, 15.0)
-    look_at(fill, (5.5, -1.0, 4.0))
+    fill.location = (22.0, -48.0, 24.0)
+    look_at(fill, (2.0, -2.0, 4.0))
     bpy.context.collection.objects.link(fill)
 
     camera_data = bpy.data.cameras.new("First Light camera")
-    camera_data.lens = 42
+    camera_data.lens = 35
     camera_data.sensor_width = 36
     camera = bpy.data.objects.new("First Light camera", camera_data)
-    camera.location = (19.5, -36.0, 13.5)
-    look_at(camera, (0, 0.8, 3.8))
+    camera.location = (20.0, -56.0, 20.0)
+    look_at(camera, (0.0, -0.8, 3.6))
     bpy.context.collection.objects.link(camera)
     bpy.context.scene.camera = camera
 
@@ -2170,7 +2373,7 @@ def configure_output() -> None:
         scene.view_settings.look = "AgX - Medium High Contrast"
     except TypeError:
         pass
-    scene.view_settings.exposure = 0.62
+    scene.view_settings.exposure = 0.38
 
 
 def export_and_render() -> None:

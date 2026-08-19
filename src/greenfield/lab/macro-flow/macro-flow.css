@@ -248,8 +248,7 @@ body.mf-lab-mode {
 
 .mf-lab[data-active-chapter='threshold'] .mf-world__grade {
   background:
-    linear-gradient(180deg, rgb(6 7 9 / 0.42), transparent 28%, transparent 78%, rgb(6 6 7 / 0.5)),
-    linear-gradient(90deg, rgb(6 7 9 / 0.18), transparent 28%, transparent 72%, rgb(6 7 9 / 0.18));
+    linear-gradient(180deg, rgb(6 10 16 / 0.16), transparent 22%, transparent 82%, rgb(6 8 10 / 0.22));
 }
 
 .mf-threshold-intro {
@@ -3121,22 +3120,22 @@ body.mf-lab-mode {
 
   .mf-lab[data-active-chapter='threshold'] .mf-world__grade {
     background:
-      linear-gradient(180deg, rgb(6 7 9 / 0.36), transparent 24%, transparent 72%, rgb(6 6 7 / 0.42));
+      linear-gradient(180deg, rgb(6 10 16 / 0.12), transparent 20%, transparent 78%, rgb(6 8 10 / 0.28));
   }
 
   .mf-copy--hero {
     width: 100%;
     max-width: none;
     margin: 0;
-    align-content: center;
-    padding: 0 20px;
+    align-content: end;
+    padding: 0 20px 12vh;
     background: none;
   }
 
   .mf-lab[data-threshold-intro='world'] .mf-copy--hero {
     width: 100%;
-    align-content: start;
-    padding: 68px 20px 0;
+    align-content: end;
+    padding: 0 20px 11vh;
   }
 
   .mf-copy--hero::before {

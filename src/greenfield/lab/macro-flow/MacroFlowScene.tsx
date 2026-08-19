@@ -71,7 +71,7 @@ type MacroFlowSceneProps = {
 };
 
 const CAMERA_PATH = new THREE.CatmullRomCurve3([
-  new THREE.Vector3(18, 11.5, 38),
+  new THREE.Vector3(20, 20, 56),
   new THREE.Vector3(13, 10.2, 33),
   new THREE.Vector3(7, 8.2, 27),
   new THREE.Vector3(2.2, 6.4, 21),
@@ -92,7 +92,7 @@ const CAMERA_PATH = new THREE.CatmullRomCurve3([
 ]);
 
 const MOBILE_CAMERA_PATH = new THREE.CatmullRomCurve3([
-  new THREE.Vector3(7.5, 9.2, 34),
+  new THREE.Vector3(3.2, 20, 54),
   new THREE.Vector3(5.4, 8.3, 30),
   new THREE.Vector3(2.8, 7.1, 25.5),
   new THREE.Vector3(1.2, 6.1, 20.5),
@@ -147,8 +147,10 @@ const FIRST_LIGHT_MODEL_MOBILE = resolvedAssetUrl(
 );
 
 const FALLBACK_MATERIAL_COLORS: Record<string, string> = {
-  'Mountain far': '#14272b',
-  'Mountain near': '#213532',
+  'Mountain far': '#0d1216',
+  'Mountain near': '#111816',
+  'Country soil': '#243028',
+  'Country pine': '#0b120e',
 };
 
 function clamp01(value: number) {
@@ -453,30 +455,32 @@ function WorldAtmosphere({
             uniform float uMonumental;
             varying vec3 vDirection;
             void main() {
-              float horizon = pow(1.0 - abs(vDirection.y), mix(3.2, 7.4, uMonumental));
-              float upper = smoothstep(-0.18, 0.72, vDirection.y);
-              vec3 ember = mix(vec3(0.18, 0.08, 0.06), vec3(0.46, 0.18, 0.08), uMonumental);
-              vec3 low = mix(vec3(0.07, 0.09, 0.09), vec3(0.05, 0.045, 0.07), uMonumental);
-              vec3 high = mix(vec3(0.012, 0.02, 0.03), vec3(0.02, 0.03, 0.07), uMonumental);
+              float horizon = pow(1.0 - abs(vDirection.y), mix(3.2, 6.2, uMonumental));
+              float upper = smoothstep(-0.08, 0.82, vDirection.y);
+              vec3 ember = mix(vec3(0.18, 0.08, 0.06), vec3(0.08, 0.12, 0.2), uMonumental);
+              vec3 low = mix(vec3(0.07, 0.09, 0.09), vec3(0.055, 0.08, 0.12), uMonumental);
+              vec3 high = mix(vec3(0.012, 0.02, 0.03), vec3(0.018, 0.04, 0.09), uMonumental);
               vec3 color = mix(low, high, upper);
-              color += ember * pow(horizon, mix(1.6, 2.4, uMonumental)) * mix(0.28, 0.55, uMonumental);
-              color += vec3(0.03, 0.02, 0.04) * horizon;
+              color += ember * pow(horizon, 2.1) * mix(0.28, 0.18, uMonumental);
+              color += vec3(0.02, 0.03, 0.06) * horizon;
 
               float longitude = atan(vDirection.z, vDirection.x);
               float cloudField = 0.5
-                + 0.2 * sin(longitude * 2.8 + vDirection.y * 12.0 + uTime * 0.02)
-                + 0.12 * sin(longitude * 6.6 - vDirection.y * 18.0 - uTime * 0.03);
-              float cloudAltitude = smoothstep(-0.08, 0.16, vDirection.y)
-                * (1.0 - smoothstep(0.32, 0.82, vDirection.y));
-              float cloudVeil = smoothstep(0.5, 0.74, cloudField) * cloudAltitude;
-              color = mix(color, vec3(0.06, 0.045, 0.07), cloudVeil * 0.4);
-              color += vec3(0.28, 0.12, 0.06) * uFlash * (0.22 + cloudVeil * 0.4);
+                + 0.22 * sin(longitude * 2.4 + vDirection.y * 10.0 + uTime * 0.016)
+                + 0.14 * sin(longitude * 5.8 - vDirection.y * 16.0 - uTime * 0.024);
+              float cloudAltitude = smoothstep(-0.04, 0.22, vDirection.y)
+                * (1.0 - smoothstep(0.36, 0.86, vDirection.y));
+              float cloudVeil = smoothstep(0.48, 0.72, cloudField) * cloudAltitude;
+              color = mix(color, vec3(0.05, 0.07, 0.11), cloudVeil * mix(0.48, 0.62, uMonumental));
+              color += vec3(0.22, 0.24, 0.28) * uFlash * (0.18 + cloudVeil * 0.35);
 
-              float sky = smoothstep(0.18, 0.62, vDirection.y);
-              vec2 starCell = floor(vDirection.xz * 88.0);
+              float sky = smoothstep(0.08, 0.62, vDirection.y);
+              vec2 starCell = floor(vDirection.xz * mix(110.0, 160.0, uMonumental));
               float starHash = fract(sin(dot(starCell, vec2(12.9898, 78.233))) * 43758.5453);
-              float star = step(0.994, starHash) * sky * (0.35 + 0.45 * fract(starHash * 17.0));
-              color += vec3(0.78, 0.84, 0.9) * star;
+              float star = step(mix(0.991, 0.968, uMonumental), starHash) * sky * (0.45 + 0.55 * fract(starHash * 17.0));
+              color += vec3(0.9, 0.94, 1.0) * star * mix(1.0, 1.35, uMonumental);
+              float milky = pow(max(0.0, 1.0 - abs(vDirection.x * 0.55 + vDirection.z * 0.84)), 8.0) * sky;
+              color += vec3(0.22, 0.28, 0.42) * milky * uMonumental * 0.32;
               gl_FragColor = vec4(color, 1.0);
             }
           `}
@@ -526,6 +530,7 @@ function FirstLightCitadel({
       if (!(child instanceof THREE.Mesh)) return;
       const materials = Array.isArray(child.material) ? child.material : [child.material];
       const assetLabel = `${child.name} ${child.geometry.name} ${child.parent?.name ?? ''}`;
+      const landscapeSurface = /Country |Mountain /i.test(assetLabel);
       if (/bat flight|bear crest|emblem|herald/i.test(assetLabel)) {
         child.visible = false;
         const hiddenMaterials = materials.map((source) => {
@@ -539,8 +544,8 @@ function FirstLightCitadel({
         return;
       }
 
-      const structuralMaterial = materials.some((material) => (
-        /Limestone|plaster|stone|earth|timber/.test(material.name)
+      const structuralMaterial = !landscapeSurface && materials.some((material) => (
+        /Limestone|Mineral plaster|Worn stone|Blackened timber|Charcoal roof/.test(material.name)
       ));
       child.castShadow = qualityTier === 'cinematic'
         && structuralMaterial
@@ -562,7 +567,15 @@ function FirstLightCitadel({
         );
         const fallbackColor = FALLBACK_MATERIAL_COLORS[material.name];
         if (!hasAuthoredPbrMaps && fallbackColor) material.color.set(fallbackColor);
-        material.envMapIntensity = structuralMaterial ? (compact ? 0.68 : 0.58) : (compact ? 0.5 : 0.44);
+        if (/Country |Mountain /i.test(material.name)) {
+          material.envMapIntensity = 0.16;
+          material.roughness = Math.max(material.roughness, 0.94);
+          material.metalness = 0;
+          material.emissive.set('#000000');
+          material.emissiveIntensity = 0;
+        } else {
+          material.envMapIntensity = structuralMaterial ? (compact ? 0.68 : 0.58) : (compact ? 0.5 : 0.44);
+        }
         if (structuralMaterial) {
           material.color.offsetHSL(0.018, 0.05, compact ? 0.08 : 0.07);
           if (material.emissiveIntensity < 0.28) {
@@ -1023,28 +1036,28 @@ function WorldLookdevRig({
   if ((!showThreshold && !showNexus) || (qualityTier === 'editorial')) return null;
 
   return (
-    <Environment resolution={showThreshold ? 64 : 128} frames={1} background={false} environmentIntensity={showThreshold ? 1.05 : 0.82}>
+    <Environment resolution={showThreshold ? 64 : 128} frames={1} background={false} environmentIntensity={showThreshold ? 0.68 : 0.82}>
       <group rotation={[0, showThreshold ? -0.28 : 0.18, 0]}>
         <Lightformer
           form="rect"
-          color={showThreshold ? '#e7d7c2' : '#8fe0dc'}
-          intensity={showThreshold ? 5.4 : 4.2}
-          position={[-7, 8, -5]}
+          color={showThreshold ? '#c5d4e0' : '#8fe0dc'}
+          intensity={showThreshold ? 3.4 : 4.2}
+          position={showThreshold ? [14, 22, 16] : [-7, 8, -5]}
           rotation={[0, 0.62, 0]}
           scale={[7, 3.5, 1]}
         />
         <Lightformer
           form="rect"
-          color={showThreshold ? '#d36a3a' : '#d5b263'}
-          intensity={showThreshold ? 6.2 : 3.4}
+          color={showThreshold ? '#6f8496' : '#d5b263'}
+          intensity={showThreshold ? 1.2 : 3.4}
           position={[8, 1.5, 2]}
           rotation={[0, -1.1, 0]}
           scale={[3.5, 6.5, 1]}
         />
         <Lightformer
           form="ring"
-          color={showThreshold ? '#f6e7c2' : '#74d9d5'}
-          intensity={showThreshold ? 3.4 : 2.2}
+          color={showThreshold ? '#d7c09a' : '#74d9d5'}
+          intensity={showThreshold ? 0.7 : 2.2}
           position={[0, 9, -12]}
           rotation={[Math.PI / 2, 0, 0]}
           scale={3.5}
@@ -1200,7 +1213,7 @@ function ThresholdExposure() {
 
   useEffect(() => {
     const previous = gl.toneMappingExposure;
-    gl.toneMappingExposure = 1.02;
+    gl.toneMappingExposure = 1.12;
     return () => {
       gl.toneMappingExposure = previous;
     };
@@ -1253,14 +1266,9 @@ function World({
     const light = keyLightRef.current;
     if (!light) return;
     if (showThreshold) {
-      const cycle = clock.elapsedTime % 11.8;
-      const flashA = reducedMotion ? 0 : Math.max(0, 1 - Math.abs(cycle - 2.1) / 0.07);
-      const flashB = reducedMotion ? 0 : Math.max(0, 1 - Math.abs(cycle - 2.32) / 0.045);
-      const weatherPulse = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.72) * 0.12;
-      light.intensity = (compact ? 1.85 : 1.55) + weatherPulse + flashA * 2.8 + flashB * 1.8;
-      light.position.x = 16 + (reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.08) * 2.2);
-      light.position.y = 11 + (reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.12) * 0.9);
-      light.color.set(flashA + flashB > 0.05 ? '#f0e6d8' : '#e0b48a');
+      light.intensity = compact ? 1.95 : 1.75;
+      light.position.set(14, 26, 22);
+      light.color.set('#c8d6de');
       return;
     }
     light.intensity = showBuried ? 0.58 : 1.75;
@@ -1270,8 +1278,8 @@ function World({
 
   return (
     <>
-      <color attach="background" args={[showBuried ? '#070707' : showSchool ? '#0c1211' : showThreshold ? '#0c1418' : '#071011']} />
-      <fog attach="fog" args={[showBuried ? '#0b0908' : showSchool ? '#141916' : showThreshold ? '#14181c' : '#0a1719', showBuried ? 12 : showSchool ? 18 : showThreshold ? 28 : 26, showBuried ? 70 : showSchool ? 78 : showThreshold ? 110 : 94]} />
+      <color attach="background" args={[showBuried ? '#070707' : showSchool ? '#0c1211' : showThreshold ? '#0a121c' : '#071011']} />
+      <fog attach="fog" args={[showBuried ? '#0b0908' : showSchool ? '#141916' : showThreshold ? '#1c2a33' : '#0a1719', showBuried ? 12 : showSchool ? 18 : showThreshold ? 90 : 26, showBuried ? 70 : showSchool ? 78 : showThreshold ? 230 : 94]} />
       <WorldAtmosphere
         progressRef={progressRef}
         qualityTier={qualityTier}
@@ -1285,17 +1293,17 @@ function World({
       />
       {showHemisphere ? (
         <hemisphereLight
-          intensity={showBuried ? 0.16 : showThreshold ? (compact ? 1.05 : 0.92) : showSchool ? 0.46 : 0.38}
-          color={showBuried ? '#b8ac98' : showThreshold ? '#d7b39a' : showSchool ? '#d2c6a4' : '#b9cfcd'}
-          groundColor={showBuried ? '#130f0d' : showThreshold ? '#1a1410' : showSchool ? '#1b1712' : '#191b17'}
+          intensity={showBuried ? 0.16 : showThreshold ? (compact ? 0.78 : 0.68) : showSchool ? 0.46 : 0.38}
+          color={showBuried ? '#b8ac98' : showThreshold ? '#b7c8d6' : showSchool ? '#d2c6a4' : '#b9cfcd'}
+          groundColor={showBuried ? '#130f0d' : showThreshold ? '#0b1012' : showSchool ? '#1b1712' : '#191b17'}
         />
       ) : null}
       <directionalLight
         ref={keyLightRef}
         castShadow={qualityTier === 'cinematic' && !showBuried && !showThreshold && !showNexus}
-        position={showThreshold ? [16, 11, 8] : [10, 18, 18]}
-        intensity={showBuried ? 0.58 : showThreshold ? (compact ? 2.4 : 2.15) : 1.75}
-        color={showBuried ? '#bbae98' : showThreshold ? '#e0b48a' : '#dae3d9'}
+        position={showThreshold ? [14, 26, 22] : [10, 18, 18]}
+        intensity={showBuried ? 0.58 : showThreshold ? (compact ? 1.95 : 1.75) : 1.75}
+        color={showBuried ? '#bbae98' : showThreshold ? '#c8d6de' : '#dae3d9'}
         shadow-mapSize-width={qualityTier === 'cinematic' ? 1536 : 512}
         shadow-mapSize-height={qualityTier === 'cinematic' ? 1536 : 512}
         shadow-camera-near={2}
@@ -1541,11 +1549,11 @@ export function MacroFlowScene(props: MacroFlowSceneProps) {
         className="mf-canvas"
         dpr={dpr}
         shadows={props.qualityTier === 'cinematic'}
-        camera={{ fov: 48, near: 0.1, far: 280, position: [18, 11.5, 38] }}
+        camera={{ fov: 48, near: 0.1, far: 320, position: [20, 20, 56] }}
         gl={{ antialias: props.qualityTier !== 'cinematic', alpha: false, powerPreference: 'high-performance' }}
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
-          gl.toneMappingExposure = 0.86;
+          gl.toneMappingExposure = 1.12;
           gl.outputColorSpace = THREE.SRGBColorSpace;
         }}
         fallback={<VerticalSliceLoader unavailable />}
