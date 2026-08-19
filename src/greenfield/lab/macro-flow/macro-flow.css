@@ -246,23 +246,206 @@ body.mf-lab-mode {
   background: #07080b;
 }
 
-.mf-lab[data-active-chapter='threshold'][data-threshold-intro='title'] .mf-world {
-  opacity: 0;
-}
-
-.mf-lab[data-active-chapter='threshold'][data-threshold-intro='world'] .mf-world {
-  opacity: 1;
-  transition: opacity 1.35s ease;
-}
-
 .mf-lab[data-active-chapter='threshold'] .mf-world__grade {
   background:
     linear-gradient(180deg, rgb(6 7 9 / 0.42), transparent 28%, transparent 78%, rgb(6 6 7 / 0.5)),
     linear-gradient(90deg, rgb(6 7 9 / 0.18), transparent 28%, transparent 72%, rgb(6 7 9 / 0.18));
 }
 
-.mf-lab[data-active-chapter='threshold'][data-threshold-intro='title'] .mf-world__grade {
+.mf-threshold-intro {
+  position: fixed;
+  z-index: 28;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  overflow: hidden;
+  pointer-events: none;
+  perspective: 1400px;
   background: #07080b;
+  animation: mf-intro-veil 3.6s cubic-bezier(0.22, 1, 0.32, 1) both;
+}
+
+.mf-threshold-intro__grain {
+  position: absolute;
+  inset: -20%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.42'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  opacity: 0.22;
+  animation: mf-intro-grain 3.6s linear both;
+}
+
+.mf-threshold-intro__lock {
+  width: min(220px, 34vw);
+  height: auto;
+  margin-bottom: 22px;
+  overflow: visible;
+}
+
+.mf-threshold-intro__voussoir {
+  fill: #1c1714;
+  stroke: #c4a66a;
+  stroke-width: 1.2;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mf-intro-stone 900ms cubic-bezier(0.16, 1, 0.3, 1) both, mf-intro-split 900ms 2.45s cubic-bezier(0.7, 0, 0.3, 1) both;
+}
+
+.mf-threshold-intro__voussoir--0 { --split-x: 0px; --split-y: -46px; }
+.mf-threshold-intro__voussoir--1 { --split-x: 42px; --split-y: -18px; }
+.mf-threshold-intro__voussoir--2 { --split-x: 58px; --split-y: 22px; }
+.mf-threshold-intro__voussoir--3 { --split-x: 0px; --split-y: -62px; }
+.mf-threshold-intro__voussoir--4 { --split-x: -42px; --split-y: -18px; }
+.mf-threshold-intro__voussoir--5 { --split-x: -58px; --split-y: 22px; }
+.mf-threshold-intro__voussoir--6 { --split-x: -28px; --split-y: 36px; }
+
+.mf-threshold-intro__arch,
+.mf-threshold-intro__bear {
+  fill: none;
+  stroke: #e8dcc4;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 520;
+  stroke-dashoffset: 520;
+  animation: mf-intro-draw 1.2s 80ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.mf-threshold-intro__bear {
+  stroke: #c4a66a;
+  stroke-width: 1.8;
+  animation-delay: 280ms;
+}
+
+.mf-threshold-intro__pivot {
+  fill: #9a2d2f;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mf-intro-pivot 1.2s 420ms cubic-bezier(0.16, 1, 0.3, 1) both, mf-intro-fade 700ms 2.45s ease both;
+}
+
+.mf-threshold-intro__kicker {
+  margin: 0 0 14px;
+  color: #c14a3d;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.mf-threshold-intro__kicker i,
+.mf-threshold-intro__word i {
+  display: inline-block;
+  opacity: 0;
+  transform: translate3d(0, 28px, 0) rotateX(72deg);
+  transform-origin: 50% 100%;
+  animation: mf-intro-glyph 760ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.mf-threshold-intro__title {
+  display: grid;
+  justify-items: center;
+  margin: 0;
+  color: #f3eee2;
+  font-family: 'Cinzel', serif;
+  font-weight: 500;
+  line-height: 0.78;
+  text-transform: uppercase;
+}
+
+.mf-threshold-intro__word {
+  display: flex;
+  color: #e8dcc4;
+  font-size: clamp(18px, 2.6vw, 28px);
+  font-weight: 500;
+  letter-spacing: 0.28em;
+}
+
+.mf-threshold-intro__word--bear {
+  margin-top: 8px;
+  font-size: clamp(68px, 11vw, 148px);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  filter: drop-shadow(0 18px 40px rgb(7 10 11 / 0.45));
+}
+
+.mf-threshold-intro__word--bear i {
+  background: linear-gradient(180deg, #fff8ea 12%, #e4d3aa 48%, #8d6a3a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.mf-lab[data-threshold-intro='title'] .mf-copy--hero,
+.mf-lab[data-threshold-intro='hold'] .mf-copy--hero {
+  opacity: 0;
+}
+
+.mf-lab[data-threshold-intro='hold'] .mf-threshold-intro {
+  background: transparent;
+}
+
+.mf-lab[data-threshold-intro='hold'] .mf-threshold-intro__grain,
+.mf-lab[data-threshold-intro='hold'] .mf-threshold-intro__voussoir {
+  opacity: 0;
+}
+
+@keyframes mf-intro-veil {
+  0%, 62% { background: #07080b; }
+  100% { background: rgb(7 8 11 / 0); }
+}
+
+@keyframes mf-intro-grain {
+  0%, 70% { opacity: 0.24; }
+  100% { opacity: 0; }
+}
+
+@keyframes mf-intro-stone {
+  from { opacity: 0; transform: translate3d(0, 16px, 0) scale(0.82); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes mf-intro-split {
+  to { transform: translate3d(var(--split-x), var(--split-y), 0); opacity: 0; }
+}
+
+@keyframes mf-intro-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes mf-intro-pivot {
+  from { transform: scale(0) rotate(-40deg); opacity: 0; }
+  60% { transform: scale(1.18) rotate(8deg); opacity: 1; }
+  to { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes mf-intro-glyph {
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes mf-intro-title-out {
+  to { opacity: 0; transform: translate3d(0, -28px, 40px) scale(1.08); filter: blur(8px); }
+}
+
+@keyframes mf-intro-fade {
+  to { opacity: 0; }
+}
+
+@media (max-width: 820px) {
+  .mf-threshold-intro__lock {
+    width: 112px;
+    margin-bottom: 18px;
+  }
+
+  .mf-threshold-intro__word {
+    font-size: 12px;
+    letter-spacing: 0.2em;
+  }
+
+  .mf-threshold-intro__word--bear {
+    font-size: clamp(56px, 18vw, 84px);
+  }
 }
 
 .mf-lab[data-active-chapter='field'] .mf-world__grade,
@@ -353,7 +536,9 @@ body.mf-lab-mode {
 }
 
 .mf-lab[data-active-chapter='threshold'][data-threshold-intro='title'] .mf-header,
-.mf-lab[data-active-chapter='threshold'][data-threshold-intro='title'] .mf-rail {
+.mf-lab[data-active-chapter='threshold'][data-threshold-intro='title'] .mf-rail,
+.mf-lab[data-active-chapter='threshold'][data-threshold-intro='hold'] .mf-header,
+.mf-lab[data-active-chapter='threshold'][data-threshold-intro='hold'] .mf-rail {
   opacity: 0;
   pointer-events: none;
 }

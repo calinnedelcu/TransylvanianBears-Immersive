@@ -111,8 +111,6 @@ export function CarpathianThreshold({
   const portcullisRailRef = useRef<THREE.InstancedMesh>(null);
   const torchHandleRef = useRef<THREE.InstancedMesh>(null);
   const gateLightRef = useRef<THREE.PointLight>(null);
-  const flameGroupRefs = useRef<Array<THREE.Group | null>>([]);
-  const flameRefs = useRef<Array<THREE.MeshStandardMaterial | null>>([]);
   const introStartTimeRef = useRef<number | null>(null);
   const scratch = useMemo(() => new THREE.Object3D(), []);
   const doorResources = useMemo<TimberDoorResources>(() => ({
@@ -183,7 +181,6 @@ export function CarpathianThreshold({
     const root = rootRef.current;
     if (!root) return;
     const doorOpening = smooth(range(progressRef.current, 0.0405, 0.051));
-    const gateLift = smooth(range(progressRef.current, 0.04, 0.047));
     const departure = smooth(range(progressRef.current, 0.044, 0.072));
     if (introStartTimeRef.current === null) introStartTimeRef.current = clock.elapsedTime;
     const introTime = clock.elapsedTime - introStartTimeRef.current;
@@ -192,36 +189,24 @@ export function CarpathianThreshold({
     if (!root.visible) return;
     root.position.y = 0;
     if (leftDoorRef.current) {
-      leftDoorRef.current.rotation.y = THREE.MathUtils.damp(leftDoorRef.current.rotation.y, doorOpening * 1.34, 6.4, delta);
+      leftDoorRef.current.rotation.y = THREE.MathUtils.damp(
+        leftDoorRef.current.rotation.y,
+        0.22 + doorOpening * 1.12,
+        6.4,
+        delta,
+      );
     }
     if (rightDoorRef.current) {
-      rightDoorRef.current.rotation.y = THREE.MathUtils.damp(rightDoorRef.current.rotation.y, doorOpening * -1.34, 6.4, delta);
+      rightDoorRef.current.rotation.y = THREE.MathUtils.damp(
+        rightDoorRef.current.rotation.y,
+        -0.22 - doorOpening * 1.12,
+        6.4,
+        delta,
+      );
     }
     if (portcullisRef.current) {
-      portcullisRef.current.position.y = THREE.MathUtils.damp(portcullisRef.current.position.y, gateLift * 10.2, 7.2, delta);
-      portcullisRef.current.visible = gateLift < 0.96;
+      portcullisRef.current.visible = false;
     }
-    flameRefs.current.forEach((material, index) => {
-      if (!material) return;
-      const ignition = smooth(range(introTime, 0.38 + index * 0.22, 1.28 + index * 0.22));
-      const flicker = Math.sin(clock.elapsedTime * 8.2 + index * 1.7) * 0.62
-        + Math.sin(clock.elapsedTime * 17.4 + index) * 0.28;
-      material.emissiveIntensity = 0.2 + ignition * (4.2 + flicker);
-      material.color.setRGB(
-        0.1 + ignition * 0.9,
-        0.055 + ignition * 0.76,
-        0.025 + ignition * 0.52,
-      );
-      const flame = flameGroupRefs.current[index];
-      if (flame) {
-        flame.scale.set(
-          ignition * (0.92 + (reducedMotion ? 0 : flicker * 0.035)),
-          ignition * (1.08 + (reducedMotion ? 0 : flicker * 0.11)),
-          ignition * (0.92 + (reducedMotion ? 0 : flicker * 0.035)),
-        );
-        flame.rotation.z = reducedMotion ? 0 : flicker * 0.025;
-      }
-    });
     if (gateLightRef.current) {
       const ignition = smooth(range(introTime, 0.45, 1.85));
       const lowPulse = Math.sin(clock.elapsedTime * 1.15) * 2.8;
@@ -265,22 +250,14 @@ export function CarpathianThreshold({
         frustumCulled={false}
       />
       {[-1, 1].map((side, index) => (
-        <group
+        <pointLight
           key={side}
-          ref={(node) => { flameGroupRefs.current[index] = node; }}
           position={[side * 4.48, 5.15, 15.62]}
-        >
-          <mesh>
-            <coneGeometry args={[0.18, 0.7, 9]} />
-            <meshStandardMaterial
-              ref={(material) => { flameRefs.current[index] = material; }}
-              color="#ffd08a"
-              emissive="#e76e36"
-              emissiveIntensity={4.4}
-              roughness={0.18}
-            />
-          </mesh>
-        </group>
+          intensity={index === 0 ? 8 : 7}
+          distance={7}
+          decay={2}
+          color="#ee8b4f"
+        />
       ))}
       {realtimeLightEnabled ? (
         <pointLight

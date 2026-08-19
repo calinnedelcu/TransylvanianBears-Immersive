@@ -25,7 +25,7 @@ import {
   useBuriedActCamera,
   type BuriedActCameraCurve,
 } from './buried-act/buriedActCamera';
-import { FirstLightLayer } from './FirstLightLayer';
+
 import { NexusActScene } from './NexusActScene';
 import { VerticalSliceLoader } from './VerticalSliceLoader';
 import { VerticalSliceLoadingGate } from './VerticalSliceLoadingGate';
@@ -327,19 +327,19 @@ function CameraDirector({
     if (thresholdIdle > 0) {
       const idleTime = reducedMotion ? 0 : sceneTime;
       if (compact) {
-        targetPosition.x -= 7.9 * thresholdIdle;
-        targetPosition.y -= 5.85 * thresholdIdle;
-        targetPosition.z -= 9.4 * thresholdIdle;
-        lookTarget.x += 0.48 * thresholdIdle;
-        lookTarget.y -= 1.35 * thresholdIdle;
-        directedFov = (directedFov ?? genericFov) - 5 * thresholdIdle;
+        targetPosition.x -= 7.7 * thresholdIdle;
+        targetPosition.y -= 5.4 * thresholdIdle;
+        targetPosition.z -= 6.2 * thresholdIdle;
+        lookTarget.x += 0.5 * thresholdIdle;
+        lookTarget.y -= 1.15 * thresholdIdle;
+        directedFov = (directedFov ?? genericFov) - 3 * thresholdIdle;
       } else {
-        targetPosition.x -= 14.8 * thresholdIdle;
-        targetPosition.y -= 5.7 * thresholdIdle;
-        targetPosition.z -= 10.2 * thresholdIdle;
-        lookTarget.x += 0.06 * thresholdIdle;
-        lookTarget.y += 1.15 * thresholdIdle;
-        directedFov = (directedFov ?? genericFov) - 1.5 * thresholdIdle;
+        targetPosition.x -= 14.4 * thresholdIdle;
+        targetPosition.y -= 5.15 * thresholdIdle;
+        targetPosition.z -= 6.4 * thresholdIdle;
+        lookTarget.x += 0.04 * thresholdIdle;
+        lookTarget.y += 1.35 * thresholdIdle;
+        directedFov = (directedFov ?? genericFov) + 1.2 * thresholdIdle;
       }
       if (!reducedMotion) {
         targetPosition.x += Math.sin(idleTime * 0.07) * 0.05 * thresholdIdle;
@@ -1233,15 +1233,6 @@ function ThresholdExposure() {
   return null;
 }
 
-function ThresholdSill() {
-  return (
-    <mesh position={[0, -0.02, 14.2]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[22, 16]} />
-      <meshBasicMaterial color="#080706" />
-    </mesh>
-  );
-}
-
 type WorldProps = MacroFlowSceneProps & {
   authoredCameraCurves: VerticalSliceCameraCurves;
   schoolCameraCurve: SchoolActCameraCurve | null;
@@ -1379,19 +1370,12 @@ function World({
           {showThreshold ? (
             <>
               <ThresholdExposure />
-              <ThresholdSill />
               <directionalLight position={[-3.2, 7.4, 24]} intensity={compact ? 0.72 : 0.88} color="#cbb7a2" />
               <pointLight position={[0, 5.15, 16.4]} intensity={compact ? 26 : 34} distance={14} decay={2} color="#ee8b4f" />
               <pointLight position={[0, 4.7, 13.6]} intensity={compact ? 10 : 14} distance={9} decay={2} color="#ffb06a" />
             </>
           ) : null}
-          {!compact && showThreshold ? (
-            <FirstLightLayer
-              progressRef={progressRef}
-              qualityTier={qualityTier}
-              reducedMotion={reducedMotion}
-            />
-          ) : null}
+
           {!compact || activeChapter === 'threshold' ? (
             <CarpathianThreshold
               progressRef={progressRef}
