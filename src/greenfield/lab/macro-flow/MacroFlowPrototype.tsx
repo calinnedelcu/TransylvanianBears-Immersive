@@ -183,6 +183,11 @@ function MacroFlowExperience() {
   const lensPointerRef = useRef<LensPointerState>({ x: 0.5, y: 0.5, active: false });
   const nexusFlightInputRef = useRef<NexusFlightInput>({ x: 0, y: 0, active: false });
   const reducedMotion = usePrefersReducedMotion();
+  const [thresholdIntro, setThresholdIntro] = useState<'title' | 'world'>(() => (
+    reducedMotion || (typeof window !== 'undefined' && window.location.hash && window.location.hash !== '#mf-threshold')
+      ? 'world'
+      : 'title'
+  ));
   const [webglAvailable] = useState(supportsWebGL);
   const [rendererFailure, setRendererFailure] = useState<'render-error' | 'context-lost' | null>(null);
   const directInfectEntryRef = useRef(window.location.hash === '#mf-infect');
@@ -450,6 +455,23 @@ function MacroFlowExperience() {
     onBuriedActProgress,
   });
 
+  useEffect(() => {
+    if (reducedMotion || activeChapter !== 'threshold' || progressRef.current > 0.004) {
+      setThresholdIntro('world');
+      return undefined;
+    }
+    const finish = () => setThresholdIntro('world');
+    const timeout = window.setTimeout(finish, 2000);
+    const onScroll = () => {
+      if (progressRef.current > 0.003) finish();
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.clearTimeout(timeout);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, [activeChapter, progressRef, reducedMotion]);
+
   useLayoutEffect(() => {
     if (activeChapter === 'infect') {
       if (directInfectEntryRef.current) {
@@ -629,6 +651,7 @@ function MacroFlowExperience() {
       ref={rootRef}
       className="mf-lab"
       data-active-chapter={activeChapter}
+      data-threshold-intro={activeChapter === 'threshold' ? thresholdIntro : undefined}
       data-quality-tier={qualityTier}
       data-lens={lensMode}
       data-evidence-cores={evidenceCores.length}

@@ -1,4 +1,4 @@
-import { Environment, Lightformer, PerformanceMonitor, useGLTF, useTexture } from '@react-three/drei';
+import { Environment, Lightformer, PerformanceMonitor, useGLTF } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Bloom, EffectComposer, Noise, Vignette } from '@react-three/postprocessing';
 import {
@@ -45,8 +45,6 @@ import {
 } from './verticalSliceCamera';
 
 export type { MacroLensMode, MacroTraceOutcome } from './macroFlowTypes';
-
-useTexture.preload('/assets/world/threshold-sky.jpg');
 
 type MacroFlowSceneProps = {
   activeChapter: JourneyChapter;
@@ -323,33 +321,42 @@ function CameraDirector({
       directedRoll = genericRoll;
     }
 
-    const thresholdIdle = activeChapter === 'threshold' && !reducedMotion
+    const thresholdIdle = activeChapter === 'threshold'
       ? 1 - smooth(range(worldProgress, 0.002, 0.052))
       : 0;
     if (thresholdIdle > 0) {
-      const idleTime = sceneTime;
-      const scale = compact ? 0.62 : 1;
-      targetPosition.x -= 28 * scale * thresholdIdle;
-      targetPosition.y -= (compact ? 2.4 : 4.1) * thresholdIdle;
-      targetPosition.z += 16 * scale * thresholdIdle;
-      targetPosition.x += Math.sin(idleTime * 0.09) * 0.22 * thresholdIdle;
-      targetPosition.y += Math.sin(idleTime * 0.13 + 0.7) * 0.1 * thresholdIdle;
-      targetPosition.z += Math.sin(idleTime * 0.07 + 1.2) * 0.16 * thresholdIdle;
-      lookTarget.x += 6.4 * scale * thresholdIdle;
-      lookTarget.y += (compact ? 0.6 : 1.35) * thresholdIdle;
-      lookTarget.x += Math.sin(idleTime * 0.08 + 0.5) * 0.16 * thresholdIdle;
-      lookTarget.y += Math.sin(idleTime * 0.11) * 0.08 * thresholdIdle;
-      directedRoll = (directedRoll ?? genericRoll) + Math.sin(idleTime * 0.08) * 0.003 * thresholdIdle;
-      directedFov = (directedFov ?? genericFov)
-        + 10.5 * thresholdIdle
-        + Math.sin(idleTime * 0.06) * 0.18 * thresholdIdle;
+      const idleTime = reducedMotion ? 0 : sceneTime;
+      if (compact) {
+        targetPosition.x -= 7.9 * thresholdIdle;
+        targetPosition.y -= 5.85 * thresholdIdle;
+        targetPosition.z -= 9.4 * thresholdIdle;
+        lookTarget.x += 0.48 * thresholdIdle;
+        lookTarget.y -= 1.35 * thresholdIdle;
+        directedFov = (directedFov ?? genericFov) - 5 * thresholdIdle;
+      } else {
+        targetPosition.x -= 14.8 * thresholdIdle;
+        targetPosition.y -= 5.7 * thresholdIdle;
+        targetPosition.z -= 10.2 * thresholdIdle;
+        lookTarget.x += 0.06 * thresholdIdle;
+        lookTarget.y += 1.15 * thresholdIdle;
+        directedFov = (directedFov ?? genericFov) - 1.5 * thresholdIdle;
+      }
+      if (!reducedMotion) {
+        targetPosition.x += Math.sin(idleTime * 0.07) * 0.05 * thresholdIdle;
+        targetPosition.y += Math.sin(idleTime * 0.09 + 0.6) * 0.035 * thresholdIdle;
+        lookTarget.y += Math.sin(idleTime * 0.08) * 0.03 * thresholdIdle;
+        directedRoll = (directedRoll ?? genericRoll) + Math.sin(idleTime * 0.06) * 0.002 * thresholdIdle;
+        directedFov += Math.sin(idleTime * 0.05) * 0.12 * thresholdIdle;
+      }
     }
 
     const parallax = reducedMotion || isBuriedChapter
       ? 0
-      : qualityTier === 'cinematic'
-        ? 0.42
-        : 0.16;
+      : activeChapter === 'threshold'
+        ? 0.06
+        : qualityTier === 'cinematic'
+          ? 0.42
+          : 0.16;
     targetPosition.x += pointer.x * parallax;
     targetPosition.y += pointer.y * parallax * 0.35;
     lookTarget.x += pointer.x * parallax * 0.55;
@@ -1212,50 +1219,12 @@ function useFirstActLifecycle(
   };
 }
 
-function ThresholdSkyPlate({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>) {
-  const texture = useTexture('/assets/world/threshold-sky.jpg');
-  const meshRef = useRef<THREE.Mesh>(null);
-  const materialRef = useRef<THREE.MeshBasicMaterial>(null);
-
-  useLayoutEffect(() => {
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = 8;
-    texture.needsUpdate = true;
-  }, [texture]);
-
-  useFrame(({ camera }) => {
-    const mesh = meshRef.current;
-    if (mesh) {
-      mesh.position.copy(camera.position);
-      mesh.quaternion.copy(camera.quaternion);
-      mesh.translateZ(-96);
-    }
-    if (materialRef.current) {
-      materialRef.current.opacity = 1 - smooth(range(progressRef.current, 0.038, 0.07));
-    }
-  });
-
-  return (
-    <mesh ref={meshRef} renderOrder={-80} frustumCulled={false}>
-      <planeGeometry args={[300, 170]} />
-      <meshBasicMaterial
-        ref={materialRef}
-        map={texture}
-        transparent
-        depthWrite={false}
-        fog={false}
-        toneMapped={false}
-      />
-    </mesh>
-  );
-}
-
 function ThresholdExposure() {
   const gl = useThree((state) => state.gl);
 
   useEffect(() => {
     const previous = gl.toneMappingExposure;
-    gl.toneMappingExposure = 1.08;
+    gl.toneMappingExposure = 1.02;
     return () => {
       gl.toneMappingExposure = previous;
     };
@@ -1264,37 +1233,12 @@ function ThresholdExposure() {
   return null;
 }
 
-function ThresholdGroundMist({ reducedMotion }: { reducedMotion: boolean }) {
-  const veilRef = useRef<THREE.Group>(null);
-  const mistRef = useRef<THREE.MeshBasicMaterial>(null);
-
-  useFrame(({ camera, clock }) => {
-    if (veilRef.current) {
-      veilRef.current.position.copy(camera.position);
-      veilRef.current.quaternion.copy(camera.quaternion);
-    }
-    if (mistRef.current && !reducedMotion) {
-      mistRef.current.opacity = 0.28 + Math.sin(clock.elapsedTime * 0.16) * 0.04;
-    }
-  });
-
+function ThresholdSill() {
   return (
-    <group ref={veilRef}>
-      <mesh position={[0, -2.4, -11]} rotation={[-0.16, 0, 0]}>
-        <planeGeometry args={[80, 20]} />
-        <meshBasicMaterial color="#121018" transparent opacity={0.22} depthWrite={false} />
-      </mesh>
-      <mesh position={[0, -1.3, -10]} rotation={[-0.06, 0, 0]}>
-        <planeGeometry args={[72, 12]} />
-        <meshBasicMaterial
-          ref={mistRef}
-          color="#3a3542"
-          transparent
-          opacity={0.12}
-          depthWrite={false}
-        />
-      </mesh>
-    </group>
+    <mesh position={[0, -0.02, 14.2]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[22, 16]} />
+      <meshBasicMaterial color="#080706" />
+    </mesh>
   );
 }
 
@@ -1359,8 +1303,8 @@ function World({
 
   return (
     <>
-      <color attach="background" args={[showBuried ? '#070707' : showSchool ? '#0c1211' : showThreshold ? '#0b1020' : '#071011']} />
-      <fog attach="fog" args={[showBuried ? '#0b0908' : showSchool ? '#141916' : showThreshold ? '#1a1824' : '#0a1719', showBuried ? 12 : showSchool ? 18 : showThreshold ? 18 : 26, showBuried ? 70 : showSchool ? 78 : showThreshold ? 76 : 94]} />
+      <color attach="background" args={[showBuried ? '#070707' : showSchool ? '#0c1211' : showThreshold ? '#07080b' : '#071011']} />
+      <fog attach="fog" args={[showBuried ? '#0b0908' : showSchool ? '#141916' : showThreshold ? '#0c0b0d' : '#0a1719', showBuried ? 12 : showSchool ? 18 : showThreshold ? 8 : 26, showBuried ? 70 : showSchool ? 78 : showThreshold ? 36 : 94]} />
       <WorldAtmosphere
         progressRef={progressRef}
         qualityTier={qualityTier}
@@ -1428,18 +1372,17 @@ function World({
       />
       <RenderBudgetMonitor />
       {mountThreshold ? (
-        <group ref={firstAct.thresholdGroupRef} visible position={[0, showThreshold ? -1.35 : 0, 0]}>
+        <group ref={firstAct.thresholdGroupRef} visible>
           {showThreshold ? (
             <FirstLightCitadel progressRef={progressRef} qualityTier={qualityTier} />
           ) : null}
           {showThreshold ? (
             <>
               <ThresholdExposure />
-              <ThresholdSkyPlate progressRef={progressRef} />
-              <directionalLight position={[18, 24, -22]} intensity={compact ? 1.55 : 1.95} color="#d7deea" />
-              <directionalLight position={[-6, 4, -28]} intensity={compact ? 0.85 : 1.15} color="#d36a3a" />
-              <pointLight position={[0, 5.2, 17.2]} intensity={compact ? 28 : 36} distance={20} decay={2} color="#ee8b4f" />
-              <ThresholdGroundMist reducedMotion={reducedMotion} />
+              <ThresholdSill />
+              <directionalLight position={[-3.2, 7.4, 24]} intensity={compact ? 0.72 : 0.88} color="#cbb7a2" />
+              <pointLight position={[0, 5.15, 16.4]} intensity={compact ? 26 : 34} distance={14} decay={2} color="#ee8b4f" />
+              <pointLight position={[0, 4.7, 13.6]} intensity={compact ? 10 : 14} distance={9} decay={2} color="#ffb06a" />
             </>
           ) : null}
           {!compact && showThreshold ? (
