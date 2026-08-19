@@ -57,7 +57,6 @@ import { SchoolActOverlay } from './school-act/SchoolActOverlay';
 import { SchoolActSoundscape } from './school-act/SchoolActSoundscape';
 import { useSchoolActController } from './school-act/useSchoolActController';
 import type { SchoolActStatus } from './school-act/schoolActTypes';
-import { ThresholdIntro } from './ThresholdIntro';
 import './macro-flow.css';
 
 const MacroFlowScene = lazy(() => import('./MacroFlowScene').then((module) => ({ default: module.MacroFlowScene })));
@@ -184,12 +183,6 @@ function MacroFlowExperience() {
   const lensPointerRef = useRef<LensPointerState>({ x: 0.5, y: 0.5, active: false });
   const nexusFlightInputRef = useRef<NexusFlightInput>({ x: 0, y: 0, active: false });
   const reducedMotion = usePrefersReducedMotion();
-  const [thresholdIntro, setThresholdIntro] = useState<'title' | 'hold' | 'world'>(() => (
-    reducedMotion || (typeof window !== 'undefined' && window.location.hash && window.location.hash !== '#mf-threshold')
-      ? 'world'
-      : 'title'
-  ));
-  const completeThresholdIntro = useCallback(() => setThresholdIntro('hold'), []);
   const [webglAvailable] = useState(supportsWebGL);
   const [rendererFailure, setRendererFailure] = useState<'render-error' | 'context-lost' | null>(null);
   const directInfectEntryRef = useRef(window.location.hash === '#mf-infect');
@@ -457,24 +450,6 @@ function MacroFlowExperience() {
     onBuriedActProgress,
   });
 
-  useEffect(() => {
-    if (reducedMotion || activeChapter !== 'threshold' || progressRef.current > 0.004) {
-      setThresholdIntro('world');
-      return undefined;
-    }
-    const hold = () => setThresholdIntro((current) => (current === 'world' ? current : 'hold'));
-    const leave = () => setThresholdIntro('world');
-    const timeout = window.setTimeout(hold, 2800);
-    const onScroll = () => {
-      if (progressRef.current > 0.003) leave();
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      window.clearTimeout(timeout);
-      window.removeEventListener('scroll', onScroll);
-    };
-  }, [activeChapter, progressRef, reducedMotion]);
-
   useLayoutEffect(() => {
     if (activeChapter === 'infect') {
       if (directInfectEntryRef.current) {
@@ -654,7 +629,6 @@ function MacroFlowExperience() {
       ref={rootRef}
       className="mf-lab"
       data-active-chapter={activeChapter}
-      data-threshold-intro={activeChapter === 'threshold' ? thresholdIntro : undefined}
       data-quality-tier={qualityTier}
       data-lens={lensMode}
       data-evidence-cores={evidenceCores.length}
@@ -663,12 +637,6 @@ function MacroFlowExperience() {
       data-renderer-failure={rendererFailure ?? undefined}
     >
       <a className="mf-skip" href="#mf-proof">Sari la dovada proiectului</a>
-      {activeChapter === 'threshold' && thresholdIntro !== 'world' ? (
-        <ThresholdIntro
-          reducedMotion={reducedMotion}
-          onComplete={completeThresholdIntro}
-        />
-      ) : null}
 
       <div className="mf-world" aria-hidden="true">
         {macroWorldActive ? (

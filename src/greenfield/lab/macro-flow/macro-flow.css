@@ -757,31 +757,13 @@ body.mf-lab-mode {
 }
 
 .mf-copy--hero {
-  width: 100%;
+  width: min(380px, 32vw);
   max-width: none;
-  place-content: center;
-  justify-items: center;
-  padding: 0 6vw;
+  align-content: end;
+  justify-items: start;
+  padding: 0 0 9vh 4.2vw;
   isolation: isolate;
-  text-align: center;
-  transition: padding 1.1s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.mf-copy--hero .mf-hero-plate {
-  display: grid;
-  justify-items: center;
-}
-
-.mf-lab[data-threshold-intro='world'] .mf-copy--hero {
-  width: min(420px, 38vw);
-  align-content: start;
-  justify-items: start;
-  padding: 6.4vh 0 0 3.6vw;
   text-align: left;
-}
-
-.mf-lab[data-threshold-intro='world'] .mf-copy--hero .mf-hero-plate {
-  justify-items: start;
 }
 
 .mf-copy--hero::before {
@@ -928,13 +910,17 @@ body.mf-lab-mode {
   line-height: 0.92;
 }
 
+.mf-lab[data-active-chapter='threshold'] .mf-copy--hero .mf-hero-plate {
+  position: relative;
+}
+
 .mf-copy--hero h1 {
   display: grid;
   width: max-content;
   max-width: 100%;
-  justify-items: center;
-  font-size: clamp(64px, 9vw, 128px);
-  line-height: 0.78;
+  justify-items: start;
+  font-size: clamp(36px, 4.2vw, 58px);
+  line-height: 0.8;
   letter-spacing: 0.01em;
   text-transform: uppercase;
   text-shadow: 0 10px 36px rgb(7 10 11 / 0.55);

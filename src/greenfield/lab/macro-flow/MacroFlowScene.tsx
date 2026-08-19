@@ -17,7 +17,7 @@ import type { JourneyChapter } from '../../experience/chapters';
 import type { EvidenceCoreId } from '../../experience/evidenceCores';
 import type { QualityTier } from '../../experience/quality';
 import { prepareNexusActAssets, prepareSchoolActAssets } from './actAssetPreload';
-import { CarpathianThreshold } from './CarpathianThreshold';
+
 import { BuriedActPackage } from './buried-act/BuriedActPackage';
 import { prepareBuriedActAssets } from './buried-act/buriedActAssets';
 import {
@@ -321,33 +321,15 @@ function CameraDirector({
       directedRoll = genericRoll;
     }
 
-    const thresholdIdle = activeChapter === 'threshold'
+    const thresholdIdle = activeChapter === 'threshold' && !reducedMotion
       ? 1 - smooth(range(worldProgress, 0.002, 0.052))
       : 0;
     if (thresholdIdle > 0) {
-      const idleTime = reducedMotion ? 0 : sceneTime;
-      if (compact) {
-        targetPosition.x -= 7.7 * thresholdIdle;
-        targetPosition.y -= 5.4 * thresholdIdle;
-        targetPosition.z -= 6.2 * thresholdIdle;
-        lookTarget.x += 0.5 * thresholdIdle;
-        lookTarget.y -= 1.15 * thresholdIdle;
-        directedFov = (directedFov ?? genericFov) - 3 * thresholdIdle;
-      } else {
-        targetPosition.x -= 14.4 * thresholdIdle;
-        targetPosition.y -= 5.15 * thresholdIdle;
-        targetPosition.z -= 6.4 * thresholdIdle;
-        lookTarget.x += 0.04 * thresholdIdle;
-        lookTarget.y += 1.35 * thresholdIdle;
-        directedFov = (directedFov ?? genericFov) + 1.2 * thresholdIdle;
-      }
-      if (!reducedMotion) {
-        targetPosition.x += Math.sin(idleTime * 0.07) * 0.05 * thresholdIdle;
-        targetPosition.y += Math.sin(idleTime * 0.09 + 0.6) * 0.035 * thresholdIdle;
-        lookTarget.y += Math.sin(idleTime * 0.08) * 0.03 * thresholdIdle;
-        directedRoll = (directedRoll ?? genericRoll) + Math.sin(idleTime * 0.06) * 0.002 * thresholdIdle;
-        directedFov += Math.sin(idleTime * 0.05) * 0.12 * thresholdIdle;
-      }
+      const idleTime = sceneTime;
+      targetPosition.x += Math.sin(idleTime * 0.07) * 0.12 * thresholdIdle;
+      targetPosition.y += Math.sin(idleTime * 0.09 + 0.6) * 0.06 * thresholdIdle;
+      lookTarget.y += Math.sin(idleTime * 0.08) * 0.04 * thresholdIdle;
+      directedRoll = (directedRoll ?? genericRoll) + Math.sin(idleTime * 0.06) * 0.002 * thresholdIdle;
     }
 
     const parallax = reducedMotion || isBuriedChapter
@@ -544,13 +526,7 @@ function FirstLightCitadel({
       if (!(child instanceof THREE.Mesh)) return;
       const materials = Array.isArray(child.material) ? child.material : [child.material];
       const assetLabel = `${child.name} ${child.geometry.name} ${child.parent?.name ?? ''}`;
-      const earthMaterial = materials.some((material) => (
-        /night earth|worn stone path/i.test(material.name)
-      ));
-      if (
-        earthMaterial
-        || /bat flight|bear|crest|emblem|herald|far carpathians|near ridge|earth|ground|yard|courtyard|terrain|soil|plaza|lawn|base disc|floor/i.test(assetLabel)
-      ) {
+      if (/bat flight|bear crest|emblem|herald/i.test(assetLabel)) {
         child.visible = false;
         const hiddenMaterials = materials.map((source) => {
           const cached = materialCache.get(source.uuid);
@@ -1294,8 +1270,8 @@ function World({
 
   return (
     <>
-      <color attach="background" args={[showBuried ? '#070707' : showSchool ? '#0c1211' : showThreshold ? '#07080b' : '#071011']} />
-      <fog attach="fog" args={[showBuried ? '#0b0908' : showSchool ? '#141916' : showThreshold ? '#0c0b0d' : '#0a1719', showBuried ? 12 : showSchool ? 18 : showThreshold ? 8 : 26, showBuried ? 70 : showSchool ? 78 : showThreshold ? 36 : 94]} />
+      <color attach="background" args={[showBuried ? '#070707' : showSchool ? '#0c1211' : showThreshold ? '#0c1418' : '#071011']} />
+      <fog attach="fog" args={[showBuried ? '#0b0908' : showSchool ? '#141916' : showThreshold ? '#14181c' : '#0a1719', showBuried ? 12 : showSchool ? 18 : showThreshold ? 28 : 26, showBuried ? 70 : showSchool ? 78 : showThreshold ? 110 : 94]} />
       <WorldAtmosphere
         progressRef={progressRef}
         qualityTier={qualityTier}
@@ -1309,7 +1285,7 @@ function World({
       />
       {showHemisphere ? (
         <hemisphereLight
-          intensity={showBuried ? 0.16 : showThreshold ? (compact ? 0.86 : 0.68) : showSchool ? 0.46 : 0.38}
+          intensity={showBuried ? 0.16 : showThreshold ? (compact ? 1.05 : 0.92) : showSchool ? 0.46 : 0.38}
           color={showBuried ? '#b8ac98' : showThreshold ? '#d7b39a' : showSchool ? '#d2c6a4' : '#b9cfcd'}
           groundColor={showBuried ? '#130f0d' : showThreshold ? '#1a1410' : showSchool ? '#1b1712' : '#191b17'}
         />
@@ -1318,7 +1294,7 @@ function World({
         ref={keyLightRef}
         castShadow={qualityTier === 'cinematic' && !showBuried && !showThreshold && !showNexus}
         position={showThreshold ? [16, 11, 8] : [10, 18, 18]}
-        intensity={showBuried ? 0.58 : showThreshold ? (compact ? 1.85 : 1.55) : 1.75}
+        intensity={showBuried ? 0.58 : showThreshold ? (compact ? 2.4 : 2.15) : 1.75}
         color={showBuried ? '#bbae98' : showThreshold ? '#e0b48a' : '#dae3d9'}
         shadow-mapSize-width={qualityTier === 'cinematic' ? 1536 : 512}
         shadow-mapSize-height={qualityTier === 'cinematic' ? 1536 : 512}
@@ -1367,24 +1343,7 @@ function World({
           {showThreshold ? (
             <FirstLightCitadel progressRef={progressRef} qualityTier={qualityTier} />
           ) : null}
-          {showThreshold ? (
-            <>
-              <ThresholdExposure />
-              <directionalLight position={[-3.2, 7.4, 24]} intensity={compact ? 0.72 : 0.88} color="#cbb7a2" />
-              <pointLight position={[0, 5.15, 16.4]} intensity={compact ? 26 : 34} distance={14} decay={2} color="#ee8b4f" />
-              <pointLight position={[0, 4.7, 13.6]} intensity={compact ? 10 : 14} distance={9} decay={2} color="#ffb06a" />
-            </>
-          ) : null}
-
-          {!compact || activeChapter === 'threshold' ? (
-            <CarpathianThreshold
-              progressRef={progressRef}
-              qualityTier={qualityTier}
-              reducedMotion={reducedMotion}
-              atmosphereEnabled={showThreshold}
-              realtimeLightEnabled
-            />
-          ) : null}
+          {showThreshold ? <ThresholdExposure /> : null}
           <ThresholdResponseSequence
             progressRef={progressRef}
             qualityTier={qualityTier}

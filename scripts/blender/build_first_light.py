@@ -1009,6 +1009,108 @@ def add_guardian_bear_relief(
     )
 
 
+def convert_active_to_mesh() -> bpy.types.Object:
+    obj = bpy.context.object
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.convert(target="MESH")
+    return bpy.context.object
+
+
+def add_wordmark(
+    name: str,
+    text: str,
+    location: tuple[float, float, float],
+    size: float,
+    material: bpy.types.Material,
+    extrude: float = 0.045,
+) -> bpy.types.Object:
+    font_curve = bpy.data.curves.new(name=f"{name}Curve", type="FONT")
+    font_curve.body = text
+    font_curve.size = size
+    font_curve.align_x = "CENTER"
+    font_curve.align_y = "CENTER"
+    font_curve.extrude = extrude
+    font_curve.bevel_depth = max(0.004, size * 0.012)
+    font_curve.space_character = 1.04
+    font_path = Path("/System/Library/Fonts/Supplemental/Georgia.ttf")
+    if font_path.exists():
+        font_curve.font = bpy.data.fonts.load(str(font_path))
+    obj = bpy.data.objects.new(name, font_curve)
+    obj.location = location
+    obj.rotation_euler = (math.pi / 2, 0.0, 0.18)
+    bpy.context.collection.objects.link(obj)
+    bpy.context.view_layer.objects.active = obj
+    obj.select_set(True)
+    convert_active_to_mesh()
+    obj = bpy.context.object
+    obj.name = name
+    assign_material(obj, material)
+    return obj
+
+
+def add_gate_leaves(timber: bpy.types.Material, iron: bpy.types.Material) -> None:
+    left = rotated_cube(
+        "Gate leaf L",
+        (-1.48, -14.72, 3.35),
+        (2.72, 0.18, 6.55),
+        timber,
+        (0.0, 0.0, 0.22),
+        0.03,
+    )
+    right = rotated_cube(
+        "Gate leaf R",
+        (1.48, -14.72, 3.35),
+        (2.72, 0.18, 6.55),
+        timber,
+        (0.0, 0.0, -0.22),
+        0.03,
+    )
+    for leaf, side in ((left, -1), (right, 1)):
+        for band_z in (1.15, 3.35, 5.55):
+            cube(
+                f"{leaf.name} strap {band_z:.2f}",
+                (side * 1.48, -14.84, band_z),
+                (2.55, 0.05, 0.1),
+                iron,
+                rotation_z=0.22 * side,
+                bevel=0.008,
+            )
+
+
+def add_gate_lock_apparatus(stone: bpy.types.Material, brass: bpy.types.Material, pivot: bpy.types.Material) -> None:
+    voussoirs = (
+        (0.0, 1.42, 0.0),
+        (0.78, 1.12, -0.42),
+        (1.18, 0.48, -0.82),
+        (-0.78, 1.12, 0.42),
+        (-1.18, 0.48, 0.82),
+        (1.22, -0.28, -1.05),
+        (-1.22, -0.28, 1.05),
+    )
+    for index, (x, z, yaw) in enumerate(voussoirs, start=1):
+        cube(
+            f"Gate lock stone {index}",
+            (x, -15.62, 5.55 + z),
+            (0.42, 0.16, 0.58),
+            stone,
+            rotation_z=yaw,
+            bevel=0.02,
+        )
+    cylinder(
+        "Gate lock pivot",
+        (0.0, -15.72, 5.42),
+        0.13,
+        0.12,
+        10,
+        pivot,
+        0.012,
+        (math.pi / 2, 0.0, 0.0),
+    )
+    cube("Gate lock sill", (0.0, -15.58, 3.92), (1.85, 0.14, 0.12), brass, bevel=0.012)
+
+
 def annular_segment(
     name: str,
     inner_radius: float,
@@ -1314,7 +1416,10 @@ def build_world() -> None:
     })
     modules: dict[str, bpy.types.Object] = {}
 
-    cylinder("Terrain", (0, 1.5, -0.34), 31.5, 0.68, 64, earth, bevel=0.0)
+    garnet = make_material("Garnet pivot", "#7a2426", 0.32, metallic=0.28, emission="#9a2d2f", emission_strength=0.55)
+    wordmark_metal = make_material("Wordmark metal", "#e8dcc4", 0.34, metallic=0.62, emission="#f3eee2", emission_strength=0.18)
+    cylinder("Approach earth", (0, 4.0, -0.55), 78.0, 0.9, 72, earth, bevel=0.0)
+    cylinder("Terrain", (0, 1.5, -0.28), 42.0, 0.62, 64, earth, bevel=0.0)
 
     ring_segments = 28
     turret_angles = (-2.42, -0.72, 0.72, 2.42)
@@ -1972,19 +2077,25 @@ def build_world() -> None:
         cylinder(f"Ring signal anchor {index + 1}", (x, y, 5.98), 0.18, 0.22, 12, brass, bevel=0.02)
 
     mountain_ridge(
-        "Far Carpathians",
+        "Horizon massif",
         27.0,
         -0.1,
         [(-34, 2.5), (-26, 7.2), (-20, 4.8), (-13, 10.2), (-6, 5.6), (1, 8.7), (9, 4.9), (17, 9.4), (25, 5.5), (34, 7.0)],
         mountain_far,
     )
     mountain_ridge(
-        "Near ridge",
+        "Foreground hill",
         20.0,
         -0.1,
         [(-32, 1.6), (-24, 4.8), (-17, 3.1), (-10, 6.4), (-2, 2.8), (7, 5.3), (15, 2.4), (24, 5.8), (32, 2.2)],
         mountain_near,
     )
+
+    add_gate_leaves(timber, aged_iron)
+    add_gate_lock_apparatus(limestone_light, brass, garnet)
+    add_wordmark("Lintel kicker", "SAPTE SISTEME", (-9.4, -22.4, 4.55), 0.38, brass, 0.02)
+    add_wordmark("Foreground word TRANSYLVANIAN", "TRANSYLVANIAN", (-9.6, -22.8, 3.55), 0.62, wordmark_metal, 0.028)
+    add_wordmark("Foreground word BEARS", "BEARS", (-9.2, -23.4, 2.15), 1.85, wordmark_metal, 0.055)
 
     triangulate_textured_meshes()
 
@@ -2041,7 +2152,10 @@ def setup_lighting_and_camera() -> None:
 
 def configure_output() -> None:
     scene = bpy.context.scene
-    scene.render.engine = "BLENDER_EEVEE"
+    try:
+        scene.render.engine = "BLENDER_EEVEE_NEXT"
+    except TypeError:
+        scene.render.engine = "BLENDER_EEVEE"
     scene.render.resolution_x = 1600
     scene.render.resolution_y = 900
     scene.render.resolution_percentage = 100
