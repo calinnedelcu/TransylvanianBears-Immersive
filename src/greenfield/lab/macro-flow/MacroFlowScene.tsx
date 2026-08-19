@@ -76,7 +76,7 @@ useTexture.preload(FIRST_LIGHT_SKY_URL);
 useTexture.preload(FIRST_LIGHT_COUNTRY_URL);
 
 const CAMERA_PATH = new THREE.CatmullRomCurve3([
-  new THREE.Vector3(14, 32, 78),
+  new THREE.Vector3(16, 20, 52),
   new THREE.Vector3(13, 10.2, 33),
   new THREE.Vector3(7, 8.2, 27),
   new THREE.Vector3(2.2, 6.4, 21),
@@ -97,7 +97,7 @@ const CAMERA_PATH = new THREE.CatmullRomCurve3([
 ]);
 
 const MOBILE_CAMERA_PATH = new THREE.CatmullRomCurve3([
-  new THREE.Vector3(2.2, 30, 68),
+  new THREE.Vector3(4.0, 16.5, 42),
   new THREE.Vector3(5.4, 8.3, 30),
   new THREE.Vector3(2.8, 7.1, 25.5),
   new THREE.Vector3(1.2, 6.1, 20.5),
@@ -411,32 +411,47 @@ function ThresholdNightSky({
 function ThresholdHorizon() {
   const countryMap = useTexture(FIRST_LIGHT_COUNTRY_URL);
   countryMap.colorSpace = THREE.SRGBColorSpace;
-  const uniforms = useMemo(() => ({ uMap: { value: countryMap } }), [countryMap]);
+  countryMap.wrapS = THREE.ClampToEdgeWrapping;
+  countryMap.wrapT = THREE.ClampToEdgeWrapping;
+  const hillGeometry = useMemo(() => {
+    const geometry = new THREE.CircleGeometry(44, 80);
+    const position = geometry.attributes.position;
+    for (let index = 0; index < position.count; index += 1) {
+      const x = position.getX(index);
+      const y = position.getY(index);
+      const radius = Math.hypot(x, y);
+      const pad = 1 - smooth(range(radius, 15.4, 21.5));
+      const fall = (radius / 44) ** 1.55 * 6.4;
+      position.setZ(index, pad * 0.16 - fall);
+    }
+    geometry.computeVertexNormals();
+    return geometry;
+  }, []);
+
+  useEffect(() => () => hillGeometry.dispose(), [hillGeometry]);
 
   return (
     <group>
-      <mesh renderOrder={-50} frustumCulled={false}>
-        <planeGeometry args={[2, 2]} />
-        <shaderMaterial
-          uniforms={uniforms}
-          depthTest={false}
-          depthWrite={false}
-          toneMapped={false}
-          vertexShader={`
-            varying vec2 vUv;
-            void main() {
-              vUv = uv;
-              gl_Position = vec4(position.xy, 0.999, 1.0);
-            }
-          `}
-          fragmentShader={`
-            uniform sampler2D uMap;
-            varying vec2 vUv;
-            void main() {
-              gl_FragColor = texture2D(uMap, vUv);
-            }
-          `}
-        />
+      <mesh
+        geometry={hillGeometry}
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, 0, 0]}
+        receiveShadow
+      >
+        <meshStandardMaterial map={countryMap} color="#9aa48c" roughness={0.96} metalness={0} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.1, 0]}>
+        <circleGeometry args={[12.15, 48]} />
+        <meshStandardMaterial color="#4f4c43" roughness={0.9} metalness={0} />
+      </mesh>
+      <mesh
+        position={[0, 14, -62]}
+        ref={(object) => {
+          object?.lookAt(16, 20, 52);
+        }}
+      >
+        <planeGeometry args={[240, 132]} />
+        <meshBasicMaterial map={countryMap} toneMapped={false} fog={false} />
       </mesh>
     </group>
   );
@@ -1624,7 +1639,7 @@ export function MacroFlowScene(props: MacroFlowSceneProps) {
         className="mf-canvas"
         dpr={dpr}
         shadows={props.qualityTier === 'cinematic'}
-        camera={{ fov: 48, near: 0.1, far: 480, position: [14, 32, 78] }}
+        camera={{ fov: 48, near: 0.1, far: 480, position: [16, 20, 52] }}
         gl={{ antialias: props.qualityTier !== 'cinematic', alpha: false, powerPreference: 'high-performance' }}
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
