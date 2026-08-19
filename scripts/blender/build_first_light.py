@@ -2347,8 +2347,8 @@ def setup_lighting_and_camera() -> None:
     camera_data.lens = 35
     camera_data.sensor_width = 36
     camera = bpy.data.objects.new("First Light camera", camera_data)
-    camera.location = (20.0, -56.0, 20.0)
-    look_at(camera, (0.0, -0.8, 3.6))
+    camera.location = (16.0, -88.0, 38.0)
+    look_at(camera, (0.0, -3.0, 2.0))
     bpy.context.collection.objects.link(camera)
     bpy.context.scene.camera = camera
 

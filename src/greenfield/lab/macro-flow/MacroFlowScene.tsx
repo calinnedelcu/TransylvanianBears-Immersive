@@ -1,4 +1,4 @@
-import { Environment, Lightformer, PerformanceMonitor, useGLTF } from '@react-three/drei';
+import { Environment, Lightformer, PerformanceMonitor, useGLTF, useTexture } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Bloom, EffectComposer, Noise, Vignette } from '@react-three/postprocessing';
 import {
@@ -70,8 +70,13 @@ type MacroFlowSceneProps = {
   onBuriedPixelHandoffRendered: () => void;
 };
 
+const FIRST_LIGHT_SKY_URL = '/assets/world/first-light-sky.webp';
+const FIRST_LIGHT_COUNTRY_URL = '/assets/world/first-light-country.webp';
+useTexture.preload(FIRST_LIGHT_SKY_URL);
+useTexture.preload(FIRST_LIGHT_COUNTRY_URL);
+
 const CAMERA_PATH = new THREE.CatmullRomCurve3([
-  new THREE.Vector3(20, 20, 56),
+  new THREE.Vector3(14, 32, 78),
   new THREE.Vector3(13, 10.2, 33),
   new THREE.Vector3(7, 8.2, 27),
   new THREE.Vector3(2.2, 6.4, 21),
@@ -92,7 +97,7 @@ const CAMERA_PATH = new THREE.CatmullRomCurve3([
 ]);
 
 const MOBILE_CAMERA_PATH = new THREE.CatmullRomCurve3([
-  new THREE.Vector3(3.2, 20, 54),
+  new THREE.Vector3(2.2, 30, 68),
   new THREE.Vector3(5.4, 8.3, 30),
   new THREE.Vector3(2.8, 7.1, 25.5),
   new THREE.Vector3(1.2, 6.1, 20.5),
@@ -375,6 +380,68 @@ function CameraDirector({
   return null;
 }
 
+function ThresholdNightSky({
+  followRef,
+}: {
+  followRef: MutableRefObject<THREE.Mesh | null>;
+}) {
+  const skyMap = useTexture(FIRST_LIGHT_SKY_URL);
+  skyMap.colorSpace = THREE.SRGBColorSpace;
+  skyMap.wrapS = THREE.ClampToEdgeWrapping;
+  skyMap.wrapT = THREE.ClampToEdgeWrapping;
+
+  useFrame(({ camera }) => {
+    if (followRef.current) followRef.current.position.copy(camera.position);
+  });
+
+  return (
+    <mesh ref={followRef} renderOrder={-120}>
+      <sphereGeometry args={[280, 48, 28]} />
+      <meshBasicMaterial
+        map={skyMap}
+        side={THREE.BackSide}
+        depthWrite={false}
+        fog={false}
+        toneMapped={false}
+      />
+    </mesh>
+  );
+}
+
+function ThresholdHorizon() {
+  const countryMap = useTexture(FIRST_LIGHT_COUNTRY_URL);
+  countryMap.colorSpace = THREE.SRGBColorSpace;
+  const uniforms = useMemo(() => ({ uMap: { value: countryMap } }), [countryMap]);
+
+  return (
+    <group>
+      <mesh renderOrder={-50} frustumCulled={false}>
+        <planeGeometry args={[2, 2]} />
+        <shaderMaterial
+          uniforms={uniforms}
+          depthTest={false}
+          depthWrite={false}
+          toneMapped={false}
+          vertexShader={`
+            varying vec2 vUv;
+            void main() {
+              vUv = uv;
+              gl_Position = vec4(position.xy, 0.999, 1.0);
+            }
+          `}
+          fragmentShader={`
+            uniform sampler2D uMap;
+            varying vec2 vUv;
+            void main() {
+              gl_FragColor = texture2D(uMap, vUv);
+            }
+          `}
+        />
+      </mesh>
+    </group>
+  );
+}
+
 function WorldAtmosphere({
   progressRef,
   qualityTier,
@@ -433,6 +500,7 @@ function WorldAtmosphere({
 
   return (
     <>
+      {monumental ? <ThresholdNightSky followRef={skyRef} /> : (
       <mesh ref={skyRef} renderOrder={-100}>
         <sphereGeometry args={[145, 36, 20]} />
         <shaderMaterial
@@ -486,6 +554,7 @@ function WorldAtmosphere({
           `}
         />
       </mesh>
+      )}
       {dustGeometry.getAttribute('position').count > 0 ? (
         <points ref={dustRef} geometry={dustGeometry} frustumCulled={false}>
           <pointsMaterial
@@ -530,8 +599,13 @@ function FirstLightCitadel({
       if (!(child instanceof THREE.Mesh)) return;
       const materials = Array.isArray(child.material) ? child.material : [child.material];
       const assetLabel = `${child.name} ${child.geometry.name} ${child.parent?.name ?? ''}`;
-      const landscapeSurface = /Country |Mountain /i.test(assetLabel);
-      if (/bat flight|bear crest|emblem|herald/i.test(assetLabel)) {
+      const landscapeSurface = /Country |Mountain /i.test(assetLabel)
+        || materials.some((material) => /Country |Mountain /i.test(material.name));
+      if (
+        /bat flight|bear crest|emblem|herald/i.test(assetLabel)
+        || /Country pine|Country soil|Country ground/i.test(assetLabel)
+        || materials.some((material) => /Country pine|Country soil/i.test(material.name))
+      ) {
         child.visible = false;
         const hiddenMaterials = materials.map((source) => {
           const cached = materialCache.get(source.uuid);
@@ -1278,8 +1352,8 @@ function World({
 
   return (
     <>
-      <color attach="background" args={[showBuried ? '#070707' : showSchool ? '#0c1211' : showThreshold ? '#0a121c' : '#071011']} />
-      <fog attach="fog" args={[showBuried ? '#0b0908' : showSchool ? '#141916' : showThreshold ? '#1c2a33' : '#0a1719', showBuried ? 12 : showSchool ? 18 : showThreshold ? 90 : 26, showBuried ? 70 : showSchool ? 78 : showThreshold ? 230 : 94]} />
+      <color attach="background" args={[showBuried ? '#070707' : showSchool ? '#0c1211' : showThreshold ? '#071018' : '#071011']} />
+      <fog attach="fog" args={[showBuried ? '#0b0908' : showSchool ? '#141916' : showThreshold ? '#15222c' : '#0a1719', showBuried ? 12 : showSchool ? 18 : showThreshold ? 110 : 26, showBuried ? 70 : showSchool ? 78 : showThreshold ? 280 : 94]} />
       <WorldAtmosphere
         progressRef={progressRef}
         qualityTier={qualityTier}
@@ -1348,6 +1422,7 @@ function World({
       <RenderBudgetMonitor />
       {mountThreshold ? (
         <group ref={firstAct.thresholdGroupRef} visible>
+          {showThreshold ? <ThresholdHorizon /> : null}
           {showThreshold ? (
             <FirstLightCitadel progressRef={progressRef} qualityTier={qualityTier} />
           ) : null}
@@ -1549,7 +1624,7 @@ export function MacroFlowScene(props: MacroFlowSceneProps) {
         className="mf-canvas"
         dpr={dpr}
         shadows={props.qualityTier === 'cinematic'}
-        camera={{ fov: 48, near: 0.1, far: 320, position: [20, 20, 56] }}
+        camera={{ fov: 48, near: 0.1, far: 480, position: [14, 32, 78] }}
         gl={{ antialias: props.qualityTier !== 'cinematic', alpha: false, powerPreference: 'high-performance' }}
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
