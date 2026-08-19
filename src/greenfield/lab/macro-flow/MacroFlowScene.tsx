@@ -1262,7 +1262,7 @@ function World({
   const showNexusAccent = showNexus && (!showThreshold || compact);
   const keyLightRef = useRef<THREE.DirectionalLight>(null);
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
     const light = keyLightRef.current;
     if (!light) return;
     if (showThreshold) {
