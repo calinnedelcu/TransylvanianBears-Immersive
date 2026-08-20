@@ -1,6 +1,7 @@
 import { type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ARCHIVE, PROJECTS, TEAM } from '../../data';
+import type { ProjectId } from '../../types';
 import { CitadelPlan, CitadelPlanShell } from './CitadelPlan';
 import { NodePreview } from './NodePreview';
 import { PLAN_NODES } from './planNodes';
@@ -140,13 +141,29 @@ export function HeroPlanSheet({
   );
 }
 
+/** The dark the handover happens behind, with what it is handing over on it. */
+export function HeroDepartureVeil({ opening }: { opening: HeroOpening }) {
+  if (!opening.departing) return null;
+  return (
+    <div className="hp-veil" role="presentation">
+      <p>{opening.departing.line}</p>
+    </div>
+  );
+}
+
 /**
  * The labels and the reading panel.
  *
  * Positions are written by the render loop; only content and behaviour live here,
  * so they stay real links rather than painted text.
  */
-export function HeroSystemIndex({ opening }: { opening: HeroOpening }) {
+export function HeroSystemIndex({
+  opening,
+  onEnter,
+}: {
+  opening: HeroOpening;
+  onEnter?: (id: ProjectId) => void;
+}) {
   const { activeSlug, visited, setHoverSlug, selectNode, tagsRef } = opening;
   return (
     <>
@@ -172,7 +189,7 @@ export function HeroSystemIndex({ opening }: { opening: HeroOpening }) {
           </Link>
         ))}
       </div>
-      <NodePreview activeSlug={activeSlug} />
+      <NodePreview activeSlug={activeSlug} onEnter={onEnter} />
     </>
   );
 }

@@ -2,13 +2,13 @@
 // drept clișeu de evitat. Fraunces e variabilă, are latin-ext, deci și ș / ț.
 import '@fontsource-variable/fraunces';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { usePrefersReducedMotion } from '../../../hooks/usePrefersReducedMotion';
 import { useGreenfieldMode } from '../../hooks/useGreenfieldMode';
 
 import { ARCHIVE, PROJECTS, TEAM } from '../../data';
 import { CitadelScene } from './CitadelScene';
-import { HeroPlanSheet, HeroSystemIndex } from './heroOpening';
+import { HeroDepartureVeil, HeroPlanSheet, HeroSystemIndex } from './heroOpening';
 import { chapterHref } from './nodeChapters';
 import { PLAN_NODES } from './planNodes';
 import { useHeroOpening } from './useHeroOpening';
@@ -39,6 +39,7 @@ function phaseForProgress(progress: number): Phase {
 export default function HeroPlanPrototype() {
   const rootRef = useRef<HTMLElement>(null);
   const progressRef = useRef(0);
+  const navigate = useNavigate();
   const opening = useHeroOpening();
   const reducedMotion = usePrefersReducedMotion();
   const [phase, setPhase] = useState<Phase>('plan');
@@ -189,6 +190,8 @@ export default function HeroPlanPrototype() {
               planFrameRef={opening.planFrameRef}
               activeSlug={opening.activeSlug}
               focusSlug={opening.focusSlug}
+              departureRef={opening.departureRef}
+              departingSlug={opening.departing?.id ?? null}
               visited={opening.visited}
               onHover={opening.setHoverSlug}
               onSelect={opening.selectNode}
@@ -198,7 +201,10 @@ export default function HeroPlanPrototype() {
 
           <HeroPlanSheet opening={opening} interactive={phase === 'plan'} />
 
-        <HeroSystemIndex opening={opening} />
+        <HeroSystemIndex
+          opening={opening}
+          onEnter={(id) => opening.depart(id, () => navigate(chapterHref(id)))}
+        />
 
         <p className="hp-scroll-cue" aria-hidden="true">
           <i /> Derulează &middot; cetatea se ridică
@@ -233,6 +239,7 @@ export default function HeroPlanPrototype() {
           </Link>
         </div>
       </section>
+      <HeroDepartureVeil opening={opening} />
     </main>
   );
 }

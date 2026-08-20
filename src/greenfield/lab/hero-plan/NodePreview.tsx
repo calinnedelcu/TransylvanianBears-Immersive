@@ -1,8 +1,11 @@
+import type { ProjectId } from '../../types';
 import { chapterHref, chapterLabel } from './nodeChapters';
 import { EVIDENCE_LABEL, PLAN_NODES, STATE_LABEL } from './planNodes';
 
 type NodePreviewProps = {
   activeSlug: string | null;
+  /** Hands the system over instead of jumping: the citadel gets to let go first. */
+  onEnter?: (id: ProjectId) => void;
 };
 
 /**
@@ -12,7 +15,7 @@ type NodePreviewProps = {
  *
  * Are înălțime rezervată, deci trecerea de la o stare la alta nu mișcă layout-ul.
  */
-export function NodePreview({ activeSlug }: NodePreviewProps) {
+export function NodePreview({ activeSlug, onEnter }: NodePreviewProps) {
   const node = PLAN_NODES.find((entry) => entry.project.slug === activeSlug);
 
   if (!node) {
@@ -52,7 +55,15 @@ export function NodePreview({ activeSlug }: NodePreviewProps) {
         {/* The ring is the index, so a node has to open the thing itself. Sending
             the reader to a case study page here would hand the experience off to
             a document at the exact moment it earned the right to keep them. */}
-        <a className="hp-preview__enter" href={chapterHref(node.id)}>
+        <a
+          className="hp-preview__enter"
+          href={chapterHref(node.id)}
+          onClick={(event) => {
+            if (!onEnter || event.metaKey || event.ctrlKey || event.shiftKey) return;
+            event.preventDefault();
+            onEnter(node.id);
+          }}
+        >
           Intră în scenă
           <b>{destination.index} {destination.label}</b>
         </a>

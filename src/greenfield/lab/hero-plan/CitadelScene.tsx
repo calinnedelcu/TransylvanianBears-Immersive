@@ -7,6 +7,7 @@ import { PlanLines } from './PlanLines';
 import { WorldTags } from './WorldTags';
 import type { BuildUniforms } from './luminousCitadel';
 import { GLASS_OPACITY, createBuildPulse, makeLuminous, makeSilhouette } from './luminousCitadel';
+import { DEPARTURES, NODE_DEGREES, departurePose } from './departures';
 import { NightSky } from './NightSky';
 import { SignalRoute } from './SignalRoute';
 
@@ -431,13 +432,20 @@ type PlanFrame = { cx: number; cy: number; radius: number };
  * the SVG plan actually sits, so the model lands exactly on top of the drawing at
  * any viewport. That is what lets the drawing hand over without a visible cut.
  */
-/** Where the camera stands to inspect one system, derived from its ring angle. */
+/**
+ * Where the camera stands to inspect one system, derived from its ring angle.
+ *
+ * Fifteen units from the wall at a forty degree field of view puts nothing in the
+ * frame but the wall: the reader chose a system and was shown masonry. It stands
+ * further out and higher now, and looks past the chosen bay into the courtyard,
+ * so the system is read in the citadel rather than instead of it.
+ */
 function nodePose(deg: number) {
   const a = (deg * Math.PI) / 180;
   const out = CITADEL.ring.outerRadius;
   return {
-    eye: new THREE.Vector3(Math.cos(a) * (out + 15), 8.5, Math.sin(a) * (out + 15)),
-    target: new THREE.Vector3(Math.cos(a) * out, 5.2, Math.sin(a) * out),
+    eye: new THREE.Vector3(Math.cos(a) * (out + 23), 13.5, Math.sin(a) * (out + 23)),
+    target: new THREE.Vector3(Math.cos(a) * (out - 3), 6.2, Math.sin(a) * (out - 3)),
   };
 }
 
@@ -447,10 +455,14 @@ function CameraRig({
   progressRef,
   planFrameRef,
   focusSlug,
+  departureRef,
+  departingSlug,
 }: {
   progressRef: MutableRefObject<number>;
   planFrameRef: MutableRefObject<PlanFrame | null>;
   focusSlug: string | null;
+  departureRef: MutableRefObject<number>;
+  departingSlug: string | null;
 }) {
   const { camera, size } = useThree();
   const eye = useMemo(() => new THREE.Vector3(), []);
@@ -513,6 +525,20 @@ function CameraRig({
       target.lerp(pose.target, inspectRef.current);
     }
 
+    // The handover. Once it starts the citadel stops holding the frame and moves
+    // the way this system leaves: down through the floor, out through the gate,
+    // up over the roofs. It ends on the pose the chapter opens from.
+    if (departingSlug && departureRef.current > 0) {
+      const deg = NODE_DEGREES.get(departingSlug);
+      const plan = DEPARTURES[departingSlug as keyof typeof DEPARTURES];
+      if (deg !== undefined && plan) {
+        const away = smooth(departureRef.current);
+        const pose = departurePose(deg, plan.move);
+        eye.lerp(pose.eye, away);
+        target.lerp(pose.target, away);
+      }
+    }
+
     camera.position.copy(eye);
     camera.lookAt(target);
   });
@@ -550,6 +576,9 @@ type CitadelSceneProps = {
   activeSlug: string | null;
   /** Chosen outright. Only this moves the camera; see the note in the page. */
   focusSlug: string | null;
+  /** 0 to 1 while the citadel is handing this system over to the story. */
+  departureRef: MutableRefObject<number>;
+  departingSlug: string | null;
   visited: ReadonlySet<string>;
   onHover: (slug: string | null) => void;
   onSelect: (slug: string) => void;
@@ -570,6 +599,8 @@ export function CitadelSequence({
   reducedMotion,
   activeSlug,
   focusSlug,
+  departureRef,
+  departingSlug,
   visited,
   onHover,
   onSelect,
@@ -581,7 +612,13 @@ export function CitadelSequence({
   return (
     <>
       <Stage exposure={exposure} />
-      <CameraRig progressRef={progressRef} planFrameRef={planFrameRef} focusSlug={focusSlug} />
+      <CameraRig
+        progressRef={progressRef}
+        planFrameRef={planFrameRef}
+        focusSlug={focusSlug}
+        departureRef={departureRef}
+        departingSlug={departingSlug}
+      />
       <WorldTags progressRef={progressRef} tagsRef={tagsRef} showFrom={RISE_END} />
       {sky ? <NightSky progressRef={progressRef} showFrom={TIP_END} /> : null}
       <SignalRoute progressRef={progressRef} activeSlug={activeSlug} showFrom={RISE_START} />

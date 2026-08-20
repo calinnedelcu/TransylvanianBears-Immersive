@@ -1254,3 +1254,33 @@ body.hp-lab-mode {
 .hp-opening .hp-viewport {
   height: 100dvh;
 }
+
+/* --------------------------------------------------------- handover ----- */
+/*
+ * The dark the citadel hands the story over behind.
+ *
+ * It is not there to hide a page load. The camera is moving underneath it - down
+ * through the floor, out through the gate - and the dark arrives as that move
+ * finishes, so the two ends of the trip meet on the same frame instead of cutting.
+ */
+.hp-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  background: #05070a;
+  opacity: var(--hp-departure, 0);
+  pointer-events: none;
+}
+
+.hp-veil p {
+  margin: 0;
+  color: rgb(215 208 195 / 0.72);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  /* Arrives after the dark does, so it reads as a title rather than a caption. */
+  opacity: clamp(0, calc(var(--hp-departure, 0) * 2.4 - 1.2), 1);
+}
