@@ -35,6 +35,8 @@ type JourneyDirectorOptions = {
   onChapterChange: (chapter: JourneyChapter) => void;
   onProgress?: (progress: number, velocity: number) => void;
   onHeroProgress?: (progress: number) => void;
+  /** Holds the opening at one frame of itself. See the ?hp= note on the page. */
+  heroPin?: number | null;
   onWorldProgress?: (progress: number, velocity: number) => void;
   onSliceProgress?: (progress: number, velocity: number) => void;
   onSchoolActProgress?: (progress: number, velocity: number) => void;
@@ -48,6 +50,7 @@ export function useJourneyDirector({
   onProgress,
   onWorldProgress,
   onHeroProgress,
+  heroPin = null,
   onSliceProgress,
   onSchoolActProgress,
   onBuriedActProgress,
@@ -256,16 +259,22 @@ export function useJourneyDirector({
       });
 
       if (heroBeat) {
+        // One place decides what the opening's progress is, because the drawing
+        // reads it through CSS and the citadel reads it through a ref: a pin
+        // applied to only one of them leaves the sheet at one moment and the
+        // model at another, and the frame goes black between them.
+        const publishHero = (value: number) => {
+          heroProgressRef.current = heroPin ?? (reducedMotion ? 1 : value);
+          onHeroProgress?.(heroProgressRef.current);
+        };
         ScrollTrigger.create({
           id: 'journey-hero',
           trigger: heroBeat,
           start: 'top top',
           end: 'bottom top',
-          onUpdate: (self) => {
-            heroProgressRef.current = reducedMotion ? 1 : self.progress;
-            onHeroProgress?.(heroProgressRef.current);
-          },
+          onUpdate: (self) => publishHero(self.progress),
         });
+        publishHero(0);
       }
 
       if (worldEnd) {
@@ -437,7 +446,7 @@ export function useJourneyDirector({
       root.style.removeProperty('--mf-progress');
       delete root.dataset.buriedActProgress;
     };
-  }, [onBuriedActProgress, onChapterChange, onHeroProgress, onProgress, onSchoolActProgress, onSliceProgress, onWorldProgress, reducedMotion, rootRef]);
+  }, [heroPin, onBuriedActProgress, onChapterChange, onHeroProgress, onProgress, onSchoolActProgress, onSliceProgress, onWorldProgress, reducedMotion, rootRef]);
 
   return {
     journeyProgressRef,

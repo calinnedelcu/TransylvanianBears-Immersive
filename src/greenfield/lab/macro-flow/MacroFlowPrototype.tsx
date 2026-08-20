@@ -19,6 +19,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -448,6 +449,20 @@ function MacroFlowExperience() {
     };
   }, []);
 
+  /**
+   * ?hp=0.8 freezes the opening at one moment of itself.
+   *
+   * The sequence only exists while scrolling, which makes it impossible to look
+   * at a single frame of it and talk about that frame. Every bug worth finding in
+   * it so far was found by pinning it and measuring, not by scrubbing past.
+   */
+  const heroPin = useMemo(() => {
+    const raw = new URLSearchParams(window.location.search).get('hp');
+    if (raw === null) return null;
+    const value = Number.parseFloat(raw);
+    return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : null;
+  }, []);
+
   const opening = useHeroOpening();
   // The whole drawing hangs off this one variable: the sheet's tilt, the shell
   // layers, the ink and the fade are all expressed against it in CSS. Without it
@@ -473,6 +488,7 @@ function MacroFlowExperience() {
     onChapterChange: enterChapter,
     onProgress: onJourneyProgress,
     onHeroProgress,
+    heroPin,
     onWorldProgress,
     onSliceProgress,
     onSchoolActProgress,

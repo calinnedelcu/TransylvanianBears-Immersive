@@ -364,34 +364,6 @@ function CameraDirector({
   return null;
 }
 
-function ThresholdNightSky({
-  followRef,
-}: {
-  followRef: MutableRefObject<THREE.Mesh | null>;
-}) {
-  const skyMap = useTexture(FIRST_LIGHT_SKY_URL);
-  skyMap.colorSpace = THREE.SRGBColorSpace;
-  skyMap.wrapS = THREE.ClampToEdgeWrapping;
-  skyMap.wrapT = THREE.ClampToEdgeWrapping;
-
-  useFrame(({ camera }) => {
-    if (followRef.current) followRef.current.position.copy(camera.position);
-  });
-
-  return (
-    <mesh ref={followRef} renderOrder={-120}>
-      <sphereGeometry args={[280, 48, 28]} />
-      <meshBasicMaterial
-        map={skyMap}
-        side={THREE.BackSide}
-        depthWrite={false}
-        fog={false}
-        toneMapped={false}
-      />
-    </mesh>
-  );
-}
-
 function WorldAtmosphere({
   progressRef,
   qualityTier,
@@ -450,7 +422,14 @@ function WorldAtmosphere({
 
   return (
     <>
-      {monumental ? <ThresholdNightSky followRef={skyRef} /> : (
+      {/* The opening owns its own backdrop.
+          ThresholdNightSky was authored to sit behind a painted horizon that
+          covered the lower half of the frame. That horizon belonged to the old
+          castle and went with it, which left the bare dome and its dust showing
+          across the whole view as blue haze. The sequence arrives with a sky, a
+          terrain, ridges and a forest of its own, so at the threshold the story
+          simply stands back. */}
+      {monumental ? null : (
       <mesh ref={skyRef} renderOrder={-100}>
         <sphereGeometry args={[145, 36, 20]} />
         <shaderMaterial
@@ -505,7 +484,7 @@ function WorldAtmosphere({
         />
       </mesh>
       )}
-      {dustGeometry.getAttribute('position').count > 0 ? (
+      {!monumental && dustGeometry.getAttribute('position').count > 0 ? (
         <points ref={dustRef} geometry={dustGeometry} frustumCulled={false}>
           <pointsMaterial
             color="#d7e6ee"
@@ -981,7 +960,13 @@ const NEXUS_CHAPTERS = new Set<JourneyChapter>(['field', 'lens', 'proof']);
 const SCHOOL_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
 const SCHOOL_CAMERA_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
 const BURIED_CHAPTERS = new Set<JourneyChapter>(['descent', 'lamp', 'build', 'infect']);
-const VERTICAL_SLICE_CAMERA_CHAPTERS = new Set<JourneyChapter>(['threshold', 'field', 'lens', 'proof']);
+// The opening drives its own camera: the pose is solved every frame from where
+// the drawing actually sits on screen, which is what lets the model land on top
+// of the plan instead of cutting to it. The authored threshold curve framed the
+// castle that used to stand here, so leaving it in place meant two rigs writing
+// the camera and the old framing winning - pointing the view at empty world
+// while the citadel assembled itself off screen.
+const VERTICAL_SLICE_CAMERA_CHAPTERS = new Set<JourneyChapter>(['field', 'lens', 'proof']);
 type FirstActPresence = {
   threshold: boolean;
 };
@@ -1191,7 +1176,6 @@ function World({
               onHover={opening.setHoverSlug}
               onSelect={opening.selectNode}
               tagsRef={opening.tagsRef}
-              sky={false}
             />
           ) : null}
           {showThreshold ? <ThresholdExposure /> : null}
