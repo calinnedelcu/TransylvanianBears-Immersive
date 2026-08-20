@@ -29,7 +29,6 @@ import { Link, useParams } from 'react-router-dom';
 import { usePrefersReducedMotion } from '../../../hooks/usePrefersReducedMotion';
 import { ViewTransitionLink } from '../../components/ViewTransitionLink';
 import {
-  JOURNEY_CHAPTERS,
   chapterIndex,
   chapterTone,
   type JourneyChapter,
@@ -175,7 +174,6 @@ function MacroFlowExperience() {
   const shows = (chapter: string) => (act.chapters as string[]).includes(chapter);
 
   const rootRef = useRef<HTMLElement>(null);
-  const railRef = useRef<HTMLElement>(null);
   const sharedAudioContextRef = useRef<AudioContext | null>(null);
   const verticalSoundscapeRef = useRef<VerticalSliceSoundscape | null>(null);
   const schoolSoundscapeRef = useRef<SchoolActSoundscape | null>(null);
@@ -495,21 +493,6 @@ function MacroFlowExperience() {
     setBuriedHandoffComplete(false);
   }, [activeChapter]);
 
-  useLayoutEffect(() => {
-    const rail = railRef.current;
-    const active = rail?.querySelector<HTMLAnchorElement>('a[data-active]');
-    if (!rail || !active || rail.scrollWidth <= rail.clientWidth) return undefined;
-
-    const frame = window.requestAnimationFrame(() => {
-      const centeredLeft = active.offsetLeft - (rail.clientWidth - active.offsetWidth) * 0.5;
-      rail.scrollTo({
-        left: Math.max(0, Math.min(centeredLeft, rail.scrollWidth - rail.clientWidth)),
-        behavior: reducedMotion ? 'auto' : 'smooth',
-      });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [activeChapter, reducedMotion]);
-
   useGreenfieldMode({
     title: 'Transylvanian Bears — Produse, jocuri și cercetare aplicată',
     description: 'O experiență interactivă despre cele șapte proiecte construite de Transylvanian Bears: software școlar, jocuri, machine learning și cercetare.',
@@ -665,7 +648,9 @@ function MacroFlowExperience() {
       data-renderer={macroWorldActive ? 'webgl' : 'editorial'}
       data-renderer-failure={rendererFailure ?? undefined}
     >
-      <a className="mf-skip" href="#mf-proof">Sari la dovada proiectului</a>
+      {/* The skip link has to name something that is on this page: it used to
+          point at the Nexus proof from inside whatever act the reader was in. */}
+      <a className="mf-skip" href={`#mf-${exitOf(act)}`}>Sari la finalul capitolului</a>
 
       <div className="mf-world" aria-hidden="true">
         {macroWorldActive ? (
@@ -704,7 +689,7 @@ function MacroFlowExperience() {
         <ViewTransitionLink className="mf-brand" to="/" aria-label="Transylvanian Bears, start">
           <span>Transylvanian Bears</span>
         </ViewTransitionLink>
-        <p>Interactive expedition / 16 chapters</p>
+        <p>{act.systems.length ? 'Un sistem · din cetate' : 'Închiderea drumului'}</p>
         <div className="mf-header__actions">
           <button
             className="mf-system-control"
@@ -737,23 +722,6 @@ function MacroFlowExperience() {
           </ViewTransitionLink>
         </div>
       </header>
-
-      <nav ref={railRef} className="mf-rail" aria-label="Macro flow chapters">
-        {JOURNEY_CHAPTERS.map((chapter) => (
-          <a
-            key={chapter.id}
-            href={`#mf-${chapter.id}`}
-            data-active={activeChapter === chapter.id || undefined}
-            aria-current={activeChapter === chapter.id ? 'step' : undefined}
-            aria-label={`${chapter.index}. ${chapter.label}`}
-            data-label={chapter.label}
-            title={`${chapter.index}. ${chapter.label}`}
-          >
-            <span>{chapter.index}</span>
-            <i />
-          </a>
-        ))}
-      </nav>
 
       <section
         id="mf-threshold"

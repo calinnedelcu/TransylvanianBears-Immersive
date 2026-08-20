@@ -70,7 +70,8 @@ export default function GreenfieldRoutes() {
       <Route path="echipa" element={<Navigate to="/team" replace />} />
       <Route path="echipa/:memberId" element={<LegacyMemberRedirect />} />
       <Route path="despre" element={<Navigate to="/" replace />} />
-      <Route path="aplica" element={<Navigate to="/#mf-open-paths" replace />} />
+      {/* The open paths are in the closing act now, not on the front page. */}
+      <Route path="aplica" element={<Navigate to="/story/final" replace />} />
       <Route path="*" element={<DeferredPage><NotFoundPage /></DeferredPage>} />
     </Routes>
   );
