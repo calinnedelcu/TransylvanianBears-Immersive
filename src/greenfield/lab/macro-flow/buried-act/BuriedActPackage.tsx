@@ -846,15 +846,23 @@ export function BuriedActPackage({
         distance={16}
         decay={2}
       />
-      <hemisphereLight
-        color="#e8b778"
-        groundColor="#2b120b"
-        intensity={compact ? 0.48 : 0.4}
-      />
+      {/*
+        A hemisphere light is sky bouncing off ground. There is no sky here: the
+        act is a sealed tomb under a hill. It was doing readability work, so what
+        replaces it does that job without pretending to be weather - a flat, very
+        low warm floor under the lamps, so the darkest corners are dark rather
+        than absent.
+      */}
+      <ambientLight color="#c99a6a" intensity={compact ? 0.13 : 0.11} />
+      {/*
+        Kept, but for what it actually is. A hundred and thirty metres down the
+        corridor on -Z is the entrance the story is in the middle of sealing, so
+        this is the last of the daylight reaching in, not a sun in the corner.
+      */}
       <directionalLight
         position={[-7, 11, -132]}
         color="#d98243"
-        intensity={compact ? 0.72 : 0.86}
+        intensity={compact ? 0.4 : 0.48}
       />
       <pointLight
         ref={readabilityFillLightRef}

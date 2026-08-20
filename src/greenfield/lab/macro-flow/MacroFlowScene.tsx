@@ -1032,6 +1032,47 @@ type WorldProps = MacroFlowSceneProps & {
   buriedCameraCurve: BuriedActCameraCurve | null;
 };
 
+/**
+ * The mausoleum brings its own world.
+ *
+ * Every act used to be drawn by one rig with ternaries in it: one sky dome, one
+ * hemisphere, one key light from the same corner, the same fog model, and colours
+ * swapped per chapter. That is why the acts read as one place wearing different
+ * paint - the structure of the light was identical everywhere, and structure is
+ * what the eye reads first.
+ *
+ * A sealed tomb two hundred metres under a hill has no sun in the corner, no sky
+ * to bounce off and no dust in the air it could see. It has one flame, carried,
+ * and it has the dark. So this act has no key, no hemisphere and no dome: it is
+ * lit by the lamp the craftsman is holding, and everything the reader can see is
+ * something that lamp reached.
+ */
+function BuriedWorld() {
+  const lampRef = useRef<THREE.PointLight>(null);
+
+  useFrame(({ camera, clock }) => {
+    const lamp = lampRef.current;
+    if (!lamp) return;
+    // The lamp is carried, so it is where the reader is rather than where a
+    // lighting plan put it.
+    lamp.position.copy(camera.position);
+    // Two frequencies, because one reads as a pulse and oil does not pulse.
+    const t = clock.elapsedTime;
+    lamp.intensity = 30 * (1 + Math.sin(t * 11.3) * 0.055 + Math.sin(t * 6.7) * 0.032);
+  });
+
+  return (
+    <>
+      <color attach="background" args={['#040303']} />
+      {/* Close and heavy: the far wall of a corridor should be a rumour. */}
+      <fog attach="fog" args={['#0a0705', 5, 38]} />
+      {/* Not ambience so much as the refusal to be perfectly black. */}
+      <ambientLight intensity={0.05} color="#6b5946" />
+      <pointLight ref={lampRef} distance={28} decay={2} color="#ffb271" />
+    </>
+  );
+}
+
 function World({
   activeChapter,
   progressRef,
@@ -1082,8 +1123,15 @@ function World({
 
   return (
     <>
-      <color attach="background" args={[showBuried ? '#070707' : showSchool ? '#0c1211' : showThreshold ? '#071018' : '#071011']} />
-      <fog attach="fog" args={[showBuried ? '#0b0908' : showSchool ? '#141916' : showThreshold ? '#15222c' : '#0a1719', showBuried ? 12 : showSchool ? 18 : showThreshold ? 110 : 26, showBuried ? 70 : showSchool ? 78 : showThreshold ? 280 : 94]} />
+      {/* An act that brings its own world takes it instead of this one, rather
+          than adding another branch to a rig that already has too many. The rest
+          still share this until each has been given its own. */}
+      {showBuried ? <BuriedWorld /> : null}
+
+      {showBuried ? null : (
+      <>
+      <color attach="background" args={[showSchool ? '#0c1211' : showThreshold ? '#071018' : '#071011']} />
+      <fog attach="fog" args={[showSchool ? '#141916' : showThreshold ? '#15222c' : '#0a1719', showSchool ? 18 : showThreshold ? 110 : 26, showSchool ? 78 : showThreshold ? 280 : 94]} />
       <WorldAtmosphere
         progressRef={progressRef}
         qualityTier={qualityTier}
@@ -1119,6 +1167,8 @@ function World({
         shadow-bias={-0.00035}
         shadow-normalBias={0.055}
       />
+      </>
+      )}
       {showNexusAccent ? (
         <pointLight
           position={compact ? [0, 4.2, -8] : [-1, 5, -11]}
