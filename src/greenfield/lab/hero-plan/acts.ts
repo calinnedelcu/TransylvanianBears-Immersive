@@ -15,42 +15,66 @@ import type { ProjectId } from '../../types';
  * lie about where the work lives.
  */
 export type Act = {
+  /** The address this act lives at, under /story. */
+  slug: string;
   systems: ProjectId[];
-  /** Where a reader arrives when they choose this system. */
-  entry: JourneyChapter;
-  /** The last chapter of the act: where the way out belongs. */
-  exit: JourneyChapter;
+  /**
+   * Everything the act contains, in order.
+   *
+   * An act is a destination rather than a stretch of one long document: the
+   * reader chose this system, and scrolling out of either end of it into a
+   * neighbour they did not choose makes the choice meaningless. Only these
+   * chapters are on the page, so there is nothing to fall into.
+   */
+  chapters: JourneyChapter[];
 };
 
 export const ACTS: Act[] = [
-  { systems: ['project-nexus'], entry: 'field', exit: 'proof' },
-  { systems: ['aegis'], entry: 'passage', exit: 'access' },
-  { systems: ['schoolmate'], entry: 'schoolmate', exit: 'schoolmate' },
-  { systems: ['the-buried-hands'], entry: 'descent', exit: 'build' },
-  { systems: ['infect-exe'], entry: 'infect', exit: 'infect' },
-  { systems: ['economy-news', 'automation-risk'], entry: 'research', exit: 'research' },
+  { slug: 'project-nexus', systems: ['project-nexus'], chapters: ['field', 'lens', 'proof'] },
+  { slug: 'aegis', systems: ['aegis'], chapters: ['passage', 'access'] },
+  { slug: 'schoolmate', systems: ['schoolmate'], chapters: ['schoolmate'] },
+  { slug: 'the-buried-hands', systems: ['the-buried-hands'], chapters: ['descent', 'lamp', 'build'] },
+  { slug: 'infect-exe', systems: ['infect-exe'], chapters: ['infect'] },
+  { slug: 'research', systems: ['economy-news', 'automation-risk'], chapters: ['research'] },
 ];
 
 /**
- * The closing chapters belong to no single system.
- *
- * They are what the story says once every system has been seen, so they are the
- * end of the road rather than a door on the ring, and the last act hands over to
- * them instead of to another project.
+ * The closing is not about one system, so it is not on the ring. It is where the
+ * last act hands over: what the story says once the work has been seen.
  */
-export const CLOSING_ENTRY: JourneyChapter = 'evidence-weave';
+export const CLOSING: Act = {
+  slug: 'final',
+  systems: [],
+  chapters: ['evidence-weave', 'final-return', 'open-paths', 'dawn'],
+};
+
+export const ALL_ACTS = [...ACTS, CLOSING];
+
+export function actBySlug(slug: string | undefined): Act | undefined {
+  return slug ? ALL_ACTS.find((act) => act.slug === slug) : undefined;
+}
+
+export const entryOf = (act: Act) => act.chapters[0];
+export const exitOf = (act: Act) => act.chapters[act.chapters.length - 1];
 
 export function actFor(project: ProjectId): Act | undefined {
   return ACTS.find((act) => act.systems.includes(project));
 }
 
 export function actByExit(chapter: JourneyChapter): Act | undefined {
-  return ACTS.find((act) => act.exit === chapter);
+  return ALL_ACTS.find((act) => exitOf(act) === chapter);
 }
 
-/** What follows this act on the road. Undefined once the systems run out. */
+/** What follows this act on the road. The closing is last and follows nothing. */
 export function nextAct(act: Act): Act | undefined {
-  return ACTS[ACTS.indexOf(act) + 1];
+  const index = ACTS.indexOf(act);
+  if (index < 0) return undefined;
+  return ACTS[index + 1] ?? CLOSING;
+}
+
+/** Where an act lives. */
+export function actHref(act: Act): string {
+  return `/story/${act.slug}`;
 }
 
 export function chapterAnchor(chapter: JourneyChapter): string {

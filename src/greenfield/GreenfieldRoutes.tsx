@@ -49,13 +49,14 @@ export default function GreenfieldRoutes() {
         }
       />
       <Route
-        path="story"
+        path="story/:act"
         element={
           <Suspense fallback={<PageFallback />}>
             <ImmersiveStory />
           </Suspense>
         }
       />
+      <Route path="story" element={<Navigate to="/story/project-nexus" replace />} />
       <Route path="work" element={<DeferredPage><WorkIndexPage /></DeferredPage>} />
       <Route path="work/:slug" element={<DeferredPage><ProjectCaseStudyPage /></DeferredPage>} />
       <Route path="team" element={<DeferredPage><TeamIndexPage /></DeferredPage>} />

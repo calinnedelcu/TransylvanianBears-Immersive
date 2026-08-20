@@ -62,7 +62,8 @@ export function SchoolActOverlay({
   traceOutcome,
   onStartScan,
   reducedMotion,
-}: SchoolActOverlayProps) {
+  shows,
+}: SchoolActOverlayProps & { shows: (chapter: string) => boolean }) {
   const progress = Number.isFinite(traceProgress)
     ? Math.min(1, Math.max(0, traceProgress))
     : 0;
@@ -83,6 +84,7 @@ export function SchoolActOverlay({
 
   return (
     <>
+      {shows('passage') ? (
       <section
         id="mf-passage"
         className="sa-passage"
@@ -115,7 +117,9 @@ export function SchoolActOverlay({
           <p>Bounding box → ramă de alamă → arc de piatră → cititor Aegis</p>
         </aside>
       </section>
+      ) : null}
 
+      {shows('access') ? (
       <section
         id="mf-access"
         className="sa-access"
@@ -218,7 +222,9 @@ export function SchoolActOverlay({
           </ol>
         </div>
       </section>
+      ) : null}
 
+      {shows('schoolmate') ? (
       <section
         className="sa-classroom-passage"
         data-chapter="schoolmate"
@@ -240,7 +246,9 @@ export function SchoolActOverlay({
           </div>
         </div>
       </section>
+      ) : null}
 
+      {shows('schoolmate') ? (
       <section
         className="sa-secretariat-passage"
         data-chapter="schoolmate"
@@ -262,7 +270,9 @@ export function SchoolActOverlay({
           </div>
         </div>
       </section>
+      ) : null}
 
+      {shows('schoolmate') ? (
       <section
         id="mf-schoolmate"
         className="sa-clearing"
@@ -418,6 +428,7 @@ export function SchoolActOverlay({
           </footer>
         </div>
       </section>
+      ) : null}
     </>
   );
 }

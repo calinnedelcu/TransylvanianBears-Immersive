@@ -25,7 +25,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { usePrefersReducedMotion } from '../../../hooks/usePrefersReducedMotion';
 import { ViewTransitionLink } from '../../components/ViewTransitionLink';
 import {
@@ -41,6 +41,7 @@ import { effectiveQuality } from '../../experience/experienceMachine';
 import { useExperienceActorRef, useExperienceSelector } from '../../experience/useExperience';
 import { useJourneyDirector } from '../../experience/useJourneyDirector';
 import { useGreenfieldMode } from '../../hooks/useGreenfieldMode';
+import { ACTS, actBySlug, exitOf } from '../hero-plan/acts';
 import { ActExit } from './ActExit';
 import '../hero-plan/hero-plan.css';
 import type { MacroLensMode } from './MacroFlowScene';
@@ -161,6 +162,18 @@ const LENS_OPTIONS: Array<{
 ];
 
 function MacroFlowExperience() {
+  /**
+   * One act at a time.
+   *
+   * The reader chose a system on the ring, and an act that shares a document with
+   * its neighbours is not really a destination: scroll far enough either way and
+   * you are somewhere you never asked to be. Only the chosen act is on the page,
+   * so there is nothing above or below it to fall into.
+   */
+  const { act: actSlug } = useParams();
+  const act = actBySlug(actSlug) ?? ACTS[0];
+  const shows = (chapter: string) => (act.chapters as string[]).includes(chapter);
+
   const rootRef = useRef<HTMLElement>(null);
   const railRef = useRef<HTMLElement>(null);
   const sharedAudioContextRef = useRef<AudioContext | null>(null);
@@ -763,6 +776,7 @@ function MacroFlowExperience() {
         </div>
       </section>
 
+      {shows('field') ? (
       <section id="mf-field" className="mf-beat mf-beat--field" data-chapter="field">
         <div className="mf-copy mf-copy--side">
           <p className="mf-kicker">Project Nexus / synthetic field</p>
@@ -773,7 +787,9 @@ function MacroFlowExperience() {
           </p>
         </div>
       </section>
+      ) : null}
 
+      {shows('lens') ? (
       <section id="mf-lens" className="mf-beat mf-beat--lens" data-chapter="lens">
         <div
           className="mf-lens-knot"
@@ -826,7 +842,9 @@ function MacroFlowExperience() {
           </div>
         </div>
       </section>
+      ) : null}
 
+      {shows('proof') ? (
       <section id="mf-proof" className="mf-clearing" data-chapter="proof">
         <div className="mf-proof-handoff" aria-hidden="true">
           <div className="mf-proof-handoff__paper">
@@ -911,10 +929,11 @@ function MacroFlowExperience() {
             </p>
           </footer>
         </div>
-        <ActExit chapter="proof" />
       </section>
+      ) : null}
 
       <SchoolActOverlay
+        shows={shows}
         traceProgress={schoolAct.progress}
         traceStep={schoolAct.stageIndex}
         traceOutcome={schoolAct.status}
@@ -922,6 +941,7 @@ function MacroFlowExperience() {
         reducedMotion={reducedMotion}
       />
 
+      {shows('descent') ? (
       <section id="mf-descent" className="mf-beat mf-beat--descent" data-chapter="descent">
         <div className="mf-copy mf-copy--descent">
           <p className="mf-kicker">Continuity rule / SchoolMate → The Buried Hands</p>
@@ -936,7 +956,9 @@ function MacroFlowExperience() {
           </div>
         </div>
       </section>
+      ) : null}
 
+      {shows('lamp') ? (
       <section id="mf-lamp" className="mf-lamp-chamber" data-chapter="lamp">
         <div
           className="mf-lamp-chamber__stage"
@@ -1014,7 +1036,9 @@ function MacroFlowExperience() {
           </div>
         </div>
       </section>
+      ) : null}
 
+      {shows('build') ? (
       <section id="mf-build" className="mf-build-clearing" data-chapter="build">
         <div className="mf-build-clearing__inner">
           <header className="mf-build-head">
@@ -1065,10 +1089,15 @@ function MacroFlowExperience() {
           </div>
         </div>
       </section>
+      ) : null}
 
-      <InfectInterlude />
-      <ResearchCrossing />
-      <EvidenceWeave />
+      {shows('infect') ? <InfectInterlude /> : null}
+      {shows('research') ? <ResearchCrossing /> : null}
+      {shows('evidence-weave') ? <EvidenceWeave /> : null}
+
+      {/* The way out belongs to the act, not to the chapter that happens to end
+          it, so it is placed once here rather than by hand inside five files. */}
+      <ActExit chapter={exitOf(act)} />
     </main>
   );
 }
