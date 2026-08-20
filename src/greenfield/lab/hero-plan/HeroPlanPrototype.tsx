@@ -1,31 +1,17 @@
 // Display face pentru wordmark. Cinzel iese: direcția vizuală îl numește explicit
 // drept clișeu de evitat. Fraunces e variabilă, are latin-ext, deci și ș / ț.
 import '@fontsource-variable/fraunces';
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePrefersReducedMotion } from '../../../hooks/usePrefersReducedMotion';
 import { useGreenfieldMode } from '../../hooks/useGreenfieldMode';
-import { CitadelPlan, CitadelPlanShell } from './CitadelPlan';
+
 import { ARCHIVE, PROJECTS, TEAM } from '../../data';
 import { CitadelScene } from './CitadelScene';
-import { NodePreview } from './NodePreview';
+import { HeroPlanSheet, HeroSystemIndex } from './heroOpening';
 import { PLAN_NODES } from './planNodes';
+import { useHeroOpening } from './useHeroOpening';
 import './hero-plan.css';
-
-/**
- * Extrudarea e făcută din felii stivuite pe Z. Zidul are pas mic și rămâne jos;
- * nucleul are pas mare, ca să se citească drept clădirea centrală.
- */
-const EXTRUSIONS = [
-  { part: 'wall', layers: 8, step: '16px', taperFrom: 99 },
-  { part: 'core', layers: 12, step: '26px', taperFrom: 8 },
-] as const;
-
-/** Ultimele felii ale nucleului se strâng, ca volumul să capete acoperiș, nu capac plat. */
-function layerScale(index: number, taperFrom: number): string {
-  if (index < taperFrom) return '1';
-  return (1 - (index - taperFrom + 1) * 0.15).toFixed(3);
-}
 
 /**
  * Banda de dovezi se numără din date, nu se scrie de mână. Dacă echipa adaugă
@@ -52,42 +38,9 @@ function phaseForProgress(progress: number): Phase {
 export default function HeroPlanPrototype() {
   const rootRef = useRef<HTMLElement>(null);
   const progressRef = useRef(0);
-  const planRef = useRef<HTMLDivElement>(null);
-  // Unde sta desenul pe ecran. Scena 3D isi deriva pozitia camerei din asta,
-  // ca modelul sa aterizeze exact peste plan la orice latime.
-  const planFrameRef = useRef<{ cx: number; cy: number; radius: number } | null>(null);
-  const tagsRef = useRef<HTMLDivElement>(null);
+  const opening = useHeroOpening();
   const reducedMotion = usePrefersReducedMotion();
   const [phase, setPhase] = useState<Phase>('plan');
-  /**
-   * Hover and choice are two different things, and merging them made the labels
-   * unusable.
-   *
-   * The camera walks to whichever system is chosen, and the labels are projected
-   * from that camera. With hover doing the choosing, moving the cursor onto a
-   * label sent the camera towards it, which slid the label out from under the
-   * cursor, which ended the hover, which walked the camera back. The label
-   * oscillated and could never be clicked.
-   *
-   * Hover now only lights a system up and names it in the panel. Travelling to
-   * one takes a click, which is also the better behaviour: brushing past a label
-   * no longer throws the reader across the courtyard.
-   */
-  const [hoverSlug, setHoverSlug] = useState<string | null>(null);
-  const [focusSlug, setFocusSlug] = useState<string | null>(null);
-  const activeSlug = focusSlug ?? hoverSlug;
-  // Sistemele deschise raman aprinse: pleci dintr-o cetate diferita de cea in care ai intrat.
-  const [visited, setVisited] = useState<ReadonlySet<string>>(() => new Set());
-
-  const selectNode = useCallback((slug: string) => {
-    setFocusSlug((current) => (current === slug ? null : slug));
-    setVisited((current) => {
-      if (current.has(slug)) return current;
-      const next = new Set(current);
-      next.add(slug);
-      return next;
-    });
-  }, []);
 
   useGreenfieldMode('Hero plan');
 
@@ -122,28 +75,6 @@ export default function HeroPlanPrototype() {
     const next = phaseForProgress(progress);
     setPhase((current) => (current === next ? current : next));
   }, [pinned]);
-
-  useEffect(() => {
-    const measure = () => {
-      const node = planRef.current;
-      if (!node) return;
-      const rect = node.getBoundingClientRect();
-      planFrameRef.current = {
-        cx: rect.left + rect.width / 2,
-        cy: rect.top + rect.height / 2,
-        // Inelul are raza 300 intr-un viewBox de 920.
-        radius: (300 / 920) * rect.width,
-      };
-    };
-
-    measure();
-    window.addEventListener('resize', measure);
-    window.addEventListener('scroll', measure, { passive: true });
-    return () => {
-      window.removeEventListener('resize', measure);
-      window.removeEventListener('scroll', measure);
-    };
-  }, []);
 
   useEffect(() => {
     // Safari and Chrome restore the previous scroll offset on reload. On a page
@@ -250,78 +181,20 @@ export default function HeroPlanPrototype() {
           <div className="hp-world" aria-hidden="true">
             <CitadelScene
               progressRef={progressRef}
-              planFrameRef={planFrameRef}
               reducedMotion={reducedMotion}
-              activeSlug={activeSlug}
-              focusSlug={focusSlug}
-              visited={visited}
-              onHover={setHoverSlug}
-              onSelect={selectNode}
-              tagsRef={tagsRef}
+              planFrameRef={opening.planFrameRef}
+              activeSlug={opening.activeSlug}
+              focusSlug={opening.focusSlug}
+              visited={opening.visited}
+              onHover={opening.setHoverSlug}
+              onSelect={opening.selectNode}
+              tagsRef={opening.tagsRef}
             />
           </div>
 
-          <div className="hp-stage">
-            <div className="hp-tilt" ref={planRef}>
-              <div className="hp-ground-shadow" aria-hidden="true" />
-              {/* Straturile CSS raman doar ca schita in timpul desenului; de la
-                pragul de inclinare preia geometria reala din shared/citadel.json. */}
-            {EXTRUSIONS.map((extrusion) => (
-                <div
-                  key={extrusion.part}
-                  className="hp-extrude"
-                  aria-hidden="true"
-                  style={{ '--step': extrusion.step } as CSSProperties}
-                >
-                  {Array.from({ length: extrusion.layers }, (_, i) => (
-                    <div
-                      key={`${extrusion.part}-${i}`}
-                      className="hp-extrude__layer"
-                      data-crown={i === extrusion.layers - 1 || undefined}
-                      style={{
-                        '--layer': String(i + 1),
-                        '--scale': layerScale(i, extrusion.taperFrom),
-                      } as CSSProperties}
-                    >
-                      <CitadelPlanShell part={extrusion.part} />
-                    </div>
-                  ))}
-                </div>
-              ))}
-              <CitadelPlan
-                activeSlug={activeSlug}
-                onNodeFocus={setHoverSlug}
-                interactive={phase === 'plan'}
-              />
-            </div>
-          </div>
+          <HeroPlanSheet opening={opening} interactive={phase === 'plan'} />
 
-        {/* Etichetele lumii. Pozitiile le scrie bucla de randare; aici stau doar
-            continutul si comportamentul, ca sa ramana link-uri reale. */}
-        <div className="hp-tags" ref={tagsRef} aria-label="Sistemele cetatii">
-          {PLAN_NODES.map(({ project }) => (
-            <Link
-              key={project.slug}
-              className="hp-tag"
-              to={`/next/work/${project.slug}`}
-              data-active={activeSlug === project.slug || undefined}
-              data-visited={visited.has(project.slug) || undefined}
-              onMouseEnter={() => setHoverSlug(project.slug)}
-              onMouseLeave={() => setHoverSlug(null)}
-              onFocus={() => setHoverSlug(project.slug)}
-              onBlur={() => setHoverSlug(null)}
-              onClick={(event) => {
-                event.preventDefault();
-                selectNode(project.slug);
-              }}
-            >
-              <span>{project.index}</span>
-              {project.shortTitle}
-            </Link>
-          ))}
-        </div>
-
-        <NodePreview activeSlug={activeSlug} />
+        <HeroSystemIndex opening={opening} />
 
         <p className="hp-scroll-cue" aria-hidden="true">
           <i /> Derulează &middot; cetatea se ridică

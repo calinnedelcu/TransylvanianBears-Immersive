@@ -40,6 +40,9 @@ import { effectiveQuality } from '../../experience/experienceMachine';
 import { useExperienceActorRef, useExperienceSelector } from '../../experience/useExperience';
 import { useJourneyDirector } from '../../experience/useJourneyDirector';
 import { useGreenfieldMode } from '../../hooks/useGreenfieldMode';
+import { HeroPlanSheet, HeroSystemIndex } from '../hero-plan/heroOpening';
+import { useHeroOpening } from '../hero-plan/useHeroOpening';
+import '../hero-plan/hero-plan.css';
 import type { MacroLensMode } from './MacroFlowScene';
 import type { LensPointerState, NexusFlightInput } from './macroFlowTypes';
 import InfectInterlude from './InfectInterlude';
@@ -432,8 +435,20 @@ function MacroFlowExperience() {
       buriedPixelCueRef.current = false;
     }
   }, []);
+  const opening = useHeroOpening();
+  // The whole drawing hangs off this one variable: the sheet's tilt, the shell
+  // layers, the ink and the fade are all expressed against it in CSS. Without it
+  // written every frame the plan renders at its resting state and looks dead.
+  // Written on the section itself, because that is where the palette and the
+  // derived thresholds are declared; setting it higher up would be shadowed by
+  // the default the token block has to keep for the lab page.
+  const heroBeatRef = useRef<HTMLElement>(null);
+  const onHeroProgress = useCallback((progress: number) => {
+    heroBeatRef.current?.style.setProperty('--hp-progress', progress.toFixed(4));
+  }, []);
   const {
     worldProgressRef: progressRef,
+    heroProgressRef,
     schoolActProgressRef,
     buriedActProgressRef,
     schoolEntranceHandoffProgressRef,
@@ -444,6 +459,7 @@ function MacroFlowExperience() {
     reducedMotion,
     onChapterChange: enterChapter,
     onProgress: onJourneyProgress,
+    onHeroProgress,
     onWorldProgress,
     onSliceProgress,
     onSchoolActProgress,
@@ -645,6 +661,8 @@ function MacroFlowExperience() {
               <MacroFlowScene
                 activeChapter={activeChapter}
                 progressRef={progressRef}
+                heroProgressRef={heroProgressRef}
+                opening={opening}
                 schoolActProgressRef={schoolActProgressRef}
                 buriedActProgressRef={buriedActProgressRef}
                 schoolEntranceHandoffProgressRef={schoolEntranceHandoffProgressRef}
@@ -726,7 +744,17 @@ function MacroFlowExperience() {
         ))}
       </nav>
 
-      <section id="mf-threshold" className="mf-beat mf-beat--threshold" data-chapter="threshold">
+      <section
+        id="mf-threshold"
+        ref={heroBeatRef}
+        className="mf-beat mf-beat--threshold hp-opening"
+        data-chapter="threshold"
+      >
+        {/* The drawing is a real element on the page, not a texture: the camera
+            derives its pose from this rectangle every frame, which is what lets
+            the model land exactly on top of the plan and the handover happen
+            without a cut. Move it and the opening follows. */}
+        <HeroPlanSheet opening={opening} interactive={activeChapter === 'threshold'} />
         <div className="mf-copy mf-copy--hero">
           <div className="mf-hero-plate">
             <p className="mf-kicker">Șapte sisteme. O singură cetate.</p>
@@ -734,6 +762,7 @@ function MacroFlowExperience() {
             <p className="mf-hero-line">Software, jocuri, machine learning și cercetare, în aceeași cetate.</p>
           </div>
         </div>
+        <HeroSystemIndex opening={opening} />
       </section>
 
       <section id="mf-field" className="mf-beat mf-beat--field" data-chapter="field">

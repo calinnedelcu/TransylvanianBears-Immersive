@@ -9,7 +9,15 @@ body.hp-lab-mode {
   overscroll-behavior-y: none;
 }
 
-.hp-lab {
+/*
+ * The opening's tokens live apart from the lab page's own chrome, because the
+ * opening now runs in two places: its own lab route, and the threshold beat of
+ * the story. Everything the drawing is expressed against - the palette and the
+ * thresholds derived from scroll - belongs to whichever element carries the
+ * sequence. The page furniture below stays with the lab.
+ */
+.hp-lab,
+.hp-opening {
   --hp-bg: #090b0c;
   --hp-ink: #d7d0c3;
   --hp-ink-strong: #f2ede3;
@@ -30,6 +38,9 @@ body.hp-lab-mode {
      trece peste banda de dovezi. Întâi se înclină pe loc, apoi ia scena. */
   --hp-shift: clamp(0, calc((var(--hp-progress) - 0.38) * 1.6), 1);
 
+}
+
+.hp-lab {
   position: relative;
   isolation: isolate;
   background: var(--hp-bg);

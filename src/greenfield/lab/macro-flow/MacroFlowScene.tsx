@@ -1,4 +1,4 @@
-import { Environment, Lightformer, PerformanceMonitor, useGLTF, useTexture } from '@react-three/drei';
+import { Environment, Lightformer, PerformanceMonitor, useTexture } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Bloom, EffectComposer, Noise, Vignette } from '@react-three/postprocessing';
 import {
@@ -36,8 +36,9 @@ import {
   useSchoolActCamera,
   type SchoolActCameraCurve,
 } from './school-act/schoolActCamera';
+import { CitadelSequence } from '../hero-plan/CitadelScene';
+import type { HeroOpening } from '../hero-plan/heroOpening';
 import { ThresholdResponseSequence } from './ThresholdResponseSequence';
-import { getVerticalSliceAsset, resolveVerticalSliceAsset } from './verticalSliceAssets';
 import {
   sampleVerticalSliceCamera,
   useVerticalSliceCameraCurves,
@@ -49,6 +50,10 @@ export type { MacroLensMode, MacroTraceOutcome } from './macroFlowTypes';
 type MacroFlowSceneProps = {
   activeChapter: JourneyChapter;
   progressRef: MutableRefObject<number>;
+  /** The opening on its own clock. World progress runs to chapter eleven. */
+  heroProgressRef: MutableRefObject<number>;
+  /** The drawing's measured frame and the state of the seven systems. */
+  opening: HeroOpening;
   schoolActProgressRef: MutableRefObject<number>;
   buriedActProgressRef: MutableRefObject<number>;
   schoolEntranceHandoffProgressRef: MutableRefObject<number>;
@@ -136,27 +141,6 @@ const BURIED_FALLBACK_TARGET_PATH = new THREE.CatmullRomCurve3([
   new THREE.Vector3(0, 0.2, -188),
   new THREE.Vector3(0, -0.52, -195.35),
 ]);
-
-function resolvedAssetUrl(assetId: 'thresholdSceneDesktop' | 'thresholdSceneMobile', fallback: string) {
-  const asset = resolveVerticalSliceAsset(getVerticalSliceAsset(assetId));
-  return asset?.kind === 'url' ? asset.url : fallback;
-}
-
-const FIRST_LIGHT_MODEL_DESKTOP = resolvedAssetUrl(
-  'thresholdSceneDesktop',
-  '/assets/world/first-light-citadel.glb',
-);
-const FIRST_LIGHT_MODEL_MOBILE = resolvedAssetUrl(
-  'thresholdSceneMobile',
-  '/assets/world/first-light-citadel.glb',
-);
-
-const FALLBACK_MATERIAL_COLORS: Record<string, string> = {
-  'Mountain far': '#0d1216',
-  'Mountain near': '#111816',
-  'Country soil': '#243028',
-  'Country pine': '#0b120e',
-};
 
 function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
@@ -408,55 +392,6 @@ function ThresholdNightSky({
   );
 }
 
-function ThresholdHorizon() {
-  const countryMap = useTexture(FIRST_LIGHT_COUNTRY_URL);
-  countryMap.colorSpace = THREE.SRGBColorSpace;
-  countryMap.wrapS = THREE.ClampToEdgeWrapping;
-  countryMap.wrapT = THREE.ClampToEdgeWrapping;
-  const hillGeometry = useMemo(() => {
-    const geometry = new THREE.CircleGeometry(44, 80);
-    const position = geometry.attributes.position;
-    for (let index = 0; index < position.count; index += 1) {
-      const x = position.getX(index);
-      const y = position.getY(index);
-      const radius = Math.hypot(x, y);
-      const pad = 1 - smooth(range(radius, 15.4, 21.5));
-      const fall = (radius / 44) ** 1.55 * 6.4;
-      position.setZ(index, pad * 0.16 - fall);
-    }
-    geometry.computeVertexNormals();
-    return geometry;
-  }, []);
-
-  useEffect(() => () => hillGeometry.dispose(), [hillGeometry]);
-
-  return (
-    <group>
-      <mesh
-        geometry={hillGeometry}
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0, 0]}
-        receiveShadow
-      >
-        <meshStandardMaterial map={countryMap} color="#9aa48c" roughness={0.96} metalness={0} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.1, 0]}>
-        <circleGeometry args={[12.15, 48]} />
-        <meshStandardMaterial color="#4f4c43" roughness={0.9} metalness={0} />
-      </mesh>
-      <mesh
-        position={[0, 14, -62]}
-        ref={(object) => {
-          object?.lookAt(16, 20, 52);
-        }}
-      >
-        <planeGeometry args={[240, 132]} />
-        <meshBasicMaterial map={countryMap} toneMapped={false} fog={false} />
-      </mesh>
-    </group>
-  );
-}
-
 function WorldAtmosphere({
   progressRef,
   qualityTier,
@@ -584,204 +519,6 @@ function WorldAtmosphere({
       ) : null}
     </>
   );
-}
-
-function FirstLightCitadel({
-  progressRef,
-  qualityTier,
-}: Pick<MacroFlowSceneProps, 'progressRef' | 'qualityTier'>) {
-  const rootRef = useRef<THREE.Group>(null);
-  const occupiedLightMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
-  const occupiedLightUniformsRef = useRef<Array<{
-    uOccupiedTime: { value: number };
-    uOccupiedIgnition: { value: number };
-    uOccupiedDeparture: { value: number };
-  }>>([]);
-  const introStartTimeRef = useRef<number | null>(null);
-  const occupiedDark = useMemo(() => new THREE.Color('#211f1b'), []);
-  const occupiedLit = useMemo(() => new THREE.Color('#d9ba73'), []);
-  const viewportWidth = useThree((state) => state.size.width);
-  const compact = viewportWidth <= 820;
-  const modelUrl = compact ? FIRST_LIGHT_MODEL_MOBILE : FIRST_LIGHT_MODEL_DESKTOP;
-  const { scene } = useGLTF(modelUrl, false, true);
-  const model = useMemo(() => {
-    const clone = scene.clone(true);
-    occupiedLightMaterialsRef.current = [];
-    occupiedLightUniformsRef.current = [];
-    const materialCache = new Map<string, THREE.Material>();
-    clone.updateMatrixWorld(true);
-    clone.traverse((child) => {
-      if (!(child instanceof THREE.Mesh)) return;
-      const materials = Array.isArray(child.material) ? child.material : [child.material];
-      const assetLabel = `${child.name} ${child.geometry.name} ${child.parent?.name ?? ''}`;
-      const landscapeSurface = /Country |Mountain /i.test(assetLabel)
-        || materials.some((material) => /Country |Mountain /i.test(material.name));
-      if (
-        /bat flight|bear crest|emblem|herald/i.test(assetLabel)
-        || /Country pine|Country soil|Country ground/i.test(assetLabel)
-        || materials.some((material) => /Country pine|Country soil/i.test(material.name))
-      ) {
-        child.visible = false;
-        const hiddenMaterials = materials.map((source) => {
-          const cached = materialCache.get(source.uuid);
-          if (cached) return cached;
-          const material = source.clone();
-          materialCache.set(source.uuid, material);
-          return material;
-        });
-        child.material = Array.isArray(child.material) ? hiddenMaterials : hiddenMaterials[0];
-        return;
-      }
-
-      const structuralMaterial = !landscapeSurface && materials.some((material) => (
-        /Limestone|Mineral plaster|Worn stone|Blackened timber|Charcoal roof/.test(material.name)
-      ));
-      child.castShadow = qualityTier === 'cinematic'
-        && structuralMaterial
-        && !(child instanceof THREE.InstancedMesh);
-      child.receiveShadow = qualityTier === 'cinematic';
-      child.frustumCulled = true;
-      const tuned = materials.map((source) => {
-        const cached = materialCache.get(source.uuid);
-        if (cached) return cached;
-        const material = source.clone();
-        materialCache.set(source.uuid, material);
-        if (!(material instanceof THREE.MeshStandardMaterial)) return material;
-
-        const hasAuthoredPbrMaps = Boolean(
-          material.map
-          || material.normalMap
-          || material.roughnessMap
-          || material.metalnessMap,
-        );
-        const fallbackColor = FALLBACK_MATERIAL_COLORS[material.name];
-        if (!hasAuthoredPbrMaps && fallbackColor) material.color.set(fallbackColor);
-        if (/Country |Mountain /i.test(material.name)) {
-          material.envMapIntensity = 0.16;
-          material.roughness = Math.max(material.roughness, 0.94);
-          material.metalness = 0;
-          material.emissive.set('#000000');
-          material.emissiveIntensity = 0;
-        } else {
-          material.envMapIntensity = structuralMaterial ? (compact ? 0.68 : 0.58) : (compact ? 0.5 : 0.44);
-        }
-        if (structuralMaterial) {
-          material.color.offsetHSL(0.018, 0.05, compact ? 0.08 : 0.07);
-          if (material.emissiveIntensity < 0.28) {
-            material.emissive.set('#3a2a1c');
-            material.emissiveIntensity = compact ? 0.42 : 0.34;
-          }
-        }
-        if (compact && /brass|iron/i.test(material.name)) {
-          material.emissive.set('#24190d');
-          material.emissiveIntensity = Math.max(material.emissiveIntensity, 0.46);
-        }
-        if (material.name === 'Occupied light') {
-          const occupiedUniforms = {
-            uOccupiedTime: { value: 0 },
-            uOccupiedIgnition: { value: 0 },
-            uOccupiedDeparture: { value: 1 },
-          };
-          material.color.set('#d9ba73');
-          material.emissive.set('#e4b96c');
-          material.emissiveIntensity = Math.max(material.emissiveIntensity, 5.4);
-          material.onBeforeCompile = (shader) => {
-            Object.assign(shader.uniforms, occupiedUniforms);
-            shader.vertexShader = shader.vertexShader
-              .replace(
-                '#include <common>',
-                `#include <common>
-                varying vec3 vOccupiedWorld;`,
-              )
-              .replace(
-                '#include <project_vertex>',
-                `#include <project_vertex>
-                vOccupiedWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;`,
-              );
-            shader.fragmentShader = shader.fragmentShader
-              .replace(
-                '#include <common>',
-                `#include <common>
-                varying vec3 vOccupiedWorld;
-                uniform float uOccupiedTime;
-                uniform float uOccupiedIgnition;
-                uniform float uOccupiedDeparture;`,
-              )
-              .replace(
-                '#include <emissivemap_fragment>',
-                `#include <emissivemap_fragment>
-                float occupiedCell = floor(vOccupiedWorld.x * 1.31)
-                  + floor(vOccupiedWorld.y * 1.73)
-                  + floor(vOccupiedWorld.z * 1.17);
-                float occupiedSeed = fract(sin(occupiedCell * 17.17) * 43758.5453);
-                float occupiedPulse = 0.72
-                  + sin(uOccupiedTime * (1.25 + occupiedSeed * 1.15) + occupiedCell * 2.37) * 0.18;
-                float occupiedDelay = occupiedSeed * 0.74;
-                float occupiedResponse = smoothstep(
-                  occupiedDelay,
-                  min(1.0, occupiedDelay + 0.22),
-                  uOccupiedIgnition
-                );
-                totalEmissiveRadiance *= mix(0.055, occupiedPulse, occupiedResponse)
-                  * uOccupiedDeparture;`,
-              );
-          };
-          material.customProgramCacheKey = () => 'mf-occupied-light-v2';
-          occupiedLightMaterialsRef.current.push(material);
-          occupiedLightUniformsRef.current.push(occupiedUniforms);
-        }
-        if (material.name === 'Signal anchor') {
-          material.color.set('#72d9d6');
-          material.emissive.set('#72d9d6');
-          material.emissiveIntensity = Math.max(material.emissiveIntensity, 4.8);
-        }
-        if (material.name === 'Worn stone path') {
-          material.emissive.set('#17211d');
-          material.emissiveIntensity = Math.max(material.emissiveIntensity, 0.34);
-        }
-        material.needsUpdate = true;
-        return material;
-      });
-      child.material = Array.isArray(child.material) ? tuned : tuned[0];
-    });
-    return clone;
-  }, [compact, qualityTier, scene]);
-
-  useEffect(() => () => {
-    const materials = new Set<THREE.Material>();
-    model.traverse((child) => {
-      if (!(child instanceof THREE.Mesh)) return;
-      const meshMaterials = Array.isArray(child.material) ? child.material : [child.material];
-      meshMaterials.forEach((material) => materials.add(material));
-    });
-    materials.forEach((material) => material.dispose());
-  }, [model]);
-
-  useFrame(({ clock }) => {
-    const root = rootRef.current;
-    if (!root) return;
-    const departure = smooth(range(progressRef.current, 0.044, 0.056));
-    root.visible = departure < 0.995;
-    if (!root.visible) return;
-    root.position.y = 0;
-    root.rotation.y = 0;
-    if (introStartTimeRef.current === null) introStartTimeRef.current = clock.elapsedTime;
-    const introTime = clock.elapsedTime - introStartTimeRef.current;
-    const ignition = smooth(range(introTime, 0.45, 2.25));
-    occupiedLightMaterialsRef.current.forEach((material, index) => {
-      const stagger = smooth(range(ignition, index * 0.08, 0.68 + index * 0.08));
-      const flicker = Math.sin(clock.elapsedTime * (2.1 + index * 0.17) + index * 1.4) * 0.42;
-      material.color.lerpColors(occupiedDark, occupiedLit, stagger);
-      material.emissiveIntensity = (0.12 + stagger * (6 + flicker)) * (1 - departure);
-    });
-    occupiedLightUniformsRef.current.forEach((uniforms) => {
-      uniforms.uOccupiedTime.value = clock.elapsedTime;
-      uniforms.uOccupiedIgnition.value = ignition;
-      uniforms.uOccupiedDeparture.value = 1 - departure;
-    });
-  });
-
-  return <primitive ref={rootRef} object={model} />;
 }
 
 function DescentLayers({ progressRef }: Pick<MacroFlowSceneProps, 'progressRef'>) {
@@ -1320,6 +1057,8 @@ type WorldProps = MacroFlowSceneProps & {
 function World({
   activeChapter,
   progressRef,
+  heroProgressRef,
+  opening,
   schoolActProgressRef,
   buriedActProgressRef,
   schoolEntranceHandoffProgressRef,
@@ -1437,9 +1176,23 @@ function World({
       <RenderBudgetMonitor />
       {mountThreshold ? (
         <group ref={firstAct.thresholdGroupRef} visible>
-          {showThreshold ? <ThresholdHorizon /> : null}
+          {/* The generic castle is gone. The opening is the plan the studio drew
+              standing itself up: the sheet tips into the ground, the lines gain
+              height, and the citadel assembles out of the earth piece by piece.
+              It brings its own sky and key, because the pose, the clipping and
+              the pour were all authored against them. */}
           {showThreshold ? (
-            <FirstLightCitadel progressRef={progressRef} qualityTier={qualityTier} />
+            <CitadelSequence
+              progressRef={heroProgressRef}
+              planFrameRef={opening.planFrameRef}
+              reducedMotion={reducedMotion}
+              activeSlug={opening.activeSlug}
+              focusSlug={opening.focusSlug}
+              visited={opening.visited}
+              onHover={opening.setHoverSlug}
+              onSelect={opening.selectNode}
+              tagsRef={opening.tagsRef}
+            />
           ) : null}
           {showThreshold ? <ThresholdExposure /> : null}
           <ThresholdResponseSequence
