@@ -435,6 +435,19 @@ function MacroFlowExperience() {
       buriedPixelCueRef.current = false;
     }
   }, []);
+  useEffect(() => {
+    // Safari and Chrome restore the previous scroll offset on reload. On a page
+    // whose opening is a scroll driven transition, that drops the visitor into
+    // the middle of it: no plan, no tip, no rise, just a citadel already there.
+    // A hash is a deliberate destination and is left alone.
+    const previous = window.history.scrollRestoration;
+    window.history.scrollRestoration = 'manual';
+    if (window.location.hash.length <= 1) window.scrollTo(0, 0);
+    return () => {
+      window.history.scrollRestoration = previous;
+    };
+  }, []);
+
   const opening = useHeroOpening();
   // The whole drawing hangs off this one variable: the sheet's tilt, the shell
   // layers, the ink and the fade are all expressed against it in CSS. Without it
