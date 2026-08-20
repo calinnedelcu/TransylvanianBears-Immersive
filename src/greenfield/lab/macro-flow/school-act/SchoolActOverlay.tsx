@@ -62,8 +62,7 @@ export function SchoolActOverlay({
   traceOutcome,
   onStartScan,
   reducedMotion,
-  shows,
-}: SchoolActOverlayProps & { shows: (chapter: string) => boolean }) {
+}: SchoolActOverlayProps) {
   const progress = Number.isFinite(traceProgress)
     ? Math.min(1, Math.max(0, traceProgress))
     : 0;
@@ -84,8 +83,7 @@ export function SchoolActOverlay({
 
   return (
     <>
-      {shows('passage') ? (
-      <section
+            <section
         id="mf-passage"
         className="sa-passage"
         data-chapter="passage"
@@ -117,10 +115,8 @@ export function SchoolActOverlay({
           <p>Bounding box → ramă de alamă → arc de piatră → cititor Aegis</p>
         </aside>
       </section>
-      ) : null}
 
-      {shows('access') ? (
-      <section
+            <section
         id="mf-access"
         className="sa-access"
         data-chapter="access"
@@ -222,10 +218,8 @@ export function SchoolActOverlay({
           </ol>
         </div>
       </section>
-      ) : null}
 
-      {shows('schoolmate') ? (
-      <section
+            <section
         className="sa-classroom-passage"
         data-chapter="schoolmate"
         data-reduced-motion={reducedMotion || undefined}
@@ -246,10 +240,8 @@ export function SchoolActOverlay({
           </div>
         </div>
       </section>
-      ) : null}
 
-      {shows('schoolmate') ? (
-      <section
+            <section
         className="sa-secretariat-passage"
         data-chapter="schoolmate"
         data-reduced-motion={reducedMotion || undefined}
@@ -270,10 +262,8 @@ export function SchoolActOverlay({
           </div>
         </div>
       </section>
-      ) : null}
 
-      {shows('schoolmate') ? (
-      <section
+            <section
         id="mf-schoolmate"
         className="sa-clearing"
         data-chapter="schoolmate"
@@ -428,7 +418,6 @@ export function SchoolActOverlay({
           </footer>
         </div>
       </section>
-      ) : null}
     </>
   );
 }

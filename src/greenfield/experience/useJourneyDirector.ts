@@ -21,6 +21,14 @@ export type JourneyTelemetry = {
    * the beat it actually occupies.
    */
   heroProgressRef: MutableRefObject<number>;
+  /**
+   * The stretch between the citadel standing and the first chapter arriving.
+   *
+   * The opening finishes with a building and the story starts with a city, and
+   * something has to happen in between or the reader is cut from one to the
+   * other. This is the scroll that carries them out through the gate.
+   */
+  heroHandoffRef: MutableRefObject<number>;
   sliceProgressRef: MutableRefObject<number>;
   schoolActProgressRef: MutableRefObject<number>;
   buriedActProgressRef: MutableRefObject<number>;
@@ -59,6 +67,7 @@ export function useJourneyDirector({
   const journeyProgressRef = useRef(0);
   const worldProgressRef = useRef(0);
   const heroProgressRef = useRef(0);
+  const heroHandoffRef = useRef(0);
   const sliceProgressRef = useRef(0);
   const schoolActProgressRef = useRef(0);
   const buriedActProgressRef = useRef(0);
@@ -79,31 +88,17 @@ export function useJourneyDirector({
     };
 
     const context = gsap.context(() => {
-      /**
-       * An act's camera is measured against the act, not against its neighbours.
-       *
-       * These used to run from a section in one act to a section in the next: the
-       * buried camera, for instance, spanned the descent to the breach. That was
-       * fine while every chapter shared a document. Now an act is a page of its
-       * own, so those far ends are simply absent, the trigger is never built, and
-       * the camera sits still while the reader scrolls past the words.
-       *
-       * The page holds exactly one act, so its first and last chapters are the
-       * act's own ends.
-       */
-      const chapters = [...root.querySelectorAll<HTMLElement>('[data-chapter]')];
-      const actStart = chapters[0] ?? null;
-      const actEnd = chapters[chapters.length - 1] ?? null;
-
+      // Every chapter shares one document again, so an act is measured from its
+      // own first chapter to the first chapter of the next one.
       const heroBeat = root.querySelector<HTMLElement>('#mf-threshold');
-      const worldEnd = actEnd;
-      const sliceEnd = actEnd;
-      const schoolActStart = actStart;
-      const schoolActEnd = actEnd;
-      const buriedActStart = actStart;
+      const worldEnd = root.querySelector<HTMLElement>('#mf-infect');
+      const sliceEnd = root.querySelector<HTMLElement>('#mf-passage');
+      const schoolActStart = root.querySelector<HTMLElement>('#mf-passage');
+      const schoolActEnd = root.querySelector<HTMLElement>('#mf-descent');
+      const buriedActStart = root.querySelector<HTMLElement>('#mf-descent');
       const buriedLamp = root.querySelector<HTMLElement>('#mf-lamp');
       const buriedBuild = root.querySelector<HTMLElement>('#mf-build');
-      const buriedActEnd = actEnd;
+      const buriedActEnd = root.querySelector<HTMLElement>('#mf-infect');
       const descentHandoffStart = root.querySelector<HTMLElement>('#mf-descent');
       const descentHandoffEnd = root.querySelector<HTMLElement>('#mf-lamp');
       const threshold = root.querySelector<HTMLElement>('#mf-threshold');
@@ -300,13 +295,29 @@ export function useJourneyDirector({
         publishHero(0);
       }
 
+      // From the moment the opening has finished to the moment the first chapter
+      // takes the frame. Anchored to both, so it cannot drift if either moves.
+      const firstChapter = root.querySelector<HTMLElement>('#mf-field');
+      if (heroBeat && firstChapter) {
+        ScrollTrigger.create({
+          id: 'journey-hero-handoff',
+          trigger: heroBeat,
+          start: 'bottom bottom',
+          endTrigger: firstChapter,
+          end: 'top top',
+          onUpdate: (self) => {
+            heroHandoffRef.current = self.progress;
+          },
+        });
+      }
+
       if (worldEnd) {
         ScrollTrigger.create({
           id: 'journey-world',
           trigger: root,
           start: 'top top',
           endTrigger: worldEnd,
-          end: 'bottom bottom',
+          end: 'top top',
           onUpdate: (self) => {
             worldProgressRef.current = reducedMotion ? 1 : self.progress;
             onWorldProgress?.(worldProgressRef.current, velocityRef.current);
@@ -320,7 +331,7 @@ export function useJourneyDirector({
           trigger: root,
           start: 'top top',
           endTrigger: sliceEnd,
-          end: 'bottom bottom',
+          end: 'top top',
           onUpdate: (self) => {
             sliceProgressRef.current = self.progress;
             onSliceProgress?.(self.progress, velocityRef.current);
@@ -344,7 +355,7 @@ export function useJourneyDirector({
           trigger: schoolActStart,
           start: 'top top',
           endTrigger: schoolActEnd,
-          end: 'bottom bottom',
+          end: 'top top',
           onUpdate: (self) => {
             schoolActProgressRef.current = self.progress;
             onSchoolActProgress?.(self.progress, velocityRef.current);
@@ -371,7 +382,7 @@ export function useJourneyDirector({
           trigger: buriedActStart,
           start: 'top top',
           endTrigger: buriedActEnd,
-          end: 'bottom bottom',
+          end: 'top top',
           onUpdate: (self) => {
             const progress = remapBuriedActProgress(
               self.progress,
@@ -481,6 +492,7 @@ export function useJourneyDirector({
     journeyProgressRef,
     worldProgressRef,
     heroProgressRef,
+    heroHandoffRef,
     sliceProgressRef,
     schoolActProgressRef,
     buriedActProgressRef,
@@ -504,7 +516,7 @@ function remapBuriedActProgress(
 ) {
   if (!lamp || !build) return rawProgress;
 
-  const totalDistance = end.offsetTop + end.offsetHeight - start.offsetTop;
+  const totalDistance = end.offsetTop - start.offsetTop;
   if (totalDistance <= 0) return rawProgress;
 
   const lampBoundary = (lamp.offsetTop - start.offsetTop) / totalDistance;

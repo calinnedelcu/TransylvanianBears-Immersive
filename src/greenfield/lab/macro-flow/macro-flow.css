@@ -615,8 +615,20 @@ body.mf-lab-mode {
   pointer-events: none;
 }
 
+/*
+ * The beat carries two things, and the arithmetic matters.
+ *
+ * The opening runs from the top of this section to the point where its bottom
+ * reaches the bottom of the screen, which is its height minus one screen. The
+ * walk out through the gate runs from there to the first chapter, which is the
+ * remaining screen. So at 185dvh the opening was getting 85 and the handover
+ * 100: the plan tipped, the citadel rose and poured itself in less than a
+ * screen of scrolling, which is a flicker rather than a sequence.
+ *
+ * 280 gives the opening 180 and leaves the gate its screen.
+ */
 .mf-beat--threshold {
-  min-height: 185dvh;
+  min-height: 280dvh;
 }
 
 .mf-beat--field {

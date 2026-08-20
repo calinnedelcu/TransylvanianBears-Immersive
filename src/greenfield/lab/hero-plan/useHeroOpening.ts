@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ProjectId } from '../../types';
-import { DEPARTURES } from './departures';
 
 /**
  * The state the opening shares with its 3D scene.
@@ -42,52 +40,6 @@ export function useHeroOpening() {
     });
   }, []);
 
-  /**
-   * Leaving the citadel for a system.
-   *
-   * The story is a navigation away, so the WebGL context does not survive the
-   * trip: the citadel has to finish its own move and hand over a dark frame,
-   * rather than pretend to fly the reader there. The camera reads this through a
-   * ref because it runs per frame; the veil reads the same number through a CSS
-   * variable, so the picture and the dark cannot disagree.
-   */
-  const departureRef = useRef(0);
-  const [departing, setDeparting] = useState<{ id: ProjectId; line: string } | null>(null);
-
-  const depart = useCallback((id: ProjectId, done: () => void) => {
-    const plan = DEPARTURES[id];
-    if (!plan) {
-      done();
-      return;
-    }
-    setDeparting({ id, line: plan.line });
-    const started = performance.now();
-    let settled = false;
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      done();
-    };
-    const step = (now: number) => {
-      if (settled) return;
-      const t = Math.min(1, (now - started) / (plan.seconds * 1000));
-      departureRef.current = t;
-      document.documentElement.style.setProperty('--hp-departure', t.toFixed(4));
-      if (t < 1) requestAnimationFrame(step);
-      else finish();
-    };
-    requestAnimationFrame(step);
-    // A backstop, because the animation frame is the wrong thing to make a
-    // navigation depend on: browsers stop serving it to tabs that are not in
-    // front, and a reader who switched away would come back to a veil that never
-    // lifts. The trip completes on time whether or not anything was drawn.
-    window.setTimeout(finish, plan.seconds * 1000 + 250);
-  }, []);
-
-  useEffect(() => () => {
-    document.documentElement.style.removeProperty('--hp-departure');
-  }, []);
-
   useEffect(() => {
     const measure = () => {
       const node = planRef.current;
@@ -111,9 +63,6 @@ export function useHeroOpening() {
   }, []);
 
   return {
-    departureRef,
-    departing,
-    depart,
     planRef,
     planFrameRef,
     tagsRef,

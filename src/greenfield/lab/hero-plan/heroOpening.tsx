@@ -1,10 +1,7 @@
 import { type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ARCHIVE, PROJECTS, TEAM } from '../../data';
-import type { ProjectId } from '../../types';
 import { CitadelPlan, CitadelPlanShell } from './CitadelPlan';
-import { NodePreview } from './NodePreview';
-import { PLAN_NODES } from './planNodes';
 import type { HeroOpening } from './useHeroOpening';
 
 /**
@@ -141,55 +138,3 @@ export function HeroPlanSheet({
   );
 }
 
-/** The dark the handover happens behind, with what it is handing over on it. */
-export function HeroDepartureVeil({ opening }: { opening: HeroOpening }) {
-  if (!opening.departing) return null;
-  return (
-    <div className="hp-veil" role="presentation">
-      <p>{opening.departing.line}</p>
-    </div>
-  );
-}
-
-/**
- * The labels and the reading panel.
- *
- * Positions are written by the render loop; only content and behaviour live here,
- * so they stay real links rather than painted text.
- */
-export function HeroSystemIndex({
-  opening,
-  onEnter,
-}: {
-  opening: HeroOpening;
-  onEnter?: (id: ProjectId) => void;
-}) {
-  const { activeSlug, visited, setHoverSlug, selectNode, tagsRef } = opening;
-  return (
-    <>
-      <div className="hp-tags" ref={tagsRef} aria-label="Sistemele cetatii">
-        {PLAN_NODES.map(({ project }) => (
-          <Link
-            key={project.slug}
-            className="hp-tag"
-            to={`/next/work/${project.slug}`}
-            data-active={activeSlug === project.slug || undefined}
-            data-visited={visited.has(project.slug) || undefined}
-            onMouseEnter={() => setHoverSlug(project.slug)}
-            onMouseLeave={() => setHoverSlug(null)}
-            onFocus={() => setHoverSlug(project.slug)}
-            onBlur={() => setHoverSlug(null)}
-            onClick={(event) => {
-              event.preventDefault();
-              selectNode(project.slug);
-            }}
-          >
-            <span>{project.index}</span>
-            {project.shortTitle}
-          </Link>
-        ))}
-      </div>
-      <NodePreview activeSlug={activeSlug} onEnter={onEnter} />
-    </>
-  );
-}

@@ -2,13 +2,12 @@ import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 
 /**
- * The citadel is the front page and the story is somewhere it sends you.
+ * One road, from the drawing to the dawn.
  *
- * Scrolling the opening ends at the citadel with its index live; it does not
- * pour the reader into sixteen chapters they never asked for. A system is
- * entered by choosing it, which is what an index is for.
+ * The opening and the sixteen chapters are one document again: the plan comes
+ * forward, the citadel builds itself out of the ground, and then the same scroll
+ * carries the reader into the story rather than handing them a menu.
  */
-const CitadelOpening = lazy(() => import('./lab/hero-plan/HeroPlanPrototype'));
 const ImmersiveStory = lazy(() => import('./lab/macro-flow/MacroFlowPrototype'));
 const ArchivePage = lazy(() => import('./pages/ArchivePage').then((module) => ({ default: module.ArchivePage })));
 const MemberProfilePage = lazy(() => import('./pages/MemberProfilePage').then((module) => ({ default: module.MemberProfilePage })));
@@ -44,19 +43,12 @@ export default function GreenfieldRoutes() {
         index
         element={
           <Suspense fallback={<PageFallback />}>
-            <CitadelOpening />
-          </Suspense>
-        }
-      />
-      <Route
-        path="story/:act"
-        element={
-          <Suspense fallback={<PageFallback />}>
             <ImmersiveStory />
           </Suspense>
         }
       />
-      <Route path="story" element={<Navigate to="/story/project-nexus" replace />} />
+      {/* The acts briefly had addresses of their own. They are chapters again. */}
+      <Route path="story/*" element={<Navigate to="/" replace />} />
       <Route path="work" element={<DeferredPage><WorkIndexPage /></DeferredPage>} />
       <Route path="work/:slug" element={<DeferredPage><ProjectCaseStudyPage /></DeferredPage>} />
       <Route path="team" element={<DeferredPage><TeamIndexPage /></DeferredPage>} />
@@ -70,8 +62,7 @@ export default function GreenfieldRoutes() {
       <Route path="echipa" element={<Navigate to="/team" replace />} />
       <Route path="echipa/:memberId" element={<LegacyMemberRedirect />} />
       <Route path="despre" element={<Navigate to="/" replace />} />
-      {/* The open paths are in the closing act now, not on the front page. */}
-      <Route path="aplica" element={<Navigate to="/story/final" replace />} />
+      <Route path="aplica" element={<Navigate to="/#mf-open-paths" replace />} />
       <Route path="*" element={<DeferredPage><NotFoundPage /></DeferredPage>} />
     </Routes>
   );

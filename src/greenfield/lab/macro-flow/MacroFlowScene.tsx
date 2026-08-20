@@ -36,6 +36,8 @@ import {
   useSchoolActCamera,
   type SchoolActCameraCurve,
 } from './school-act/schoolActCamera';
+import { CitadelSequence } from '../hero-plan/CitadelScene';
+import type { HeroOpening } from '../hero-plan/useHeroOpening';
 import { ThresholdResponseSequence } from './ThresholdResponseSequence';
 import {
   sampleVerticalSliceCamera,
@@ -48,6 +50,12 @@ export type { MacroLensMode, MacroTraceOutcome } from './macroFlowTypes';
 type MacroFlowSceneProps = {
   activeChapter: JourneyChapter;
   progressRef: MutableRefObject<number>;
+  /** The opening on its own clock. World progress runs to chapter eleven. */
+  heroProgressRef: MutableRefObject<number>;
+  /** The scroll that carries the reader out of the citadel and into the story. */
+  heroHandoffRef: MutableRefObject<number>;
+  /** The drawing's measured frame and the state the sequence shares with it. */
+  opening: HeroOpening;
   schoolActProgressRef: MutableRefObject<number>;
   buriedActProgressRef: MutableRefObject<number>;
   schoolEntranceHandoffProgressRef: MutableRefObject<number>;
@@ -1117,6 +1125,9 @@ function NexusWorld({ compact }: { compact: boolean }) {
 function World({
   activeChapter,
   progressRef,
+  heroProgressRef,
+  heroHandoffRef,
+  opening,
   schoolActProgressRef,
   buriedActProgressRef,
   schoolEntranceHandoffProgressRef,
@@ -1235,6 +1246,23 @@ function World({
       <RenderBudgetMonitor />
       {mountThreshold ? (
         <group ref={firstAct.thresholdGroupRef} visible>
+          {/* The opening: the plan the studio drew standing itself up. It brings
+              its own sky, terrain and key, because the pose, the ground clipping
+              and the pour were all authored against them. */}
+          {showThreshold ? (
+            <CitadelSequence
+              progressRef={heroProgressRef}
+              planFrameRef={opening.planFrameRef}
+              reducedMotion={reducedMotion}
+              activeSlug={opening.activeSlug}
+              focusSlug={opening.focusSlug}
+              handoffRef={heroHandoffRef}
+              visited={opening.visited}
+              onHover={opening.setHoverSlug}
+              onSelect={opening.selectNode}
+              tagsRef={opening.tagsRef}
+            />
+          ) : null}
           {showThreshold ? <ThresholdExposure /> : null}
           <ThresholdResponseSequence
             progressRef={progressRef}

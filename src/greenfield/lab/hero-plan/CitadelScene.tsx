@@ -7,7 +7,7 @@ import { PlanLines } from './PlanLines';
 import { WorldTags } from './WorldTags';
 import type { BuildUniforms } from './luminousCitadel';
 import { GLASS_OPACITY, createBuildPulse, makeLuminous, makeSilhouette } from './luminousCitadel';
-import { DEPARTURES, NODE_DEGREES, departurePose } from './departures';
+import { gatePose } from './departures';
 import { NightSky } from './NightSky';
 import { SignalRoute } from './SignalRoute';
 
@@ -455,14 +455,12 @@ function CameraRig({
   progressRef,
   planFrameRef,
   focusSlug,
-  departureRef,
-  departingSlug,
+  handoffRef,
 }: {
   progressRef: MutableRefObject<number>;
   planFrameRef: MutableRefObject<PlanFrame | null>;
   focusSlug: string | null;
-  departureRef: MutableRefObject<number>;
-  departingSlug: string | null;
+  handoffRef?: MutableRefObject<number>;
 }) {
   const { camera, size } = useThree();
   const eye = useMemo(() => new THREE.Vector3(), []);
@@ -525,18 +523,15 @@ function CameraRig({
       target.lerp(pose.target, inspectRef.current);
     }
 
-    // The handover. Once it starts the citadel stops holding the frame and moves
-    // the way this system leaves: down through the floor, out through the gate,
-    // up over the roofs. It ends on the pose the chapter opens from.
-    if (departingSlug && departureRef.current > 0) {
-      const deg = NODE_DEGREES.get(departingSlug);
-      const plan = DEPARTURES[departingSlug as keyof typeof DEPARTURES];
-      if (deg !== undefined && plan) {
-        const away = smooth(departureRef.current);
-        const pose = departurePose(deg, plan.move);
-        eye.lerp(pose.eye, away);
-        target.lerp(pose.target, away);
-      }
+    // Out through the gate. The citadel opened it at the end of its own sequence
+    // and then had nowhere to put the reader; this is where they go. It runs on
+    // its own scroll rather than on the opening's, because the opening is over.
+    const handoff = handoffRef?.current ?? 0;
+    if (handoff > 0) {
+      const away = smooth(handoff);
+      const leaving = gatePose();
+      eye.lerp(leaving.eye, away);
+      target.lerp(leaving.target, away);
     }
 
     camera.position.copy(eye);
@@ -576,9 +571,14 @@ type CitadelSceneProps = {
   activeSlug: string | null;
   /** Chosen outright. Only this moves the camera; see the note in the page. */
   focusSlug: string | null;
-  /** 0 to 1 while the citadel is handing this system over to the story. */
-  departureRef: MutableRefObject<number>;
-  departingSlug: string | null;
+  /**
+   * 0 to 1 across the scroll between the citadel standing and the first chapter.
+   *
+   * The opening ends with a building and the story starts with a city. Without
+   * this the reader is cut from one to the other; with it they are walked out
+   * through the gate the citadel just opened, which is the only exit it has.
+   */
+  handoffRef?: MutableRefObject<number>;
   visited: ReadonlySet<string>;
   onHover: (slug: string | null) => void;
   onSelect: (slug: string) => void;
@@ -599,8 +599,7 @@ export function CitadelSequence({
   reducedMotion,
   activeSlug,
   focusSlug,
-  departureRef,
-  departingSlug,
+  handoffRef,
   visited,
   onHover,
   onSelect,
@@ -616,8 +615,7 @@ export function CitadelSequence({
         progressRef={progressRef}
         planFrameRef={planFrameRef}
         focusSlug={focusSlug}
-        departureRef={departureRef}
-        departingSlug={departingSlug}
+        handoffRef={handoffRef}
       />
       <WorldTags progressRef={progressRef} tagsRef={tagsRef} showFrom={RISE_END} />
       {sky ? <NightSky progressRef={progressRef} showFrom={TIP_END} /> : null}
