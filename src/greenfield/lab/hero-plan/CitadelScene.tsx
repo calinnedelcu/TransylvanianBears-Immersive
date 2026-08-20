@@ -446,11 +446,11 @@ const NODE_POSES = new Map(CITADEL.nodes.map((node) => [node.id, nodePose(node.d
 function CameraRig({
   progressRef,
   planFrameRef,
-  activeSlug,
+  focusSlug,
 }: {
   progressRef: MutableRefObject<number>;
   planFrameRef: MutableRefObject<PlanFrame | null>;
-  activeSlug: string | null;
+  focusSlug: string | null;
 }) {
   const { camera, size } = useThree();
   const eye = useMemo(() => new THREE.Vector3(), []);
@@ -505,7 +505,7 @@ function CameraRig({
 
     // Traverse: once the citadel stands, choosing a system walks the camera to it
     // and choosing nothing walks it back. The scroll pose stays the anchor.
-    const pose = activeSlug ? NODE_POSES.get(activeSlug) : undefined;
+    const pose = focusSlug ? NODE_POSES.get(focusSlug) : undefined;
     const inspect = pose && progressRef.current > 0.92 ? 1 : 0;
     inspectRef.current += (inspect - inspectRef.current) * 0.07;
     if (pose && inspectRef.current > 0.001) {
@@ -546,7 +546,10 @@ type CitadelSceneProps = {
   progressRef: MutableRefObject<number>;
   planFrameRef: MutableRefObject<PlanFrame | null>;
   reducedMotion: boolean;
+  /** Lit and named: whatever the reader is on, hovered or chosen. */
   activeSlug: string | null;
+  /** Chosen outright. Only this moves the camera; see the note in the page. */
+  focusSlug: string | null;
   visited: ReadonlySet<string>;
   onHover: (slug: string | null) => void;
   onSelect: (slug: string) => void;
@@ -566,6 +569,7 @@ export function CitadelSequence({
   planFrameRef,
   reducedMotion,
   activeSlug,
+  focusSlug,
   visited,
   onHover,
   onSelect,
@@ -577,7 +581,7 @@ export function CitadelSequence({
   return (
     <>
       <Stage exposure={exposure} />
-      <CameraRig progressRef={progressRef} planFrameRef={planFrameRef} activeSlug={activeSlug} />
+      <CameraRig progressRef={progressRef} planFrameRef={planFrameRef} focusSlug={focusSlug} />
       <WorldTags progressRef={progressRef} tagsRef={tagsRef} showFrom={RISE_END} />
       {sky ? <NightSky progressRef={progressRef} showFrom={TIP_END} /> : null}
       <SignalRoute progressRef={progressRef} activeSlug={activeSlug} showFrom={RISE_START} />

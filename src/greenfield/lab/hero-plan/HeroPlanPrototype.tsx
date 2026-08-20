@@ -59,12 +59,28 @@ export default function HeroPlanPrototype() {
   const tagsRef = useRef<HTMLDivElement>(null);
   const reducedMotion = usePrefersReducedMotion();
   const [phase, setPhase] = useState<Phase>('plan');
-  const [activeSlug, setActiveSlug] = useState<string | null>(null);
+  /**
+   * Hover and choice are two different things, and merging them made the labels
+   * unusable.
+   *
+   * The camera walks to whichever system is chosen, and the labels are projected
+   * from that camera. With hover doing the choosing, moving the cursor onto a
+   * label sent the camera towards it, which slid the label out from under the
+   * cursor, which ended the hover, which walked the camera back. The label
+   * oscillated and could never be clicked.
+   *
+   * Hover now only lights a system up and names it in the panel. Travelling to
+   * one takes a click, which is also the better behaviour: brushing past a label
+   * no longer throws the reader across the courtyard.
+   */
+  const [hoverSlug, setHoverSlug] = useState<string | null>(null);
+  const [focusSlug, setFocusSlug] = useState<string | null>(null);
+  const activeSlug = focusSlug ?? hoverSlug;
   // Sistemele deschise raman aprinse: pleci dintr-o cetate diferita de cea in care ai intrat.
   const [visited, setVisited] = useState<ReadonlySet<string>>(() => new Set());
 
   const selectNode = useCallback((slug: string) => {
-    setActiveSlug((current) => (current === slug ? null : slug));
+    setFocusSlug((current) => (current === slug ? null : slug));
     setVisited((current) => {
       if (current.has(slug)) return current;
       const next = new Set(current);
@@ -237,8 +253,9 @@ export default function HeroPlanPrototype() {
               planFrameRef={planFrameRef}
               reducedMotion={reducedMotion}
               activeSlug={activeSlug}
+              focusSlug={focusSlug}
               visited={visited}
-              onHover={setActiveSlug}
+              onHover={setHoverSlug}
               onSelect={selectNode}
               tagsRef={tagsRef}
             />
@@ -273,7 +290,7 @@ export default function HeroPlanPrototype() {
               ))}
               <CitadelPlan
                 activeSlug={activeSlug}
-                onNodeFocus={setActiveSlug}
+                onNodeFocus={setHoverSlug}
                 interactive={phase === 'plan'}
               />
             </div>
@@ -289,10 +306,10 @@ export default function HeroPlanPrototype() {
               to={`/next/work/${project.slug}`}
               data-active={activeSlug === project.slug || undefined}
               data-visited={visited.has(project.slug) || undefined}
-              onMouseEnter={() => setActiveSlug(project.slug)}
-              onMouseLeave={() => setActiveSlug(null)}
-              onFocus={() => setActiveSlug(project.slug)}
-              onBlur={() => setActiveSlug(null)}
+              onMouseEnter={() => setHoverSlug(project.slug)}
+              onMouseLeave={() => setHoverSlug(null)}
+              onFocus={() => setHoverSlug(project.slug)}
+              onBlur={() => setHoverSlug(null)}
               onClick={(event) => {
                 event.preventDefault();
                 selectNode(project.slug);
