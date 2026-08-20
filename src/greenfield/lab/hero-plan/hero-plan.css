@@ -1226,3 +1226,22 @@ body.hp-lab-mode {
   border-color: rgb(105 206 208 / 0.9);
   background: rgb(105 206 208 / 0.1);
 }
+
+/*
+ * Inside the story the drawing is a layer the copy sits on, not a block in the
+ * flow. Dropped straight into the beat it took 533px of height and pushed the
+ * wordmark below the fold, so the landing page arrived with no title on it. The
+ * lab page pins it with its own sticky viewport; here the beat is the viewport.
+ */
+.hp-opening .hp-stage {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 100dvh;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.hp-opening .hp-stage > .hp-tilt {
+  position: sticky;
+  top: 0;
+}
