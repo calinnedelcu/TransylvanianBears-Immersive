@@ -1,6 +1,14 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 
+/**
+ * The citadel is the front page and the story is somewhere it sends you.
+ *
+ * Scrolling the opening ends at the citadel with its index live; it does not
+ * pour the reader into sixteen chapters they never asked for. A system is
+ * entered by choosing it, which is what an index is for.
+ */
+const CitadelOpening = lazy(() => import('./lab/hero-plan/HeroPlanPrototype'));
 const ImmersiveStory = lazy(() => import('./lab/macro-flow/MacroFlowPrototype'));
 const ArchivePage = lazy(() => import('./pages/ArchivePage').then((module) => ({ default: module.ArchivePage })));
 const MemberProfilePage = lazy(() => import('./pages/MemberProfilePage').then((module) => ({ default: module.MemberProfilePage })));
@@ -34,6 +42,14 @@ export default function GreenfieldRoutes() {
     <Routes>
       <Route
         index
+        element={
+          <Suspense fallback={<PageFallback />}>
+            <CitadelOpening />
+          </Suspense>
+        }
+      />
+      <Route
+        path="story"
         element={
           <Suspense fallback={<PageFallback />}>
             <ImmersiveStory />

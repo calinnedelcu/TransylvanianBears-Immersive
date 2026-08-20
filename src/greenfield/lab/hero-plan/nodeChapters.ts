@@ -14,13 +14,13 @@ export function chapterFor(project: ProjectId): JourneyChapter | null {
 }
 
 /**
- * One anchor works from both sides, which is what makes the ring testable from
- * anywhere: as a cross document link the journey director restores on load, and
- * inside the story as a same page anchor the smooth scroll takes over.
+ * The ring sends the reader out of the citadel and into the story, at the chapter
+ * that is about the system they chose. The journey director restores the anchor
+ * on load, so the reader arrives already inside that part of the road.
  */
 export function chapterHref(project: ProjectId): string {
   const chapter = chapterFor(project);
-  return chapter ? `/#mf-${chapter}` : '/';
+  return chapter ? `/story#mf-${chapter}` : '/story';
 }
 
 /** The destination named the way the story names it, so the promise is checkable. */

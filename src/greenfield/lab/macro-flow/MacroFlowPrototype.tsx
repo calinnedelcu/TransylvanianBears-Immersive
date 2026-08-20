@@ -19,13 +19,13 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
+import { Link } from 'react-router-dom';
 import { usePrefersReducedMotion } from '../../../hooks/usePrefersReducedMotion';
 import { ViewTransitionLink } from '../../components/ViewTransitionLink';
 import {
@@ -42,10 +42,6 @@ import { useExperienceActorRef, useExperienceSelector } from '../../experience/u
 import { useJourneyDirector } from '../../experience/useJourneyDirector';
 import { useGreenfieldMode } from '../../hooks/useGreenfieldMode';
 import { ActExit } from './ActExit';
-import { citadelScrollTarget } from '../hero-plan/acts';
-import { HeroPlanSheet, HeroPlanTitle, HeroSystemIndex } from '../hero-plan/heroOpening';
-import { scrollSmoothTo } from '../../../components/smoothScroll';
-import { useHeroOpening } from '../hero-plan/useHeroOpening';
 import '../hero-plan/hero-plan.css';
 import type { MacroLensMode } from './MacroFlowScene';
 import type { LensPointerState, NexusFlightInput } from './macroFlowTypes';
@@ -452,34 +448,8 @@ function MacroFlowExperience() {
     };
   }, []);
 
-  /**
-   * ?hp=0.8 freezes the opening at one moment of itself.
-   *
-   * The sequence only exists while scrolling, which makes it impossible to look
-   * at a single frame of it and talk about that frame. Every bug worth finding in
-   * it so far was found by pinning it and measuring, not by scrubbing past.
-   */
-  const heroPin = useMemo(() => {
-    const raw = new URLSearchParams(window.location.search).get('hp');
-    if (raw === null) return null;
-    const value = Number.parseFloat(raw);
-    return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : null;
-  }, []);
-
-  const opening = useHeroOpening();
-  // The whole drawing hangs off this one variable: the sheet's tilt, the shell
-  // layers, the ink and the fade are all expressed against it in CSS. Without it
-  // written every frame the plan renders at its resting state and looks dead.
-  // Written on the section itself, because that is where the palette and the
-  // derived thresholds are declared; setting it higher up would be shadowed by
-  // the default the token block has to keep for the lab page.
-  const heroBeatRef = useRef<HTMLElement>(null);
-  const onHeroProgress = useCallback((progress: number) => {
-    heroBeatRef.current?.style.setProperty('--hp-progress', progress.toFixed(4));
-  }, []);
   const {
     worldProgressRef: progressRef,
-    heroProgressRef,
     schoolActProgressRef,
     buriedActProgressRef,
     schoolEntranceHandoffProgressRef,
@@ -490,8 +460,6 @@ function MacroFlowExperience() {
     reducedMotion,
     onChapterChange: enterChapter,
     onProgress: onJourneyProgress,
-    onHeroProgress,
-    heroPin,
     onWorldProgress,
     onSliceProgress,
     onSchoolActProgress,
@@ -693,8 +661,6 @@ function MacroFlowExperience() {
               <MacroFlowScene
                 activeChapter={activeChapter}
                 progressRef={progressRef}
-                heroProgressRef={heroProgressRef}
-                opening={opening}
                 schoolActProgressRef={schoolActProgressRef}
                 buriedActProgressRef={buriedActProgressRef}
                 schoolEntranceHandoffProgressRef={schoolEntranceHandoffProgressRef}
@@ -778,25 +744,23 @@ function MacroFlowExperience() {
 
       <section
         id="mf-threshold"
-        ref={heroBeatRef}
-        className="mf-beat mf-beat--threshold hp-opening"
+        className="mf-beat mf-beat--threshold"
         data-chapter="threshold"
       >
-        {/* The front page is this, not a caption beside it.
-            The drawing is a real element rather than a texture, because the camera
-            derives its pose from this rectangle every frame: that is what lets the
-            model land on top of the plan instead of cutting to it. */}
-        <div className="hp-viewport">
-          <HeroPlanTitle onFollow={() => {
-            const target = citadelScrollTarget();
-            if (target !== null) scrollSmoothTo(target);
-          }} />
-          <HeroPlanSheet opening={opening} interactive={activeChapter === 'threshold'} />
+        {/* The citadel lives on the front page, not here. This beat is only the
+            doorway the reader came through, so it says where they are and how to
+            get back to the ring they chose from. */}
+        <div className="mf-copy mf-copy--hero">
+          <div className="mf-hero-plate">
+            <p className="mf-kicker">Ai intrat din cetate.</p>
+            <h1><span>Transylvanian</span><span>Bears</span></h1>
+            <p className="mf-hero-line">
+              De aici încolo drumul e povestea sistemelor. Poți oricând să te
+              întorci la cetate și să alegi altul.
+            </p>
+            <Link className="mf-hero-back" to="/">&larr; Înapoi la cetate</Link>
+          </div>
         </div>
-        <HeroSystemIndex opening={opening} />
-        <p className="hp-scroll-cue" aria-hidden="true">
-          <i /> Derulează &middot; cetatea se ridică
-        </p>
       </section>
 
       <section id="mf-field" className="mf-beat mf-beat--field" data-chapter="field">

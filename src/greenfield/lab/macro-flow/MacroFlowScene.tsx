@@ -36,8 +36,6 @@ import {
   useSchoolActCamera,
   type SchoolActCameraCurve,
 } from './school-act/schoolActCamera';
-import { CitadelSequence } from '../hero-plan/CitadelScene';
-import type { HeroOpening } from '../hero-plan/heroOpening';
 import { ThresholdResponseSequence } from './ThresholdResponseSequence';
 import {
   sampleVerticalSliceCamera,
@@ -50,10 +48,6 @@ export type { MacroLensMode, MacroTraceOutcome } from './macroFlowTypes';
 type MacroFlowSceneProps = {
   activeChapter: JourneyChapter;
   progressRef: MutableRefObject<number>;
-  /** The opening on its own clock. World progress runs to chapter eleven. */
-  heroProgressRef: MutableRefObject<number>;
-  /** The drawing's measured frame and the state of the seven systems. */
-  opening: HeroOpening;
   schoolActProgressRef: MutableRefObject<number>;
   buriedActProgressRef: MutableRefObject<number>;
   schoolEntranceHandoffProgressRef: MutableRefObject<number>;
@@ -1041,8 +1035,6 @@ type WorldProps = MacroFlowSceneProps & {
 function World({
   activeChapter,
   progressRef,
-  heroProgressRef,
-  opening,
   schoolActProgressRef,
   buriedActProgressRef,
   schoolEntranceHandoffProgressRef,
@@ -1160,24 +1152,6 @@ function World({
       <RenderBudgetMonitor />
       {mountThreshold ? (
         <group ref={firstAct.thresholdGroupRef} visible>
-          {/* The generic castle is gone. The opening is the plan the studio drew
-              standing itself up: the sheet tips into the ground, the lines gain
-              height, and the citadel assembles out of the earth piece by piece.
-              It brings its own sky and key, because the pose, the clipping and
-              the pour were all authored against them. */}
-          {showThreshold ? (
-            <CitadelSequence
-              progressRef={heroProgressRef}
-              planFrameRef={opening.planFrameRef}
-              reducedMotion={reducedMotion}
-              activeSlug={opening.activeSlug}
-              focusSlug={opening.focusSlug}
-              visited={opening.visited}
-              onHover={opening.setHoverSlug}
-              onSelect={opening.selectNode}
-              tagsRef={opening.tagsRef}
-            />
-          ) : null}
           {showThreshold ? <ThresholdExposure /> : null}
           <ThresholdResponseSequence
             progressRef={progressRef}

@@ -1,15 +1,9 @@
 import type { MouseEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { scrollSmoothTo } from '../../../components/smoothScroll';
 import type { JourneyChapter } from '../../experience/chapters';
 import { projectById } from '../../data';
-import {
-  CLOSING_ENTRY,
-  actByExit,
-  chapterAnchor,
-  chapterTitle,
-  citadelScrollTarget,
-  nextAct,
-} from '../hero-plan/acts';
+import { CLOSING_ENTRY, actByExit, chapterAnchor, chapterTitle, nextAct } from '../hero-plan/acts';
 
 /**
  * The way out of an act.
@@ -56,14 +50,13 @@ export function ActExit({ chapter }: { chapter: JourneyChapter }) {
 
   return (
     <nav className="mf-act-exit" aria-label="Ieșire din capitol">
-      <a
-        className="mf-act-exit__back"
-        href="#mf-threshold"
-        onClick={(event) => travel(citadelScrollTarget())(event)}
-      >
+      {/* A real navigation, because the citadel is a place now and not a moment
+          inside this page: the ring lives on the front page and the story is
+          somewhere it sends you. */}
+      <Link className="mf-act-exit__back" to="/">
         <span aria-hidden="true">&larr;</span>
         Înapoi la cetate
-      </a>
+      </Link>
       <a
         className="mf-act-exit__on"
         href={chapterAnchor(onward.chapter)}
