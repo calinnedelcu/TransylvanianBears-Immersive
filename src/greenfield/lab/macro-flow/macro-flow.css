@@ -4279,3 +4279,23 @@ body.mf-lab-mode {
   color: rgb(114 217 214 / 0.92);
   font-weight: 500;
 }
+
+/* The way out of an act, reachable from anywhere in it rather than only at its
+   end: the reader arrived here by choosing, and can leave the same way. */
+.mf-header__back {
+  display: inline-flex;
+  gap: 8px;
+  align-items: baseline;
+  color: rgb(233 238 240 / 0.62);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: color 160ms ease;
+}
+
+.mf-header__back:hover,
+.mf-header__back:focus-visible {
+  color: rgb(114 217 214 / 0.95);
+}

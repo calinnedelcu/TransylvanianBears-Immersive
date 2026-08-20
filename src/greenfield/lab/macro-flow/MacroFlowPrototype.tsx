@@ -40,7 +40,7 @@ import { effectiveQuality } from '../../experience/experienceMachine';
 import { useExperienceActorRef, useExperienceSelector } from '../../experience/useExperience';
 import { useJourneyDirector } from '../../experience/useJourneyDirector';
 import { useGreenfieldMode } from '../../hooks/useGreenfieldMode';
-import { ACTS, actBySlug, exitOf } from '../hero-plan/acts';
+import { ACTS, actBySlug, entryOf, exitOf } from '../hero-plan/acts';
 import { ActExit } from './ActExit';
 import '../hero-plan/hero-plan.css';
 import type { MacroLensMode } from './MacroFlowScene';
@@ -326,6 +326,10 @@ function MacroFlowExperience() {
     }
     lastSoundChapterRef.current = chapter;
   }, [experienceActor]);
+  useLayoutEffect(() => {
+    enterChapter(entryOf(act));
+  }, [act, enterChapter]);
+
   const collectEvidenceCore = useCallback((core: EvidenceCoreId) => {
     experienceActor.send({ type: 'EVIDENCE_CORE_COLLECTED', core });
     const cueX = core === 'source' ? -1.2 : core === 'structure' ? 1.2 : 0;
@@ -689,7 +693,10 @@ function MacroFlowExperience() {
         <ViewTransitionLink className="mf-brand" to="/" aria-label="Transylvanian Bears, start">
           <span>Transylvanian Bears</span>
         </ViewTransitionLink>
-        <p>{act.systems.length ? 'Un sistem · din cetate' : 'Închiderea drumului'}</p>
+        <Link className="mf-header__back" to="/">
+          <span aria-hidden="true">&larr;</span>
+          {act.systems.length ? 'Înapoi la cetate' : 'Închiderea drumului'}
+        </Link>
         <div className="mf-header__actions">
           <button
             className="mf-system-control"
@@ -723,26 +730,6 @@ function MacroFlowExperience() {
         </div>
       </header>
 
-      <section
-        id="mf-threshold"
-        className="mf-beat mf-beat--threshold"
-        data-chapter="threshold"
-      >
-        {/* The citadel lives on the front page, not here. This beat is only the
-            doorway the reader came through, so it says where they are and how to
-            get back to the ring they chose from. */}
-        <div className="mf-copy mf-copy--hero">
-          <div className="mf-hero-plate">
-            <p className="mf-kicker">Ai intrat din cetate.</p>
-            <h1><span>Transylvanian</span><span>Bears</span></h1>
-            <p className="mf-hero-line">
-              De aici încolo drumul e povestea sistemelor. Poți oricând să te
-              întorci la cetate și să alegi altul.
-            </p>
-            <Link className="mf-hero-back" to="/">&larr; Înapoi la cetate</Link>
-          </div>
-        </div>
-      </section>
 
       {shows('field') ? (
       <section id="mf-field" className="mf-beat mf-beat--field" data-chapter="field">
