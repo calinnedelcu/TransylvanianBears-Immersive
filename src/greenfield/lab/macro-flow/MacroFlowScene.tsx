@@ -1076,6 +1076,44 @@ function BuriedWorld() {
   );
 }
 
+/**
+ * The synthetic field brings its own world.
+ *
+ * Nexus is not a place the reader visits, it is a capture: a city built so a
+ * machine can be shown eleven scenarios, nine and a half thousand frames and a
+ * hundred and forty thousand annotations of them. Its own copy says so.
+ *
+ * Lighting it like the citadel - one warm key from a corner, atmospheric haze,
+ * shadows for drama - is lighting a measuring instrument like a landscape. A
+ * dataset render is the opposite of dramatic on purpose: even, repeatable, and
+ * free of anything that would put mood between the sensor and the thing measured.
+ *
+ * So there is no key from a corner here. There is a flat overhead rig, a neutral
+ * fill, and a fog that reads as sensor range rather than weather: linear, cold,
+ * and far enough back that the street stays legible to the end of the block.
+ */
+function NexusWorld({ compact }: { compact: boolean }) {
+  return (
+    <>
+      <color attach="background" args={['#05080b']} />
+      {/* Far and cold. Haze in a dataset is noise, not mood. */}
+      <fog attach="fog" args={['#080f13', 44, 150]} />
+      {/* Even illumination, because the point is that every frame matches. */}
+      <ambientLight intensity={0.42} color="#c4d4dc" />
+      {/* Directly above and soft: a light rig over a capture volume, not a sun. */}
+      <directionalLight position={[0, 40, 6]} intensity={0.72} color="#dfe9ee" />
+      {/* The instrument's own colour, which is the only thing here allowed to be
+          expressive: reticles, annotations, the lens looking. */}
+      <pointLight
+        position={compact ? [0, 4.2, -8] : [-1, 5, -11]}
+        intensity={compact ? 26 : 38}
+        distance={compact ? 22 : 36}
+        color="#72d9d6"
+      />
+    </>
+  );
+}
+
 function World({
   activeChapter,
   progressRef,
@@ -1107,7 +1145,6 @@ function World({
   const showSchool = SCHOOL_CHAPTERS.has(activeChapter);
   const showBuried = BURIED_CHAPTERS.has(activeChapter);
   const showHemisphere = !(showNexus && (compact || showThreshold));
-  const showNexusAccent = showNexus && (!showThreshold || compact);
   const keyLightRef = useRef<THREE.DirectionalLight>(null);
 
   useFrame(() => {
@@ -1130,8 +1167,9 @@ function World({
           than adding another branch to a rig that already has too many. The rest
           still share this until each has been given its own. */}
       {showBuried ? <BuriedWorld /> : null}
+      {showNexus && !showThreshold ? <NexusWorld compact={compact} /> : null}
 
-      {showBuried ? null : (
+      {showBuried || (showNexus && !showThreshold) ? null : (
       <>
       <color attach="background" args={[showSchool ? '#0c1211' : showThreshold ? '#071018' : '#071011']} />
       <fog attach="fog" args={[showSchool ? '#141916' : showThreshold ? '#15222c' : '#0a1719', showSchool ? 18 : showThreshold ? 110 : 26, showSchool ? 78 : showThreshold ? 280 : 94]} />
@@ -1172,14 +1210,6 @@ function World({
       />
       </>
       )}
-      {showNexusAccent ? (
-        <pointLight
-          position={compact ? [0, 4.2, -8] : [-1, 5, -11]}
-          intensity={compact ? 26 : 38}
-          distance={compact ? 22 : 36}
-          color="#72d9d6"
-        />
-      ) : null}
       {showSchool ? (
         <SchoolTransitionLights
           handoffProgressRef={descentHandoffProgressRef}
