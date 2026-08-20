@@ -306,7 +306,7 @@ export function useJourneyDirector({
           trigger: root,
           start: 'top top',
           endTrigger: worldEnd,
-          end: 'top top',
+          end: 'bottom bottom',
           onUpdate: (self) => {
             worldProgressRef.current = reducedMotion ? 1 : self.progress;
             onWorldProgress?.(worldProgressRef.current, velocityRef.current);
@@ -320,7 +320,7 @@ export function useJourneyDirector({
           trigger: root,
           start: 'top top',
           endTrigger: sliceEnd,
-          end: 'top top',
+          end: 'bottom bottom',
           onUpdate: (self) => {
             sliceProgressRef.current = self.progress;
             onSliceProgress?.(self.progress, velocityRef.current);
@@ -344,7 +344,7 @@ export function useJourneyDirector({
           trigger: schoolActStart,
           start: 'top top',
           endTrigger: schoolActEnd,
-          end: 'top top',
+          end: 'bottom bottom',
           onUpdate: (self) => {
             schoolActProgressRef.current = self.progress;
             onSchoolActProgress?.(self.progress, velocityRef.current);
@@ -371,7 +371,7 @@ export function useJourneyDirector({
           trigger: buriedActStart,
           start: 'top top',
           endTrigger: buriedActEnd,
-          end: 'top top',
+          end: 'bottom bottom',
           onUpdate: (self) => {
             const progress = remapBuriedActProgress(
               self.progress,
@@ -504,7 +504,7 @@ function remapBuriedActProgress(
 ) {
   if (!lamp || !build) return rawProgress;
 
-  const totalDistance = end.offsetTop - start.offsetTop;
+  const totalDistance = end.offsetTop + end.offsetHeight - start.offsetTop;
   if (totalDistance <= 0) return rawProgress;
 
   const lampBoundary = (lamp.offsetTop - start.offsetTop) / totalDistance;
