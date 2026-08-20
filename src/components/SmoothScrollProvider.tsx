@@ -3,11 +3,17 @@ import { ReactLenis, useLenis } from 'lenis/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
+import { setSmoothScroll } from './smoothScroll';
 
 gsap.registerPlugin(ScrollTrigger);
 
 function LenisGsapBridge({ disabled }: { disabled: boolean }) {
   const lenis = useLenis();
+
+  useEffect(() => {
+    setSmoothScroll(lenis ?? null);
+    return () => setSmoothScroll(null);
+  }, [lenis]);
 
   useEffect(() => {
     if (!lenis || disabled) return;

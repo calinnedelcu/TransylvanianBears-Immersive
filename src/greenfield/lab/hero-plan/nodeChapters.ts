@@ -1,57 +1,30 @@
-import { JOURNEY_CHAPTERS, type JourneyChapter } from '../../experience/chapters';
+import type { JourneyChapter } from '../../experience/chapters';
 import type { ProjectId } from '../../types';
+import { actFor, chapterTitle } from './acts';
 
 /**
- * Which chapter of the story each system on the ring opens into.
+ * Where a system on the ring sends the reader.
  *
- * The citadel is not an illustration of the work: every node is a real project,
- * and the story already walks through those projects in 3D. Without this the
- * ring is a menu that leads out of the experience to a case study page, which
- * is exactly the handover the opening was built to avoid.
- *
- * Every pairing below is taken from what the chapter actually says, not from
- * the names lining up:
- *
- *   field       kicker reads "Project Nexus / synthetic field"
- *   passage     the chapter is titled "Aegis passage"
- *   schoolmate  the chapter is titled "School products"
- *   descent     kicker reads "Continuity rule / SchoolMate -> The Buried Hands"
- *   research    both remaining projects appear in ResearchCrossing.tsx
- *   infect      the chapter is titled "1-bit breach"
- *
- * The Buried Hands enters at the descent rather than at the build proof: the
- * descent is where the buried act begins and carries the whole mausoleum, while
- * the build is one gameplay panel from inside it.
- *
- * Two systems share the research crossing. That is the truth of the material
- * rather than a gap: the crossing covers both, and sending one of them somewhere
- * lonelier to keep the table tidy would be a lie about where the work lives.
+ * The citadel is the index, so a node is a door into the part of the story that
+ * is about that system rather than a link out to a case study page. The grouping
+ * itself lives in the act model; this is only the way in.
  */
-export const NODE_CHAPTER: Record<ProjectId, JourneyChapter> = {
-  'project-nexus': 'field',
-  aegis: 'passage',
-  schoolmate: 'schoolmate',
-  'the-buried-hands': 'descent',
-  'economy-news': 'research',
-  'automation-risk': 'research',
-  'infect-exe': 'infect',
-};
+export function chapterFor(project: ProjectId): JourneyChapter | null {
+  return actFor(project)?.entry ?? null;
+}
 
 /**
- * Where a node sends the reader.
- *
- * The same anchor works from either side, which is what makes it testable before
- * the opening is mounted in the story: from the lab page it is a cross document
- * link the journey director restores on load, and once the sequence lives on the
- * front page it is a same page anchor that the smooth scroll takes over.
+ * One anchor works from both sides, which is what makes the ring testable from
+ * anywhere: as a cross document link the journey director restores on load, and
+ * inside the story as a same page anchor the smooth scroll takes over.
  */
 export function chapterHref(project: ProjectId): string {
-  return `/#mf-${NODE_CHAPTER[project]}`;
+  const chapter = chapterFor(project);
+  return chapter ? `/#mf-${chapter}` : '/';
 }
 
 /** The destination named the way the story names it, so the promise is checkable. */
 export function chapterLabel(project: ProjectId): { index: string; label: string } {
-  const chapter = NODE_CHAPTER[project];
-  const entry = JOURNEY_CHAPTERS.find((candidate) => candidate.id === chapter);
-  return { index: entry?.index ?? '', label: entry?.label ?? chapter };
+  const chapter = chapterFor(project);
+  return chapter ? chapterTitle(chapter) : { index: '', label: '' };
 }

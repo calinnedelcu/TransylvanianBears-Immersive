@@ -49,16 +49,19 @@ body.hp-lab-mode {
 }
 
 .hp-lab,
-.hp-lab * {
+.hp-lab *,
+.hp-opening * {
   box-sizing: border-box;
 }
 
-.hp-lab a {
+.hp-lab a,
+.hp-opening a {
   color: inherit;
   text-decoration: none;
 }
 
-.hp-lab a:focus-visible {
+.hp-lab a:focus-visible,
+.hp-opening a:focus-visible {
   border-radius: 2px;
   outline: 2px solid var(--hp-cyan);
   outline-offset: 4px;
@@ -208,7 +211,9 @@ body.hp-lab-mode {
   margin-bottom: clamp(26px, 3vw, 42px);
 }
 
-.hp-lab .hp-btn {
+.hp-lab .hp-btn ,
+
+.hp-opening .hp-btn {
   display: inline-flex;
   gap: 10px;
   align-items: center;
@@ -222,11 +227,15 @@ body.hp-lab-mode {
   transition: border-color 180ms ease, background-color 180ms ease;
 }
 
-.hp-lab .hp-btn:hover {
+.hp-lab .hp-btn:hover ,
+
+.hp-opening .hp-btn:hover {
   border-color: var(--hp-ink);
 }
 
-.hp-lab .hp-btn i {
+.hp-lab .hp-btn i ,
+
+.hp-opening .hp-btn i {
   display: block;
   width: 7px;
   height: 7px;
@@ -235,17 +244,23 @@ body.hp-lab-mode {
   transform: rotate(-45deg);
 }
 
-.hp-lab .hp-btn--primary {
+.hp-lab .hp-btn--primary ,
+
+.hp-opening .hp-btn--primary {
   border-color: var(--hp-ink);
   background: var(--hp-ink);
   color: var(--hp-bg);
 }
 
-.hp-lab .hp-btn--primary:hover {
+.hp-lab .hp-btn--primary:hover ,
+
+.hp-opening .hp-btn--primary:hover {
   background: var(--hp-ink-strong);
 }
 
-.hp-lab .hp-btn--primary i {
+.hp-lab .hp-btn--primary i ,
+
+.hp-opening .hp-btn--primary i {
   transform: rotate(45deg);
 }
 
@@ -663,7 +678,8 @@ body.hp-lab-mode {
   }
 
   /* Cele două comenzi rămân pe același rând: contractul cere greutate egală. */
-  .hp-lab .hp-btn {
+  .hp-lab .hp-btn ,
+  .hp-opening .hp-btn {
     gap: 8px;
     padding: 12px 14px;
     font-size: 10px;
@@ -758,7 +774,8 @@ body.hp-lab-mode {
   }
 
   .hp-system-list a,
-  .hp-lab .hp-btn {
+  .hp-lab .hp-btn ,
+  .hp-opening .hp-btn {
     transition: none;
   }
 }
@@ -1228,20 +1245,12 @@ body.hp-lab-mode {
 }
 
 /*
- * Inside the story the drawing is a layer the copy sits on, not a block in the
- * flow. Dropped straight into the beat it took 533px of height and pushed the
- * wordmark below the fold, so the landing page arrived with no title on it. The
- * lab page pins it with its own sticky viewport; here the beat is the viewport.
+ * The threshold beat is the opening's viewport.
+ *
+ * On the lab page a sticky track holds the drawing while the reader scrolls past
+ * it; inside the story the beat itself is that track, so the sticky viewport only
+ * needs a screen to stick within.
  */
-.hp-opening .hp-stage {
-  position: absolute;
-  inset: 0 0 auto;
+.hp-opening .hp-viewport {
   height: 100dvh;
-  z-index: 1;
-  pointer-events: none;
-}
-
-.hp-opening .hp-stage > .hp-tilt {
-  position: sticky;
-  top: 0;
 }

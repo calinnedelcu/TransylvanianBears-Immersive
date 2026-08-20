@@ -1,5 +1,6 @@
 import { type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
+import { ARCHIVE, PROJECTS, TEAM } from '../../data';
 import { CitadelPlan, CitadelPlanShell } from './CitadelPlan';
 import { NodePreview } from './NodePreview';
 import { PLAN_NODES } from './planNodes';
@@ -14,6 +15,67 @@ import type { HeroOpening } from './useHeroOpening';
  * derives its pose from the measured rectangle of the drawing, so they cannot be
  * two copies that drift.
  */
+
+const pad = (count: number) => String(count).padStart(2, '0');
+
+/** Counted from the index itself, so the page cannot overstate the work. */
+const EVIDENCE = [
+  { value: pad(PROJECTS.length), label: 'sisteme' },
+  { value: pad(TEAM.length), label: 'constructori' },
+  { value: pad(ARCHIVE.length), label: 'intrări în arhivă' },
+  { value: '25—26', label: 'perioadă' },
+];
+
+/**
+ * The title of the whole thing.
+ *
+ * The wordmark at full size beside the drawing, the claim under it, and the count
+ * of what backs the claim. This is the front page, so it is allowed to look like
+ * one: a line of small type in a corner is a caption, not an opening.
+ */
+export function HeroPlanTitle({ onFollow }: { onFollow?: () => void }) {
+  return (
+    <div className="hp-copy">
+      <p className="hp-kicker">Șapte sisteme. O singură cetate.</p>
+      <h1 className="hp-wordmark">
+        <span>Transylvanian</span>
+        <span>Bears</span>
+      </h1>
+      <p className="hp-line">
+        Software, jocuri, machine learning și cercetare — construite de șase elevi,
+        într-un singur sistem.
+      </p>
+
+      <div className="hp-cta">
+        <a
+          className="hp-btn hp-btn--primary"
+          href="#mf-threshold"
+          onClick={(event) => {
+            if (!onFollow || event.metaKey || event.ctrlKey || event.shiftKey) return;
+            event.preventDefault();
+            onFollow();
+          }}
+        >
+          Urmează semnalul
+          <i aria-hidden="true" />
+        </a>
+        <Link className="hp-btn" to="/next/work">
+          Deschide indexul
+          <i aria-hidden="true" />
+        </Link>
+      </div>
+
+      <dl className="hp-evidence">
+        {EVIDENCE.map((item) => (
+          <div key={item.label}>
+            <dt>{item.value}</dt>
+            <dd>{item.label}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
 
 /**
  * Extrudarea e făcută din felii stivuite pe Z. Zidul are pas mic și rămâne jos;

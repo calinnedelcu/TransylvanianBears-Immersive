@@ -41,7 +41,10 @@ import { effectiveQuality } from '../../experience/experienceMachine';
 import { useExperienceActorRef, useExperienceSelector } from '../../experience/useExperience';
 import { useJourneyDirector } from '../../experience/useJourneyDirector';
 import { useGreenfieldMode } from '../../hooks/useGreenfieldMode';
-import { HeroPlanSheet, HeroSystemIndex } from '../hero-plan/heroOpening';
+import { ActExit } from './ActExit';
+import { citadelScrollTarget } from '../hero-plan/acts';
+import { HeroPlanSheet, HeroPlanTitle, HeroSystemIndex } from '../hero-plan/heroOpening';
+import { scrollSmoothTo } from '../../../components/smoothScroll';
 import { useHeroOpening } from '../hero-plan/useHeroOpening';
 import '../hero-plan/hero-plan.css';
 import type { MacroLensMode } from './MacroFlowScene';
@@ -779,19 +782,21 @@ function MacroFlowExperience() {
         className="mf-beat mf-beat--threshold hp-opening"
         data-chapter="threshold"
       >
-        {/* The drawing is a real element on the page, not a texture: the camera
-            derives its pose from this rectangle every frame, which is what lets
-            the model land exactly on top of the plan and the handover happen
-            without a cut. Move it and the opening follows. */}
-        <HeroPlanSheet opening={opening} interactive={activeChapter === 'threshold'} />
-        <div className="mf-copy mf-copy--hero">
-          <div className="mf-hero-plate">
-            <p className="mf-kicker">Șapte sisteme. O singură cetate.</p>
-            <h1><span>Transylvanian</span><span>Bears</span></h1>
-            <p className="mf-hero-line">Software, jocuri, machine learning și cercetare, în aceeași cetate.</p>
-          </div>
+        {/* The front page is this, not a caption beside it.
+            The drawing is a real element rather than a texture, because the camera
+            derives its pose from this rectangle every frame: that is what lets the
+            model land on top of the plan instead of cutting to it. */}
+        <div className="hp-viewport">
+          <HeroPlanTitle onFollow={() => {
+            const target = citadelScrollTarget();
+            if (target !== null) scrollSmoothTo(target);
+          }} />
+          <HeroPlanSheet opening={opening} interactive={activeChapter === 'threshold'} />
         </div>
         <HeroSystemIndex opening={opening} />
+        <p className="hp-scroll-cue" aria-hidden="true">
+          <i /> Derulează &middot; cetatea se ridică
+        </p>
       </section>
 
       <section id="mf-field" className="mf-beat mf-beat--field" data-chapter="field">
@@ -942,6 +947,7 @@ function MacroFlowExperience() {
             </p>
           </footer>
         </div>
+        <ActExit chapter="proof" />
       </section>
 
       <SchoolActOverlay

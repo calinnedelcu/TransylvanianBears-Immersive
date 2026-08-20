@@ -267,11 +267,17 @@ export function useJourneyDirector({
           heroProgressRef.current = heroPin ?? (reducedMotion ? 1 : value);
           onHeroProgress?.(heroProgressRef.current);
         };
+        // Ends when the beat's bottom reaches the bottom of the screen, not the
+        // top of it. Run to 'bottom top' and the opening is only finishing as the
+        // next chapter is already taking the frame, so the citadel is still glass
+        // when it is taken away and the build never lands. Ending a screen earlier
+        // means the citadel completes, and then stands there with its index for
+        // the last screen of the beat, which is the whole point of it.
         ScrollTrigger.create({
           id: 'journey-hero',
           trigger: heroBeat,
           start: 'top top',
-          end: 'bottom top',
+          end: 'bottom bottom',
           onUpdate: (self) => publishHero(self.progress),
         });
         publishHero(0);

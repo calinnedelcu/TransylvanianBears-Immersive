@@ -4439,3 +4439,46 @@ body.mf-lab-mode {
     gap: 6px;
   }
 }
+
+/* ------------------------------------------------- way out of an act ----- */
+/* A system is entered from the ring, so it has to be leavable from inside. */
+.mf-act-exit {
+  position: relative;
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 18px clamp(16px, 4vw, 32px) 64px;
+  pointer-events: auto;
+}
+
+.mf-act-exit a {
+  display: inline-flex;
+  gap: 9px;
+  align-items: baseline;
+  padding: 9px 16px;
+  border: 1px solid rgb(215 208 195 / 0.22);
+  border-radius: 999px;
+  color: rgb(233 238 240 / 0.82);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.mf-act-exit a:hover,
+.mf-act-exit a:focus-visible {
+  border-color: rgb(114 217 214 / 0.75);
+  background: rgb(114 217 214 / 0.09);
+}
+
+.mf-act-exit__on b {
+  color: rgb(114 217 214 / 0.92);
+  font-weight: 500;
+}
