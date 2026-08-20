@@ -2,6 +2,7 @@ import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 
 const ImmersiveStory = lazy(() => import('./lab/macro-flow/MacroFlowPrototype'));
+const HeroPlanPrototype = lazy(() => import('./lab/hero-plan/HeroPlanPrototype'));
 const ArchivePage = lazy(() => import('./pages/ArchivePage').then((module) => ({ default: module.ArchivePage })));
 const MemberProfilePage = lazy(() => import('./pages/MemberProfilePage').then((module) => ({ default: module.MemberProfilePage })));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })));
@@ -45,6 +46,8 @@ export default function GreenfieldRoutes() {
       <Route path="team" element={<DeferredPage><TeamIndexPage /></DeferredPage>} />
       <Route path="team/:memberId" element={<DeferredPage><MemberProfilePage /></DeferredPage>} />
       <Route path="archive" element={<DeferredPage><ArchivePage /></DeferredPage>} />
+
+      <Route path="lab/hero-plan" element={<DeferredPage><HeroPlanPrototype /></DeferredPage>} />
 
       <Route path="next/*" element={<NextRouteRedirect />} />
       <Route path="proiecte" element={<Navigate to="/work" replace />} />

@@ -29,3 +29,7 @@ dist-ssr
 
 # Rebuilt by Blender and QA scripts; optimized runtime assets stay in public.
 artifacts/
+
+# Blender intermediates: the optimised .glb beside them is what ships.
+public/assets/world/*.raw.glb
+public/assets/world/citadel-poster.png

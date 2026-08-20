@@ -1,0 +1,1188 @@
+/* ============================================================================
+   Hero plan — primul viewport ca planșă de releveu, care se înclină în cetate.
+   Progresul tranziției este o singură variabilă, --hp-progress (0 → 1), scrisă
+   pe rădăcină la fiecare frame. Totul de mai jos derivă din ea.
+   ========================================================================= */
+
+body.hp-lab-mode {
+  background: #090b0c;
+  overscroll-behavior-y: none;
+}
+
+.hp-lab {
+  --hp-bg: #090b0c;
+  --hp-ink: #d7d0c3;
+  --hp-ink-strong: #f2ede3;
+  --hp-muted: #8a928f;
+  --hp-brass: #a98546;
+  --hp-cyan: #69ced0;
+  --hp-vermilion: #e04b36;
+  --hp-moss: #60735c;
+  --hp-line: rgb(215 208 195 / 0.16);
+  --hp-progress: 0;
+
+  /* Praguri derivate, ca să nu repetăm aceleași calc-uri în zece locuri. */
+  --hp-fade-out: clamp(0, calc(1 - var(--hp-progress) * 2.4), 1);
+  --hp-fade-labels: clamp(0, calc(1 - var(--hp-progress) * 2.6), 1);
+  --hp-fade-in: clamp(0, calc((var(--hp-progress) - 0.15) * 1.5), 1);
+  --hp-extrude-in: clamp(0, calc((var(--hp-progress) - 0.12) * 2.6), 1);
+  /* Deplasarea spre centru începe abia după ce textul a ieșit, altfel planul
+     trece peste banda de dovezi. Întâi se înclină pe loc, apoi ia scena. */
+  --hp-shift: clamp(0, calc((var(--hp-progress) - 0.38) * 1.6), 1);
+
+  position: relative;
+  isolation: isolate;
+  background: var(--hp-bg);
+  color: var(--hp-ink);
+  font-family: 'Manrope', system-ui, sans-serif;
+}
+
+.hp-lab,
+.hp-lab * {
+  box-sizing: border-box;
+}
+
+.hp-lab a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.hp-lab a:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--hp-cyan);
+  outline-offset: 4px;
+}
+
+.hp-skip {
+  position: fixed;
+  z-index: 100;
+  top: 12px;
+  left: 12px;
+  padding: 10px 14px;
+  background: var(--hp-ink);
+  color: var(--hp-bg) !important;
+  transform: translateY(-180%);
+}
+
+.hp-skip:focus {
+  transform: translateY(0);
+}
+
+/* ---------------------------------------------------------------- header -- */
+.hp-header {
+  position: fixed;
+  z-index: 20;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px clamp(20px, 4vw, 48px);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.hp-header p {
+  margin: 0;
+  color: var(--hp-muted);
+}
+
+.hp-brand {
+  color: var(--hp-ink-strong);
+}
+
+.hp-index-link {
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--hp-line);
+  color: var(--hp-cyan);
+}
+
+/* ------------------------------------------------------ scroll track ----- */
+.hp-track {
+  height: 300dvh;
+}
+
+.hp-viewport {
+  position: sticky;
+  top: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.02fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(24px, 3vw, 56px);
+  height: 100dvh;
+  padding: 0 clamp(20px, 4vw, 48px);
+  overflow: clip;
+  perspective: 1400px;
+  perspective-origin: 50% 62%;
+}
+
+/* Blue hour: apare pe măsură ce planul se înclină, nu de la început. */
+.hp-sky {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  opacity: var(--hp-fade-in);
+  background:
+    radial-gradient(120% 80% at 50% 96%, rgb(105 206 208 / 0.14), transparent 62%),
+    linear-gradient(180deg, #0d1620 0%, #14202a 38%, #1b2622 72%, #0b100f 100%);
+}
+
+.hp-horizon {
+  position: absolute;
+  z-index: -1;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 42dvh;
+  opacity: var(--hp-fade-in);
+  background: linear-gradient(180deg, transparent, rgb(96 115 92 / 0.24) 55%, rgb(9 11 12 / 0.9));
+}
+
+/* -------------------------------------------------------------- copie ---- */
+.hp-copy {
+  position: relative;
+  z-index: 2;
+  opacity: var(--hp-fade-out);
+  transform: translateY(calc(var(--hp-progress) * -18dvh));
+}
+
+.hp-lab:not([data-phase='plan']) .hp-copy {
+  pointer-events: none;
+}
+
+.hp-kicker {
+  margin: 0 0 clamp(18px, 2.2vw, 30px);
+  color: var(--hp-cyan);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 13px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.hp-wordmark {
+  margin: 0 0 clamp(16px, 1.8vw, 26px);
+  color: var(--hp-ink-strong);
+  /* Fără Cinzel. Fraunces dacă e instalat, altfel un serif editorial de sistem. */
+  font-family: 'Fraunces Variable', 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  font-size: clamp(2.6rem, 6.6vw, 7.6rem);
+  font-weight: 500;
+  line-height: 0.87;
+  letter-spacing: -0.035em;
+}
+
+.hp-wordmark span {
+  display: block;
+}
+
+.hp-wordmark span:last-child {
+  color: var(--hp-ink);
+}
+
+.hp-line {
+  max-width: 34ch;
+  margin: 0 0 clamp(22px, 2.6vw, 36px);
+  color: rgb(215 208 195 / 0.82);
+  font-size: clamp(0.95rem, 1.3vw, 1.18rem);
+  line-height: 1.5;
+}
+
+.hp-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: clamp(26px, 3vw, 42px);
+}
+
+.hp-lab .hp-btn {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  padding: 14px 22px;
+  border: 1px solid rgb(215 208 195 / 0.34);
+  color: var(--hp-ink-strong);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transition: border-color 180ms ease, background-color 180ms ease;
+}
+
+.hp-lab .hp-btn:hover {
+  border-color: var(--hp-ink);
+}
+
+.hp-lab .hp-btn i {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-right: 1px solid currentcolor;
+  border-bottom: 1px solid currentcolor;
+  transform: rotate(-45deg);
+}
+
+.hp-lab .hp-btn--primary {
+  border-color: var(--hp-ink);
+  background: var(--hp-ink);
+  color: var(--hp-bg);
+}
+
+.hp-lab .hp-btn--primary:hover {
+  background: var(--hp-ink-strong);
+}
+
+.hp-lab .hp-btn--primary i {
+  transform: rotate(45deg);
+}
+
+.hp-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(20px, 2.6vw, 40px);
+  margin: 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--hp-line);
+}
+
+.hp-evidence div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.hp-evidence dt {
+  color: var(--hp-ink-strong);
+  font-family: 'Fraunces Variable', 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  font-size: clamp(1.4rem, 2.1vw, 2.1rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.hp-evidence dd {
+  margin: 0;
+  color: rgb(215 208 195 / 0.66);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------- scena ----- */
+.hp-stage {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  transform-style: preserve-3d;
+}
+
+/* Planul rămâne centrat pe coloană; panoul stă dedesubt, pe toată lățimea. */
+.hp-stage > .hp-tilt {
+  align-self: center;
+  flex: none;
+}
+
+/* Singura mișcare din pagină: planul se înclină, crește și se mută în centru. */
+.hp-tilt {
+  position: relative;
+  width: min(62dvh, 44vw, 600px);
+  aspect-ratio: 1;
+  transform:
+    translate3d(calc(var(--hp-shift) * -17vw - 2vw), calc(var(--hp-progress) * 7dvh), 0)
+    rotateX(calc(var(--hp-progress) * 74deg))
+    scale(calc(1 + var(--hp-progress) * 0.55));
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.hp-ground-shadow {
+  position: absolute;
+  inset: 0;
+  opacity: var(--hp-extrude-in);
+  background: radial-gradient(closest-side, rgb(0 0 0 / 0.55), transparent 72%);
+  transform: scale(0.72);
+}
+
+.hp-extrude {
+  position: absolute;
+  inset: 0;
+  opacity: var(--hp-extrude-in);
+  transform-style: preserve-3d;
+}
+
+.hp-extrude__layer {
+  position: absolute;
+  inset: 0;
+  opacity: calc(0.94 - var(--layer) * 0.05);
+  transform:
+    translateZ(calc(var(--layer) * var(--hp-progress) * var(--step, 11px)))
+    scale(var(--scale, 1));
+}
+
+.hp-scroll-cue {
+  position: absolute;
+  bottom: 26px;
+  left: clamp(20px, 4vw, 48px);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 0;
+  opacity: var(--hp-fade-out);
+  color: rgb(215 208 195 / 0.62);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.hp-scroll-cue i {
+  display: block;
+  width: 42px;
+  height: 1px;
+  background: linear-gradient(90deg, rgb(215 208 195 / 0.6), transparent);
+}
+
+/* --------------------------------------------------------- desenul ------- */
+.hp-plan {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.hp-plan__contour {
+  fill: none;
+  stroke: var(--hp-moss);
+  stroke-width: 1;
+  opacity: 0.38;
+}
+
+.hp-plan__ticks line {
+  stroke: rgb(215 208 195 / 0.28);
+  stroke-width: 1;
+}
+
+.hp-plan__wall {
+  fill: none;
+  stroke: var(--hp-ink);
+  stroke-width: 2.4;
+  opacity: 0.85;
+}
+
+.hp-plan__wall--inner {
+  stroke-width: 1;
+  opacity: 0.42;
+}
+
+.hp-plan__gate line,
+.hp-plan__gate path {
+  fill: none;
+  stroke: var(--hp-brass);
+  stroke-width: 2.6;
+}
+
+.hp-plan__niches rect {
+  fill: none;
+  stroke: var(--hp-brass);
+  stroke-width: 1.4;
+  opacity: 0.9;
+}
+
+.hp-plan__core {
+  fill: rgb(169 133 70 / 0.07);
+  stroke: var(--hp-brass);
+  stroke-width: 2;
+}
+
+.hp-plan__core--inner {
+  opacity: 0.7;
+}
+
+.hp-plan__pivot {
+  fill: var(--hp-vermilion);
+}
+
+.hp-plan__spurs line {
+  stroke: var(--hp-cyan);
+  stroke-width: 1;
+  opacity: 0.35;
+}
+
+.hp-plan__route {
+  fill: none;
+  stroke: var(--hp-cyan);
+  stroke-width: calc(1.6px + var(--hp-progress) * 2px);
+  stroke-dasharray: 1500;
+  stroke-dashoffset: 1500;
+  animation: hp-trace 9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes hp-trace {
+  0% { stroke-dashoffset: 1500; opacity: 1; }
+  45% { stroke-dashoffset: 0; opacity: 1; }
+  85% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+/* Nodurile sunt link-uri: planul este indexul. */
+.hp-plan__node {
+  cursor: pointer;
+}
+
+.hp-plan__mark {
+  fill: var(--hp-bg);
+  stroke: var(--hp-cyan);
+  stroke-width: 2;
+  transition: fill 160ms ease;
+}
+
+.hp-plan__pulse {
+  fill: var(--hp-cyan);
+  opacity: 0.1;
+  animation: hp-blip 9s ease-in-out infinite;
+}
+
+@keyframes hp-blip {
+  0%, 100% { opacity: 0.1; }
+  50% { opacity: 0.5; }
+}
+
+.hp-plan__index {
+  fill: var(--hp-cyan);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 15px;
+  letter-spacing: 0.1em;
+}
+
+.hp-plan__label {
+  fill: var(--hp-ink);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 20px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  /* Halou de fundal sub glife, ca pe hărți: curbele de nivel trec pe sub text,
+     nu prin el. Fără asta, etichetele se citesc greu peste relief. */
+  paint-order: stroke;
+  stroke: var(--hp-bg);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
+
+.hp-plan__tag {
+  fill: rgb(215 208 195 / 0.6);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  transition: opacity 160ms ease;
+}
+
+.hp-plan__node:hover .hp-plan__mark,
+.hp-plan__node[data-active] .hp-plan__mark {
+  fill: var(--hp-cyan);
+}
+
+.hp-plan__node:hover .hp-plan__label,
+.hp-plan__node[data-active] .hp-plan__label {
+  fill: var(--hp-ink-strong);
+}
+
+.hp-plan__node:hover .hp-plan__tag,
+.hp-plan__node[data-active] .hp-plan__tag,
+.hp-plan__node:focus-visible .hp-plan__tag {
+  opacity: 1;
+}
+
+.hp-plan__north polygon {
+  fill: none;
+  stroke: rgb(215 208 195 / 0.5);
+  stroke-width: 1.4;
+}
+
+.hp-plan__north text,
+.hp-plan__note {
+  fill: rgb(215 208 195 / 0.52);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+}
+
+/* Straturile de extrudare nu au etichete: doar volum plin.
+   Fața zidului se deschide pe măsură ce urcă: piatra de sus prinde lumina cerului,
+   baza rămâne în umbră. Fără asta, tot volumul citea ca o siluetă neagră. */
+.hp-plan__band {
+  fill: hsl(192 11% calc(5.5% + var(--layer, 1) * 1.15%));
+}
+
+.hp-plan__block {
+  fill: hsl(186 10% calc(6% + var(--layer, 1) * 1.05%));
+}
+
+/* Numai coama primește muchie de alamă; altfel zidul citește ca un arc, nu ca zid. */
+.hp-extrude__layer[data-crown] .hp-plan__band,
+.hp-extrude__layer[data-crown] .hp-plan__block {
+  stroke: var(--hp-brass);
+  stroke-width: 1.6;
+}
+
+/* Etichetele aparțin planului, nu lumii: dispar odată cu înclinarea. */
+.hp-plan__label,
+.hp-plan__note,
+.hp-plan__north {
+  opacity: var(--hp-fade-labels);
+}
+
+.hp-plan__tag {
+  opacity: 0;
+}
+
+.hp-plan__node:hover .hp-plan__tag,
+.hp-plan__node[data-active] .hp-plan__tag,
+.hp-plan__node:focus-visible .hp-plan__tag {
+  opacity: 1;
+}
+
+/* ------------------------------------------------- suprafața editorială -- */
+.hp-systems {
+  position: relative;
+  z-index: 3;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: clamp(72px, 12vh, 140px) clamp(20px, 4vw, 48px) clamp(96px, 16vh, 180px);
+  background: var(--hp-bg);
+}
+
+.hp-eyebrow {
+  margin: 0 0 20px;
+  color: var(--hp-brass);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.hp-systems h2 {
+  max-width: 22ch;
+  margin: 0 0 clamp(36px, 5vw, 64px);
+  color: var(--hp-ink-strong);
+  font-family: 'Fraunces Variable', 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  font-size: clamp(1.7rem, 3.4vw, 2.9rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+.hp-system-list {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--hp-line);
+  list-style: none;
+}
+
+.hp-system-list a {
+  display: grid;
+  grid-template-columns: 3.4rem minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: baseline;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--hp-line);
+  transition: padding-left 200ms ease;
+}
+
+.hp-system-list a:hover {
+  padding-left: 12px;
+}
+
+.hp-system-list__index {
+  color: var(--hp-cyan);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+}
+
+.hp-system-list__label {
+  color: var(--hp-ink-strong);
+  font-size: clamp(1.05rem, 1.8vw, 1.5rem);
+}
+
+.hp-system-list__tag {
+  color: var(--hp-muted);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------- mobil ----- */
+@media (max-width: 900px) {
+  .hp-viewport {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    /* Ancorat sus, nu centrat: pe ecrane scunde conținutul urca sub header. */
+    align-content: start;
+    gap: clamp(16px, 3vh, 34px);
+    padding-top: 76px;
+    padding-bottom: 24px;
+  }
+
+  /* Pe o coloană, wordmark-ul are toată lățimea la dispoziție. */
+  .hp-wordmark {
+    font-size: clamp(2.2rem, 12.5vw, 5rem);
+    margin-bottom: 14px;
+  }
+
+  .hp-kicker {
+    margin-bottom: 14px;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+  }
+
+  .hp-line {
+    max-width: none;
+    margin-bottom: 20px;
+  }
+
+  .hp-cta {
+    margin-bottom: 22px;
+  }
+
+  /* Cele două comenzi rămân pe același rând: contractul cere greutate egală. */
+  .hp-lab .hp-btn {
+    gap: 8px;
+    padding: 12px 14px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+  }
+
+  /* Grilă 2x2, nu wrap 3+1: banda de dovezi trebuie să citească uniform. */
+  .hp-evidence {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 18px;
+    padding-top: 14px;
+  }
+
+  .hp-evidence dt {
+    font-size: 1.35rem;
+  }
+
+  .hp-evidence dd {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+  }
+
+  /* Compoziție proprie, nu desktop micșorat: planul sus, textul dedesubt. */
+  .hp-stage {
+    order: -1;
+  }
+
+  .hp-tilt {
+    /* Legat și de înălțime: pe telefoane scunde planul trebuie să lase loc textului. */
+    width: min(62vw, 26dvh);
+    transform:
+      translate3d(0, calc(var(--hp-progress) * 5dvh), 0)
+      rotateX(calc(var(--hp-progress) * 62deg))
+      scale(calc(1 + var(--hp-progress) * 0.35));
+  }
+
+  .hp-plan__label { font-size: 26px; }
+  .hp-plan__index { font-size: 21px; }
+  .hp-plan__tag,
+  .hp-plan__note,
+  .hp-plan__ticks,
+  .hp-plan__north { display: none; }
+
+  .hp-header p { display: none; }
+  .hp-scroll-cue { display: none; }
+
+  .hp-system-list a {
+    grid-template-columns: 2.6rem minmax(0, 1fr);
+  }
+
+  .hp-system-list__tag {
+    grid-column: 2;
+  }
+}
+
+/* --------------------------------------------------- reduced motion ------ */
+/* Ruta editorială completă: fără înclinare, fără semnal, fără pulsații. */
+@media (prefers-reduced-motion: reduce) {
+  .hp-track {
+    height: auto;
+  }
+
+  .hp-viewport {
+    position: static;
+    height: auto;
+    padding-top: 108px;
+    padding-bottom: 72px;
+  }
+
+  .hp-tilt {
+    transform: none;
+  }
+
+  .hp-extrude,
+  .hp-scroll-cue {
+    display: none;
+  }
+
+  .hp-sky,
+  .hp-horizon {
+    opacity: 0.35;
+  }
+
+  .hp-plan__route {
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+
+  .hp-plan__pulse {
+    animation: none;
+  }
+
+  .hp-system-list a,
+  .hp-lab .hp-btn {
+    transition: none;
+  }
+}
+
+/* Aceleași reguli și când hook-ul a marcat starea pe rădăcină. */
+.hp-lab[data-reduced] .hp-track { height: auto; }
+.hp-lab[data-reduced] .hp-viewport { position: static; height: auto; padding-top: 108px; padding-bottom: 72px; }
+.hp-lab[data-reduced] .hp-tilt { transform: none; }
+.hp-lab[data-reduced] .hp-extrude,
+.hp-lab[data-reduced] .hp-scroll-cue { display: none; }
+.hp-lab[data-reduced] .hp-plan__route { stroke-dashoffset: 0; animation: none; }
+.hp-lab[data-reduced] .hp-plan__pulse { animation: none; }
+.hp-lab[data-reduced] .hp-plan__contour,
+.hp-lab[data-reduced] .hp-plan__wall,
+.hp-lab[data-reduced] .hp-plan__gate,
+.hp-lab[data-reduced] .hp-plan__niches,
+.hp-lab[data-reduced] .hp-plan__core,
+.hp-lab[data-reduced] .hp-plan__pivot,
+.hp-lab[data-reduced] .hp-plan__spurs,
+.hp-lab[data-reduced] .hp-plan__north,
+.hp-lab[data-reduced] .hp-plan__note,
+.hp-lab[data-reduced] .hp-plan__ticks,
+.hp-lab[data-reduced] .hp-plan__node,
+.hp-lab[data-reduced] .hp-kicker,
+.hp-lab[data-reduced] .hp-wordmark span,
+.hp-lab[data-reduced] .hp-line,
+.hp-lab[data-reduced] .hp-cta,
+.hp-lab[data-reduced] .hp-evidence,
+.hp-lab[data-reduced] .hp-header { animation: none; }
+.hp-lab[data-reduced] .hp-plan__wall { stroke-dasharray: none; }
+
+/* ============================================================================
+   Secvența de intrare — planul se desenează o dată, la primul paint.
+   Ordinea e cea a unui releveu: întâi terenul, apoi incinta, apoi ce se
+   construiește în ea, apoi etichetele. Textul urcă în paralel, decalat.
+   Totul e oprit la prefers-reduced-motion.
+   ========================================================================= */
+
+@keyframes hp-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes hp-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes hp-draw {
+  from { stroke-dashoffset: 1900; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes hp-bloom {
+  from { opacity: 0; transform: scale(0.82); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.hp-plan__contour {
+  animation: hp-fade 900ms ease-out backwards;
+  animation-delay: calc(120ms + var(--i, 0) * 90ms);
+}
+
+.hp-plan__wall {
+  stroke-dasharray: 1900;
+  animation: hp-draw 1200ms cubic-bezier(0.32, 0, 0.2, 1) backwards;
+  animation-delay: 420ms;
+}
+
+.hp-plan__wall--inner {
+  animation-delay: 560ms;
+}
+
+.hp-plan__gate,
+.hp-plan__niches {
+  animation: hp-fade 700ms ease-out backwards;
+  animation-delay: 1000ms;
+}
+
+.hp-plan__core {
+  transform-origin: 500px 500px;
+  animation: hp-bloom 760ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: 900ms;
+}
+
+.hp-plan__core--inner {
+  animation-delay: 1020ms;
+}
+
+.hp-plan__pivot {
+  animation: hp-fade 500ms ease-out backwards;
+  animation-delay: 1420ms;
+}
+
+.hp-plan__spurs,
+.hp-plan__north,
+.hp-plan__note,
+.hp-plan__ticks {
+  animation: hp-fade 800ms ease-out backwards;
+  animation-delay: 1240ms;
+}
+
+/* Opacitatea nodului se înmulțește cu cea a etichetelor, deci intrarea
+   și dispariția la înclinare nu se calcă una pe alta. */
+.hp-plan__node {
+  animation: hp-fade 620ms ease-out backwards;
+  animation-delay: calc(1120ms + var(--i, 0) * 90ms);
+}
+
+.hp-plan__route {
+  animation-delay: 1500ms;
+}
+
+.hp-kicker,
+.hp-wordmark span,
+.hp-line,
+.hp-cta,
+.hp-evidence,
+.hp-scroll-cue {
+  animation: hp-fade-up 760ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.hp-kicker { animation-delay: 180ms; }
+.hp-wordmark span:first-child { animation-delay: 300ms; }
+.hp-wordmark span:last-child { animation-delay: 400ms; }
+.hp-line { animation-delay: 620ms; }
+.hp-cta { animation-delay: 780ms; }
+.hp-evidence { animation-delay: 920ms; }
+.hp-scroll-cue { animation-delay: 1600ms; }
+
+.hp-header {
+  animation: hp-fade 900ms ease-out backwards;
+  animation-delay: 80ms;
+}
+
+/* Ruta editorială nu are secvență: totul e prezent de la primul frame. */
+@media (prefers-reduced-motion: reduce) {
+  .hp-plan__contour,
+  .hp-plan__wall,
+  .hp-plan__gate,
+  .hp-plan__niches,
+  .hp-plan__core,
+  .hp-plan__pivot,
+  .hp-plan__spurs,
+  .hp-plan__north,
+  .hp-plan__note,
+  .hp-plan__ticks,
+  .hp-plan__node,
+  .hp-kicker,
+  .hp-wordmark span,
+  .hp-line,
+  .hp-cta,
+  .hp-evidence,
+  .hp-scroll-cue,
+  .hp-header {
+    animation: none;
+  }
+
+  .hp-plan__wall {
+    stroke-dasharray: none;
+  }
+}
+
+/* ============================================================================
+   Panoul de nod — planul livrează informație, nu doar formă.
+   Înălțime rezervată, ca schimbarea stării să nu miște layout-ul.
+   ========================================================================= */
+
+.hp-preview {
+  position: absolute;
+  right: clamp(20px, 4vw, 48px);
+  bottom: 26px;
+  z-index: 4;
+  width: min(46ch, 44vw);
+  min-height: 148px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hp-line);
+  /* Vizibil in doua momente: cat timp planul e desen, si dupa ce cetatea s-a
+     ridicat si nodurile devin tinte in lume. In tranzitie nu are ce cauta. */
+  opacity: max(var(--hp-fade-out), clamp(0, calc((var(--hp-progress) - 0.9) * 12), 1));
+}
+
+.hp-preview[data-empty] {
+  display: flex;
+  align-items: center;
+}
+
+.hp-preview__hint {
+  margin: 0;
+  color: rgb(215 208 195 / 0.42);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.hp-preview__eyebrow {
+  display: flex;
+  gap: 10px;
+  margin: 0 0 8px;
+  color: var(--hp-muted);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.hp-preview__eyebrow span {
+  color: var(--hp-cyan);
+}
+
+.hp-preview__title {
+  margin: 0 0 6px;
+  color: var(--hp-ink-strong);
+  font-family: 'Fraunces Variable', 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.hp-preview__summary {
+  max-width: 46ch;
+  margin: 0 0 12px;
+  color: rgb(215 208 195 / 0.72);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.hp-preview__foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+
+.hp-preview__chip {
+  padding: 4px 9px;
+  border: 1px solid var(--hp-line);
+  color: var(--hp-muted);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Dovada verificată se distinge de cea confirmată de echipă — la fel ca în restul site-ului. */
+.hp-preview__chip[data-evidence='verified'] {
+  border-color: rgb(105 206 208 / 0.45);
+  color: var(--hp-cyan);
+}
+
+.hp-preview__chip[data-evidence='pending'] {
+  border-color: rgb(224 75 54 / 0.45);
+  color: var(--hp-vermilion);
+}
+
+.hp-preview__metric {
+  color: var(--hp-muted);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.hp-preview__metric b {
+  color: var(--hp-ink-strong);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.hp-preview__link {
+  margin-left: auto;
+  padding-bottom: 2px;
+  border-bottom: 1px solid rgb(105 206 208 / 0.4);
+  color: var(--hp-cyan);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------- pasajul spre capitolul 02 -- */
+.hp-passage {
+  margin-top: clamp(48px, 8vh, 92px);
+  padding-top: clamp(28px, 4vh, 44px);
+  border-top: 1px solid var(--hp-line);
+}
+
+.hp-passage__line {
+  max-width: 44ch;
+  margin: 0 0 20px;
+  color: var(--hp-ink);
+  font-family: 'Fraunces Variable', 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  font-size: clamp(1.25rem, 2.4vw, 1.9rem);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.18;
+  text-wrap: balance;
+}
+
+.hp-passage__link {
+  display: inline-flex;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 22px;
+  border: 1px solid rgb(105 206 208 / 0.4);
+  color: var(--hp-cyan);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transition: border-color 180ms ease, background-color 180ms ease;
+}
+
+.hp-passage__link:hover {
+  border-color: var(--hp-cyan);
+  background: rgb(105 206 208 / 0.08);
+}
+
+/* Pe mobil nu există hover, iar spațiul vertical e deja disputat:
+   informația nodurilor trăiește în lista de sisteme de mai jos. */
+@media (max-width: 900px) {
+  .hp-preview {
+    display: none;
+  }
+}
+
+/* ============================================================================
+   Lumea reala. Canvas-ul incarca aceeasi geometrie pe care o deseneaza planul,
+   deci schimbul dintre desen si model nu este o taietura: acelasi obiect, alta
+   reprezentare. Desenul conduce pana la pragul de inclinare, apoi cedeaza.
+   ========================================================================= */
+
+/* Lumea reala preia abia cand foaia cedeaza, nu inaintea ei. */
+.hp-world {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: clamp(0, calc(var(--hp-progress) * 60), 1);
+}
+
+.hp-world {
+  pointer-events: auto;
+}
+
+.hp-world canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Desenul se retrage exact cat intra lumea. */
+/* Foaia desenata traieste prin toata rasturnarea si prin inceputul ridicarii.
+   Disparea la 8%, adica exact inainte ca straturile translucide sa apara, deci
+   extrudarea din plan nu se vedea niciodata. */
+.hp-stage {
+  opacity: clamp(0, calc(1 - (var(--hp-progress) - 0.015) * 16), 1);
+}
+
+.hp-lab[data-reduced] .hp-world {
+  display: none;
+}
+
+.hp-lab[data-reduced] .hp-stage {
+  opacity: 1;
+}
+
+/* ============================================================================
+   Etichetele lumii. Acelasi limbaj ca pe plan, purtat in 3D: fara ele, cetatea
+   devine un set de blocuri fara nume in momentul in care desenul cedeaza.
+   ========================================================================= */
+
+.hp-tags {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hp-tag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 5px 10px 6px;
+  border: 1px solid rgb(215 208 195 / 0.16);
+  background: rgb(9 11 12 / 0.62);
+  color: var(--hp-ink);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  backdrop-filter: blur(3px);
+  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
+}
+
+.hp-tag span {
+  color: var(--hp-cyan);
+}
+
+.hp-tag::before {
+  content: "";
+  position: absolute;
+  bottom: -9px;
+  left: 50%;
+  width: 1px;
+  height: 9px;
+  background: rgb(105 206 208 / 0.55);
+}
+
+.hp-tag[data-visited] {
+  border-color: rgb(169 133 70 / 0.45);
+}
+
+.hp-tag:hover,
+.hp-tag[data-active],
+.hp-tag:focus-visible {
+  border-color: var(--hp-cyan);
+  background: rgb(9 11 12 / 0.86);
+  color: var(--hp-ink-strong);
+}
+
+@media (max-width: 900px) {
+  .hp-tag {
+    font-size: 9px;
+    padding: 4px 8px 5px;
+  }
+}
+
+.hp-lab[data-reduced] .hp-tags {
+  display: none;
+}

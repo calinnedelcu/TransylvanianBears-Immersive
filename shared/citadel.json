@@ -1,0 +1,96 @@
+{
+  "$comment": "Definitia parametrica a citadelei. Sursa unica pentru planul SVG din web si pentru modelul Blender. Toate lungimile sunt in metri, toate unghiurile in grade, 0 = +X, crescator antiorar. Poarta este la -90 (spre -Y), directia din care priveste camera hero.",
+  "version": 1,
+  "svg": {
+    "viewBox": "40 40 920 920",
+    "center": 500,
+    "unitsPerMeter": 19.672
+  },
+  "ring": {
+    "innerRadius": 12.2,
+    "outerRadius": 15.25,
+    "height": 7.4,
+    "parapetHeight": 0.78,
+    "segments": 48
+  },
+  "gate": {
+    "centerDeg": -90,
+    "halfWidthDeg": 7.2,
+    "towerHeight": 11.4,
+    "archHeight": 4.6,
+    "blades": 6
+  },
+  "bays": {
+    "$comment": "Sase travee locuite care ies in AFARA inelului, ca sa fie vizibile din cadrul aerian 3/4. In modelul vechi panourile de raspuns erau pe o fatada interioara, ascunsa de canaturile inchise.",
+    "count": 6,
+    "startDeg": 0,
+    "stepDeg": 60,
+    "widthDeg": 13.5,
+    "projection": 1.85,
+    "height": 6.4,
+    "roofHeight": 1.15,
+    "openingHeight": 2.05,
+    "openingWidth": 1.55,
+    "openingBaseZ": 2.35
+  },
+  "towers": {
+    "$comment": "Doua turnuri, cat cere briefingul. Nu opt conuri.",
+    "angles": [-170, -10],
+    "radius": 2.45,
+    "height": 10.6,
+    "capHeight": 1.3
+  },
+  "core": {
+    "$comment": "Nucleul comun, hexagonal, o fateta exact spre poarta. Mai inalt decat inelul, deci vizibil peste zid si prin poarta.",
+    "facets": 6,
+    "radius": 4.55,
+    "plinthRadius": 5.3,
+    "plinthHeight": 0.62,
+    "bodyHeight": 10.4,
+    "galleryZ": 6.6,
+    "galleryDepth": 0.34,
+    "roofHeight": 3.1,
+    "roofOverhang": 0.95,
+    "pivotHeight": 0.34
+  },
+  "nodes": [
+    { "id": "project-nexus",    "deg": 55 },
+    { "id": "aegis",            "deg": 10 },
+    { "id": "schoolmate",       "deg": -35 },
+    { "id": "the-buried-hands", "deg": -80 },
+    { "id": "economy-news",     "deg": -125 },
+    { "id": "automation-risk",  "deg": -170 },
+    { "id": "infect-exe",       "deg": -215 }
+  ],
+  "nodeMarker": {
+    "radius": 15.6,
+    "size": 0.34,
+    "height": 0.38
+  },
+  "route": {
+    "radius": 10.9,
+    "startDeg": 70,
+    "endDeg": -215,
+    "width": 0.34
+  },
+  "terrain": {
+    "radius": 78,
+    "contourStart": 18.5,
+    "contourStep": 3.0,
+    "contourCount": 6,
+    "falloff": 5.6
+  },
+  "palette": {
+    "limestone": "#7c7466",
+    "limestoneLight": "#9e968a",
+    "plaster": "#c3bba6",
+    "timber": "#1d1a17",
+    "roof": "#22241f",
+    "brass": "#8a7a53",
+    "brassPolished": "#bda76c",
+    "glass": "#2b3a3c",
+    "signal": "#69ced0",
+    "pivot": "#c1462f",
+    "earth": "#3b4238"
+  }
+}
