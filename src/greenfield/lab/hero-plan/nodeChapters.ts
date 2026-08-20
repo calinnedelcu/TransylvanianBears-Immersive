@@ -11,7 +11,9 @@ import { actFor, actHref, chapterTitle, entryOf } from './acts';
  */
 export function chapterHref(project: ProjectId): string {
   const act = actFor(project);
-  return act ? actHref(act) : '/story';
+  // Which system was chosen, not just which act it lives in: the research
+  // crossing covers two, and the act has to open on the line the citadel said.
+  return act ? `${actHref(act)}?from=${project}` : '/story';
 }
 
 /** The destination named the way the story names it, so the promise is checkable. */

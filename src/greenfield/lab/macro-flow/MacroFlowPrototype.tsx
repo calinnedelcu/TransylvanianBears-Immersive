@@ -41,6 +41,7 @@ import { useExperienceActorRef, useExperienceSelector } from '../../experience/u
 import { useJourneyDirector } from '../../experience/useJourneyDirector';
 import { useGreenfieldMode } from '../../hooks/useGreenfieldMode';
 import { ACTS, actBySlug, entryOf, exitOf } from '../hero-plan/acts';
+import { ActArrival } from './ActArrival';
 import { ActExit } from './ActExit';
 import '../hero-plan/hero-plan.css';
 import type { MacroLensMode } from './MacroFlowScene';
@@ -688,6 +689,8 @@ function MacroFlowExperience() {
         ) : null}
         <div className="mf-world__grade" />
       </div>
+
+      <ActArrival act={act} />
 
       <header className="mf-header">
         <ViewTransitionLink className="mf-brand" to="/" aria-label="Transylvanian Bears, start">

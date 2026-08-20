@@ -28,15 +28,18 @@ export type Departure = {
   line: string;
 };
 
-const PUSH: Departure = { move: 'push', seconds: 1.1, line: 'Se deschide' };
-
+/**
+ * Each system says its own thing on the way out, and the act says the same thing
+ * on the way in: the two ends of the trip have to agree, or the dark between them
+ * reads as a page load rather than as a move.
+ */
 export const DEPARTURES: Record<ProjectId, Departure> = {
   'project-nexus': { move: 'rise', seconds: 1.4, line: 'Orașul sintetic se ridică' },
   aegis: { move: 'gate', seconds: 1.2, line: 'Poarta cedează' },
-  schoolmate: PUSH,
+  schoolmate: { move: 'push', seconds: 1.1, line: 'Ziua de școală începe' },
   'the-buried-hands': { move: 'descend', seconds: 1.6, line: 'Mausoleul se deschide' },
-  'economy-news': PUSH,
-  'automation-risk': PUSH,
+  'economy-news': { move: 'push', seconds: 1.2, line: 'Cifrele se așază' },
+  'automation-risk': { move: 'push', seconds: 1.2, line: 'Munca se recalculează' },
   'infect-exe': { move: 'push', seconds: 0.9, line: 'Semnalul se rupe' },
 };
 
