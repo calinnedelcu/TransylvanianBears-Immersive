@@ -11,6 +11,15 @@ const HASH_RESTORE_TOLERANCE_PX = 2;
 export type JourneyTelemetry = {
   journeyProgressRef: MutableRefObject<number>;
   worldProgressRef: MutableRefObject<number>;
+  /**
+   * The opening beat on its own clock, 0 to 1 across the threshold section.
+   *
+   * World progress runs all the way to chapter eleven, which leaves the opening
+   * about six percent of it. That is enough for a camera move and nowhere near
+   * enough for a citadel to assemble itself, so the sequence is measured against
+   * the beat it actually occupies.
+   */
+  heroProgressRef: MutableRefObject<number>;
   sliceProgressRef: MutableRefObject<number>;
   schoolActProgressRef: MutableRefObject<number>;
   buriedActProgressRef: MutableRefObject<number>;
@@ -25,6 +34,7 @@ type JourneyDirectorOptions = {
   reducedMotion: boolean;
   onChapterChange: (chapter: JourneyChapter) => void;
   onProgress?: (progress: number, velocity: number) => void;
+  onHeroProgress?: (progress: number) => void;
   onWorldProgress?: (progress: number, velocity: number) => void;
   onSliceProgress?: (progress: number, velocity: number) => void;
   onSchoolActProgress?: (progress: number, velocity: number) => void;
@@ -37,12 +47,14 @@ export function useJourneyDirector({
   onChapterChange,
   onProgress,
   onWorldProgress,
+  onHeroProgress,
   onSliceProgress,
   onSchoolActProgress,
   onBuriedActProgress,
 }: JourneyDirectorOptions): JourneyTelemetry {
   const journeyProgressRef = useRef(0);
   const worldProgressRef = useRef(0);
+  const heroProgressRef = useRef(0);
   const sliceProgressRef = useRef(0);
   const schoolActProgressRef = useRef(0);
   const buriedActProgressRef = useRef(0);
@@ -63,6 +75,7 @@ export function useJourneyDirector({
     };
 
     const context = gsap.context(() => {
+      const heroBeat = root.querySelector<HTMLElement>('#mf-threshold');
       const worldEnd = root.querySelector<HTMLElement>('#mf-infect');
       const sliceEnd = root.querySelector<HTMLElement>('#mf-passage');
       const schoolActStart = root.querySelector<HTMLElement>('#mf-passage');
@@ -242,6 +255,19 @@ export function useJourneyDirector({
         },
       });
 
+      if (heroBeat) {
+        ScrollTrigger.create({
+          id: 'journey-hero',
+          trigger: heroBeat,
+          start: 'top top',
+          end: 'bottom top',
+          onUpdate: (self) => {
+            heroProgressRef.current = reducedMotion ? 1 : self.progress;
+            onHeroProgress?.(heroProgressRef.current);
+          },
+        });
+      }
+
       if (worldEnd) {
         ScrollTrigger.create({
           id: 'journey-world',
@@ -411,11 +437,12 @@ export function useJourneyDirector({
       root.style.removeProperty('--mf-progress');
       delete root.dataset.buriedActProgress;
     };
-  }, [onBuriedActProgress, onChapterChange, onProgress, onSchoolActProgress, onSliceProgress, onWorldProgress, reducedMotion, rootRef]);
+  }, [onBuriedActProgress, onChapterChange, onHeroProgress, onProgress, onSchoolActProgress, onSliceProgress, onWorldProgress, reducedMotion, rootRef]);
 
   return {
     journeyProgressRef,
     worldProgressRef,
+    heroProgressRef,
     sliceProgressRef,
     schoolActProgressRef,
     buriedActProgressRef,

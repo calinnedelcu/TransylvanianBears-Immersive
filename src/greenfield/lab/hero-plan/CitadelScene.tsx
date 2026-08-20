@@ -520,17 +520,25 @@ function CameraRig({
   return null;
 }
 
-function Stage() {
+function Stage({ exposure }: { exposure?: number }) {
   const { gl } = useThree();
   useEffect(() => {
-    // Per material clipping, so only the citadel is cut at the ground.
+    // Per material clipping, so only the citadel is cut at the ground. Harmless
+    // to leave on for a shared renderer: it only enables the feature, and
+    // materials that carry no planes are untouched.
     gl.localClippingEnabled = true;
+  }, [gl]);
+  useEffect(() => {
+    // Exposure is renderer wide, so the sequence only claims it when it owns the
+    // canvas. Inside the story's shared canvas it would relight fifteen other
+    // chapters to suit this one.
+    if (exposure === undefined) return;
     const previous = gl.toneMappingExposure;
-    gl.toneMappingExposure = 1.1;
+    gl.toneMappingExposure = exposure;
     return () => {
       gl.toneMappingExposure = previous;
     };
-  }, [gl]);
+  }, [gl, exposure]);
   return null;
 }
 
@@ -545,7 +553,15 @@ type CitadelSceneProps = {
   tagsRef: MutableRefObject<HTMLDivElement | null>;
 };
 
-export function CitadelScene({
+/**
+ * Everything the sequence puts inside a canvas, without the canvas.
+ *
+ * The lab page gives it one of its own; the story has a single canvas shared by
+ * sixteen chapters and cannot afford a second WebGL context, so the opening has
+ * to be mountable inside somebody else's scene. Nothing here assumes it owns the
+ * renderer beyond the clipping flag, which is additive.
+ */
+export function CitadelSequence({
   progressRef,
   planFrameRef,
   reducedMotion,
@@ -554,27 +570,23 @@ export function CitadelScene({
   onHover,
   onSelect,
   tagsRef,
-}: CitadelSceneProps) {
+  exposure,
+  lit = true,
+  sky = true,
+}: CitadelSceneProps & { exposure?: number; lit?: boolean; sky?: boolean }) {
   return (
-    <Canvas
-      className="hp-canvas"
-      shadows={reducedMotion ? false : 'soft'}
-      dpr={[1, reducedMotion ? 1 : 1.5]}
-      frameloop={reducedMotion ? 'demand' : 'always'}
-      camera={{ fov: FOV, near: 0.5, far: 400, position: [0, 82, 0.001] }}
-      gl={{ antialias: true, powerPreference: 'high-performance' }}
-      onCreated={({ scene }) => {
-        scene.fog = new THREE.Fog('#0a121a', 46, 210);
-      }}
-    >
-      <Stage />
+    <>
+      <Stage exposure={exposure} />
       <CameraRig progressRef={progressRef} planFrameRef={planFrameRef} activeSlug={activeSlug} />
       <WorldTags progressRef={progressRef} tagsRef={tagsRef} showFrom={RISE_END} />
-      <NightSky progressRef={progressRef} showFrom={TIP_END} />
+      {sky ? <NightSky progressRef={progressRef} showFrom={TIP_END} /> : null}
       <SignalRoute progressRef={progressRef} activeSlug={activeSlug} showFrom={RISE_START} />
 
-      {/* Blue hour: cool sky key, warm occupancy fill, readable shadow detail. */}
-      <hemisphereLight intensity={0.34} color="#7f9ab4" groundColor="#0c1210" />
+      {/* Blue hour: cool sky key, warm occupancy fill, readable shadow detail.
+          Skippable, because a host scene arrives with a lighting rig of its own
+          and two keys on the same model read as neither. */}
+      {lit ? <hemisphereLight intensity={0.34} color="#7f9ab4" groundColor="#0c1210" /> : null}
+      {lit ? (
       <directionalLight
         position={[-38, 34, 20]}
         intensity={0.9}
@@ -590,7 +602,8 @@ export function CitadelScene({
         shadow-bias={-0.0006}
         shadow-normalBias={0.04}
       />
-      <pointLight position={[0, 7.5, 1]} intensity={220} distance={40} color="#f2c377" />
+      ) : null}
+      {lit ? <pointLight position={[0, 7.5, 1]} intensity={220} distance={40} color="#f2c377" /> : null}
 
       <CitadelModel
         progressRef={progressRef}
@@ -600,6 +613,25 @@ export function CitadelScene({
         onHover={onHover}
         onSelect={onSelect}
       />
+    </>
+  );
+}
+
+/** The lab page's standalone shell: the sequence with a canvas of its own. */
+export function CitadelScene(props: CitadelSceneProps) {
+  return (
+    <Canvas
+      className="hp-canvas"
+      shadows={props.reducedMotion ? false : 'soft'}
+      dpr={[1, props.reducedMotion ? 1 : 1.5]}
+      frameloop={props.reducedMotion ? 'demand' : 'always'}
+      camera={{ fov: FOV, near: 0.5, far: 400, position: [0, 82, 0.001] }}
+      gl={{ antialias: true, powerPreference: 'high-performance' }}
+      onCreated={({ scene }) => {
+        scene.fog = new THREE.Fog('#0a121a', 46, 210);
+      }}
+    >
+      <CitadelSequence {...props} exposure={1.1} />
     </Canvas>
   );
 }
