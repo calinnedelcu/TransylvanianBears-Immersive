@@ -79,15 +79,31 @@ export function useJourneyDirector({
     };
 
     const context = gsap.context(() => {
+      /**
+       * An act's camera is measured against the act, not against its neighbours.
+       *
+       * These used to run from a section in one act to a section in the next: the
+       * buried camera, for instance, spanned the descent to the breach. That was
+       * fine while every chapter shared a document. Now an act is a page of its
+       * own, so those far ends are simply absent, the trigger is never built, and
+       * the camera sits still while the reader scrolls past the words.
+       *
+       * The page holds exactly one act, so its first and last chapters are the
+       * act's own ends.
+       */
+      const chapters = [...root.querySelectorAll<HTMLElement>('[data-chapter]')];
+      const actStart = chapters[0] ?? null;
+      const actEnd = chapters[chapters.length - 1] ?? null;
+
       const heroBeat = root.querySelector<HTMLElement>('#mf-threshold');
-      const worldEnd = root.querySelector<HTMLElement>('#mf-infect');
-      const sliceEnd = root.querySelector<HTMLElement>('#mf-passage');
-      const schoolActStart = root.querySelector<HTMLElement>('#mf-passage');
-      const schoolActEnd = root.querySelector<HTMLElement>('#mf-descent');
-      const buriedActStart = root.querySelector<HTMLElement>('#mf-descent');
+      const worldEnd = actEnd;
+      const sliceEnd = actEnd;
+      const schoolActStart = actStart;
+      const schoolActEnd = actEnd;
+      const buriedActStart = actStart;
       const buriedLamp = root.querySelector<HTMLElement>('#mf-lamp');
       const buriedBuild = root.querySelector<HTMLElement>('#mf-build');
-      const buriedActEnd = root.querySelector<HTMLElement>('#mf-infect');
+      const buriedActEnd = actEnd;
       const descentHandoffStart = root.querySelector<HTMLElement>('#mf-descent');
       const descentHandoffEnd = root.querySelector<HTMLElement>('#mf-lamp');
       const threshold = root.querySelector<HTMLElement>('#mf-threshold');
