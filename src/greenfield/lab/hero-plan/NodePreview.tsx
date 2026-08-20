@@ -1,3 +1,4 @@
+import { chapterHref, chapterLabel } from './nodeChapters';
 import { EVIDENCE_LABEL, PLAN_NODES, STATE_LABEL } from './planNodes';
 
 type NodePreviewProps = {
@@ -26,6 +27,7 @@ export function NodePreview({ activeSlug }: NodePreviewProps) {
 
   const { project } = node;
   const metric = project.metrics?.[0];
+  const destination = chapterLabel(node.id);
 
   return (
     <div className="hp-preview">
@@ -47,7 +49,13 @@ export function NodePreview({ activeSlug }: NodePreviewProps) {
             <b>{metric.value}</b> {metric.label}
           </span>
         ) : null}
-        <span className="hp-preview__link">Enter sau click &rarr; studiul de caz</span>
+        {/* The ring is the index, so a node has to open the thing itself. Sending
+            the reader to a case study page here would hand the experience off to
+            a document at the exact moment it earned the right to keep them. */}
+        <a className="hp-preview__enter" href={chapterHref(node.id)}>
+          Intră în scenă
+          <b>{destination.index} {destination.label}</b>
+        </a>
       </div>
     </div>
   );

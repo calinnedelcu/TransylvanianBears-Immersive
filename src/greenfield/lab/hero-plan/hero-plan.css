@@ -1186,3 +1186,32 @@ body.hp-lab-mode {
 .hp-lab[data-reduced] .hp-tags {
   display: none;
 }
+
+/* The one real exit from the ring: a node opens its chapter of the story. */
+.hp-preview__enter {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-left: auto;
+  padding: 5px 11px;
+  border: 1px solid rgb(105 206 208 / 0.45);
+  border-radius: 999px;
+  color: var(--hp-cyan);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.hp-preview__enter b {
+  color: rgb(233 238 240 / 0.72);
+  font-weight: 500;
+}
+
+.hp-preview__enter:hover,
+.hp-preview__enter:focus-visible {
+  border-color: rgb(105 206 208 / 0.9);
+  background: rgb(105 206 208 / 0.1);
+}

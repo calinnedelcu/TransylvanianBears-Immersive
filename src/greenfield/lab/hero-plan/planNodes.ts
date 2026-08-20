@@ -1,5 +1,5 @@
 import { projectById } from '../../data';
-import type { ProjectDefinition } from '../../types';
+import type { ProjectDefinition, ProjectId } from '../../types';
 import { NODE_ANGLES } from './citadelGeometry';
 
 /**
@@ -12,6 +12,8 @@ import { NODE_ANGLES } from './citadelGeometry';
  */
 export type PlanNode = {
   deg: number;
+  /** The id, kept beside the project because the chapter map is keyed on it. */
+  id: ProjectId;
   project: ProjectDefinition;
   /** Prima jumătate a etichetei de disciplină; cea completă intră în panou. */
   shortDiscipline: string;
@@ -21,6 +23,7 @@ export const PLAN_NODES: PlanNode[] = NODE_ANGLES.map(({ id, deg }) => {
   const project = projectById[id];
   return {
     deg,
+    id,
     project,
     shortDiscipline: project.disciplineLabel.split(' / ')[0],
   };
