@@ -835,17 +835,16 @@ function PostEffects({
   if (activeChapter === 'lens' || activeChapter === 'proof') return null;
   if (qualityTier !== 'cinematic' && activeChapter !== 'threshold') return null;
 
-  const threshold = activeChapter === 'threshold';
+  // The opening used to be a castle with warm windows on a dark horizon, and the
+  // grade was pushed hard to make those windows carry. That scene is gone. What
+  // stands here now is a drawing: fine luminous lines and, later, glass. A low
+  // bloom threshold does not flatter linework, it dissolves it, and the stars in
+  // the sky bloom into blobs long before anything on the citadel does.
   return (
     <EffectComposer multisampling={0} enableNormalPass={false}>
-      <Bloom
-        intensity={threshold ? 0.92 : 0.42}
-        luminanceThreshold={threshold ? 0.38 : 0.82}
-        luminanceSmoothing={0.32}
-        mipmapBlur
-      />
-      <Noise opacity={threshold ? 0.035 : 0.027} premultiply blendFunction={BlendFunction.SOFT_LIGHT} />
-      <Vignette offset={threshold ? 0.12 : 0.22} darkness={threshold ? 0.74 : 0.5} eskil={false} />
+      <Bloom intensity={0.42} luminanceThreshold={0.82} luminanceSmoothing={0.32} mipmapBlur />
+      <Noise opacity={0.027} premultiply blendFunction={BlendFunction.SOFT_LIGHT} />
+      <Vignette offset={0.22} darkness={0.5} eskil={false} />
     </EffectComposer>
   );
 }
@@ -1192,6 +1191,7 @@ function World({
               onHover={opening.setHoverSlug}
               onSelect={opening.selectNode}
               tagsRef={opening.tagsRef}
+              sky={false}
             />
           ) : null}
           {showThreshold ? <ThresholdExposure /> : null}
