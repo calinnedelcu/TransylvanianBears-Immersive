@@ -953,7 +953,10 @@ function BuriedTransitionLight({
 const NEXUS_CHAPTERS = new Set<JourneyChapter>(['field', 'lens', 'proof']);
 const SCHOOL_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
 const SCHOOL_CAMERA_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
-const BURIED_CHAPTERS = new Set<JourneyChapter>(['descent', 'lamp', 'build', 'infect']);
+// The breach is not the mausoleum. It was grouped with it because the two used to
+// run back to back in one reel, and grouping them meant a one bit interlude was
+// drawn over a fogged tomb with the tomb's lighting on it.
+const BURIED_CHAPTERS = new Set<JourneyChapter>(['descent', 'lamp', 'build']);
 // The opening drives its own camera: the pose is solved every frame from where
 // the drawing actually sits on screen, which is what lets the model land on top
 // of the plan instead of cutting to it. The authored threshold curve framed the

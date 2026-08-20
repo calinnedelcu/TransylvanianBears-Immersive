@@ -202,7 +202,14 @@ function MacroFlowExperience() {
   const [rendererFailure, setRendererFailure] = useState<'render-error' | 'context-lost' | null>(null);
   const directInfectEntryRef = useRef(window.location.hash === '#mf-infect');
   const directInfectChapterReachedRef = useRef(false);
-  const [buriedHandoffComplete, setBuriedHandoffComplete] = useState(
+  /**
+   * The buried act's pixel handoff still reports, and the scene still listens for
+   * it, but nothing on this page reads the flag any more: it existed to decide
+   * when to swap the tomb's world for the breach's interlude, back when the two
+   * ran back to back in one reel. The breach is its own act with no world at all
+   * now, so there is nothing left to swap.
+   */
+  const [, setBuriedHandoffComplete] = useState(
     () => directInfectEntryRef.current,
   );
   const handleRendererError = useCallback(() => setRendererFailure('render-error'), []);
@@ -635,7 +642,12 @@ function MacroFlowExperience() {
     && rendererFailure === null
     && qualityTier !== 'editorial'
     && !directInfectEntryRef.current
-    && !(activeChapter === 'infect' && buriedHandoffComplete)
+    // The breach has no 3D world, and should not have one behind it. It is a one
+    // bit piece drawn on a 2D canvas from its own images; a WebGL scene mounted
+    // underneath contributes nothing the reader can see except its lighting,
+    // its fog and its grade leaking around the edges of a picture that is
+    // supposed to be two colours.
+    && activeChapter !== 'infect'
     && activeChapter !== 'research'
     && activeChapter !== 'evidence-weave'
     && activeChapter !== 'final-return'
@@ -650,6 +662,7 @@ function MacroFlowExperience() {
       data-lens={lensMode}
       data-evidence-cores={evidenceCores.length}
       data-trace-outcome={schoolAct.status}
+      data-act={act.slug}
       data-renderer={macroWorldActive ? 'webgl' : 'editorial'}
       data-renderer-failure={rendererFailure ?? undefined}
     >
