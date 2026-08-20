@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, type MutableRefObject, type RefObject } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { syncSmoothScroll } from '../../components/smoothScroll';
 import { isJourneyChapter, type JourneyChapter } from './chapters';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -412,7 +413,13 @@ export function useJourneyDirector({
           ) || 0;
           const offset = target.getBoundingClientRect().top - scrollPadding;
           if (Math.abs(offset) > HASH_RESTORE_TOLERANCE_PX) {
-            window.scrollTo({ top: window.scrollY + offset, behavior: 'auto' });
+            const landed = window.scrollY + offset;
+            window.scrollTo({ top: landed, behavior: 'auto' });
+            // The smooth scroll owns the position, and this moved the page behind
+            // its back. Left unsynced it animates the reader back to where it
+            // still thinks they are the moment they touch the wheel, which is how
+            // arriving at a chapter and scrolling threw them to the start.
+            syncSmoothScroll(landed);
           }
           ScrollTrigger.update();
 

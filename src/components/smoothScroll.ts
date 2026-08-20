@@ -20,3 +20,15 @@ export function scrollSmoothTo(target: number, duration = 1.6) {
   if (running) running.scrollTo(target, { duration });
   else window.scrollTo({ top: target, behavior: 'smooth' });
 }
+
+/**
+ * Tell the smooth scroll where the page actually is.
+ *
+ * Anything that moves the page natively - a hash restore, a browser action -
+ * leaves Lenis believing the reader is still wherever it last put them. Nothing
+ * looks wrong until they touch the wheel, and then the page is animated back to
+ * that stale position, which reads as being thrown to the start for no reason.
+ */
+export function syncSmoothScroll(position: number) {
+  running?.scrollTo(position, { immediate: true, force: true });
+}
