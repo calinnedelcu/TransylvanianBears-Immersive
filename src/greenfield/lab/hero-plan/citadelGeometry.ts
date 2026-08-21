@@ -100,8 +100,20 @@ export function sectorPath(radius: number, from: number, to: number): string {
  * rAF, și fără să poată aluneca unul față de celălalt.
  */
 export function sweepHit(deg: number): number {
+  return revealOrder(deg) * SWEEP_PERIOD;
+}
+
+/**
+ * Locul unui unghi în ordinea de baleiaj, ca fracție din tur.
+ *
+ * Secvența de intrare o folosește ca să scoată desenul la iveală în ordinea în
+ * care fasciculul l-ar găsi: nu e sincronizată frame cu frame cu rotația — ar fi
+ * cerut un prim tur mult mai rapid decât cel de croazieră, deci o schimbare de
+ * viteză vizibilă — dar ordinea e aceeași, iar asta e ce citește privitorul.
+ */
+export function revealOrder(deg: number): number {
   const normalised = ((deg % 360) + 360) % 360;
-  return (normalised / 360) * SWEEP_PERIOD;
+  return normalised / 360;
 }
 
 /** Curbă de nivel: cerc deformat determinist, turtit pe verticală ca un relief. */

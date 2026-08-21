@@ -69,11 +69,21 @@ export function useHeroOpening() {
     if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
+    // Reticulul înlocuiește cursorul de sistem, deci desenul lui trebuie să fie
+    // pornit înainte ca `cursor: none` să aibă efect — altfel există un frame în
+    // care nu se vede niciun cursor.
+    frame.dataset.reticle = 'on';
+
     let queued = 0;
     let targetX = 0;
     let targetY = 0;
     let px = 0;
     let py = 0;
+    // Poziția în pixeli: exactă pentru firul reticulului, urmărită pentru inel.
+    let cursorX = -200;
+    let cursorY = -200;
+    let ringX = -200;
+    let ringY = -200;
 
     /**
      * Valoarea urmărește ținta, nu o ia direct.
@@ -88,13 +98,30 @@ export function useHeroOpening() {
       py += (targetY - py) * 0.09;
       frame.style.setProperty('--hp-px', px.toFixed(4));
       frame.style.setProperty('--hp-py', py.toFixed(4));
-      const settled = Math.abs(targetX - px) < 0.0015 && Math.abs(targetY - py) < 0.0015;
+
+      // Firul stă exact pe cursor. Inelul rămâne în urmă, ca un instrument care
+      // se așază: dacă ar rămâne în urmă și firul, reticulul ar părea stricat,
+      // fiindcă el este singurul cursor pe care îl vede cititorul.
+      frame.style.setProperty('--hp-cx', `${cursorX.toFixed(1)}px`);
+      frame.style.setProperty('--hp-cy', `${cursorY.toFixed(1)}px`);
+      ringX += (cursorX - ringX) * 0.19;
+      ringY += (cursorY - ringY) * 0.19;
+      frame.style.setProperty('--hp-rx', `${ringX.toFixed(1)}px`);
+      frame.style.setProperty('--hp-ry', `${ringY.toFixed(1)}px`);
+
+      const settled =
+        Math.abs(targetX - px) < 0.0015 &&
+        Math.abs(targetY - py) < 0.0015 &&
+        Math.abs(cursorX - ringX) < 0.4 &&
+        Math.abs(cursorY - ringY) < 0.4;
       queued = settled ? 0 : requestAnimationFrame(write);
     };
 
     const onMove = (event: PointerEvent) => {
       targetX = (event.clientX / window.innerWidth) * 2 - 1;
       targetY = (event.clientY / window.innerHeight) * 2 - 1;
+      cursorX = event.clientX;
+      cursorY = event.clientY;
       if (!queued) queued = requestAnimationFrame(write);
     };
 
@@ -112,8 +139,10 @@ export function useHeroOpening() {
       window.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerleave', onLeave);
       if (queued) cancelAnimationFrame(queued);
-      frame.style.removeProperty('--hp-px');
-      frame.style.removeProperty('--hp-py');
+      delete frame.dataset.reticle;
+      ['--hp-px', '--hp-py', '--hp-cx', '--hp-cy', '--hp-rx', '--hp-ry'].forEach((name) => {
+        frame.style.removeProperty(name);
+      });
     };
   }, []);
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ARCHIVE, PROJECTS, TEAM } from '../../data';
-import { CitadelPlan, CitadelPlanShell } from './CitadelPlan';
+import { CitadelPlan, CitadelPlanShell, PlanTerrain } from './CitadelPlan';
 import type { HeroOpening } from './useHeroOpening';
 
 /**
@@ -30,6 +30,27 @@ const pad = (count: number) => String(count).padStart(2, '0');
  * care leagă totul. Toate pleacă până la progres 0.2, unde cetatea începe să se
  * ridice și lumea reală preia cadrul — atmosfera planșei n-are ce căuta peste ea.
  */
+/**
+ * Reticulul care ține locul cursorului în deschidere.
+ *
+ * Pagina susține că planul e un instrument de releveu; săgeata sistemului spune
+ * altceva. Firul stă exact pe pointer, inelul se așază cu întârziere, iar când
+ * cursorul e pe un nod se închid patru colțare peste el — aceeași gramatică
+ * vizuală ca fasciculul care baleiază desenul.
+ *
+ * `cursor: none` se aplică numai după ce cârligul confirmă că desenează, prin
+ * `data-reticle`. Fără pointer fin sau cu mișcare redusă, cârligul nu pornește,
+ * atributul lipsește și cursorul de sistem rămâne acolo unde era.
+ */
+export function PlanReticle({ locked }: { locked: boolean }) {
+  return (
+    <div className="hp-reticle" data-locked={locked || undefined} aria-hidden="true">
+      <span className="hp-reticle__ring" />
+      <span className="hp-reticle__cross" />
+    </div>
+  );
+}
+
 export function HeroPlanAtmosphere() {
   return (
     <div className="hp-aura" aria-hidden="true">
@@ -69,6 +90,11 @@ function CountTo({ value, count }: { value: string; count: number | null }) {
     const node = ref.current;
     if (!node || count === null) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // Într-o filă de fundal `requestAnimationFrame` nu se declanșează deloc, deci
+    // cifra ar rămâne oprită pe valoarea la care a ajuns — s-a văzut un „01" în
+    // loc de „07". Dacă pagina nu e vizibilă la montare, numărul rămâne cel real
+    // și nu mai are ce să înghețe.
+    if (document.hidden) return;
 
     let raf = 0;
     let start = 0;
@@ -173,6 +199,7 @@ export function HeroPlanSheet({
   return (
     <div className="hp-stage">
       <div className="hp-tilt" ref={opening.planRef}>
+        <PlanTerrain />
         <div className="hp-ground-shadow" aria-hidden="true" />
         {/* Straturile CSS raman doar ca schita in timpul desenului; de la
             pragul de inclinare preia geometria reala din shared/citadel.json. */}

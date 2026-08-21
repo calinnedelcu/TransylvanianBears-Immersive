@@ -172,11 +172,20 @@ body.hp-lab-mode {
   position: absolute;
   inset: -18%;
   background: radial-gradient(
-    42% 42% at calc(70% + var(--hp-px, 0) * 4%) calc(50% + var(--hp-py, 0) * 4%),
+    42% 42% at 70% 50%,
     rgb(169 133 70 / 0.22),
     rgb(169 133 70 / 0.08) 36%,
     transparent 64%
   );
+  /*
+   * Pointer-ul mută lampa prin `translate`, nu prin poziția gradientului.
+   *
+   * Poziția era scrisă în `radial-gradient(... at calc(70% + var(--hp-px) * 4%))`,
+   * ceea ce înseamnă că fiecare mișcare de mouse repicta un strat cât ecranul —
+   * aceeași greșeală care a costat 70 fps la derivă. Proprietatea `translate` se
+   * compune înaintea lui `transform`, deci nu se ceartă cu scara din `hp-breathe`.
+   */
+  translate: calc(var(--hp-px) * 26px) calc(var(--hp-py) * 18px);
   will-change: transform, opacity;
   animation: hp-breathe 19s ease-in-out infinite;
 }
@@ -289,6 +298,74 @@ body.hp-lab-mode {
   background: linear-gradient(180deg, transparent, rgb(96 115 92 / 0.24) 55%, rgb(9 11 12 / 0.9));
 }
 
+/* ============================================================================
+   Reticulul — cursorul, în limba desenului.
+   ========================================================================= */
+/* Ascundem cursorul numai cât timp reticulul chiar desenează: cârligul confirmă
+   prin `data-reticle`, iar regizorul de scroll prin `data-plan`. Dacă vreunul
+   lipsește — touch, mișcare redusă, sau desenul a devenit deja cetate — rămâne
+   cursorul de sistem. */
+.hp-opening[data-reticle='on'][data-plan='sheet'],
+.hp-opening[data-reticle='on'][data-plan='sheet'] a,
+.hp-opening[data-reticle='on'][data-plan='sheet'] button {
+  cursor: none;
+}
+
+.hp-reticle {
+  position: absolute;
+  z-index: 6;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  /* Aparține foii, ca tot ce e desen: la înclinare cursorul redevine cursor. */
+  opacity: var(--hp-fade-out);
+}
+
+.hp-opening:not([data-reticle='on']) .hp-reticle,
+.hp-opening:not([data-plan='sheet']) .hp-reticle {
+  display: none;
+}
+
+.hp-reticle__ring,
+.hp-reticle__cross {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+}
+
+.hp-reticle__ring {
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border: 1px solid rgb(105 206 208 / 0.5);
+  border-radius: 50%;
+  transform: translate3d(var(--hp-rx, -200px), var(--hp-ry, -200px), 0);
+  transition: width 200ms ease, height 200ms ease, margin 200ms ease,
+    border-color 200ms ease, opacity 200ms ease;
+}
+
+/* Colțarele: patru sferturi de chenar, desenate din două fundaluri conice ar fi
+   fost mai scurt, dar și mai greu de citit peste șase luni. Un chenar cu colțuri
+   tăiate face același lucru cu o singură proprietate. */
+.hp-reticle__cross {
+  width: 15px;
+  height: 15px;
+  margin: -7.5px 0 0 -7.5px;
+  background:
+    linear-gradient(var(--hp-ink-strong), var(--hp-ink-strong)) center / 1px 100% no-repeat,
+    linear-gradient(var(--hp-ink-strong), var(--hp-ink-strong)) center / 100% 1px no-repeat;
+  opacity: 0.85;
+  transform: translate3d(var(--hp-cx, -200px), var(--hp-cy, -200px), 0);
+}
+
+.hp-reticle[data-locked] .hp-reticle__ring {
+  width: 54px;
+  height: 54px;
+  margin: -27px 0 0 -27px;
+  border-color: rgb(105 206 208 / 0.95);
+}
+
 /* -------------------------------------------------------------- copie ---- */
 .hp-copy {
   position: relative;
@@ -324,6 +401,23 @@ body.hp-lab-mode {
   font-weight: 500;
   line-height: 0.87;
   letter-spacing: -0.035em;
+}
+
+/*
+ * Wordmark-ul e scris în tăietura de titlu a lui Fraunces, nu în cea de text.
+ *
+ * `opsz` merge de la 9 la 144: la 9 literele sunt groase, cu contrast mic și
+ * terminații late — un caracter făcut să reziste la 12px. La 144 aceleași litere
+ * au perii subțiri și contrast mare, adică exact ce cere un titlu de 7rem.
+ * Secvența de intrare parcurge distanța asta, deci literele nu apar, ci intră în
+ * focus. Restul textelor în Fraunces își iau optical size din `font-size`, prin
+ * `font-optical-sizing: auto`, care e implicit — numai aici avem nevoie de o
+ * valoare scrisă cu mâna, fiindcă e singura care se animă.
+ */
+.hp-wordmark span {
+  --hp-opsz: 144;
+  --hp-wght: 460;
+  font-variation-settings: 'opsz' var(--hp-opsz), 'wght' var(--hp-wght);
 }
 
 .hp-wordmark span {
@@ -548,6 +642,35 @@ body.hp-lab-mode {
   will-change: transform;
 }
 
+/*
+ * Teancul de relief.
+ *
+ * Fiecare curbă stă la propriul `translateZ`, scalată cu inversul proiecției
+ * (`1 + z / perspectivă`), deci în repaus ocupă exact pixelii pe care îi ocupa
+ * când erau toate în același SVG. Adâncimea se citește doar când planșa se
+ * înclină după pointer — atunci curbele alunecă una față de alta.
+ *
+ * Z-ul se strânge la zero odată cu `--hp-fade-out`: la înclinarea de scroll,
+ * rotația de 74° ar desfăcut teancul într-un evantai de șase inele separate.
+ */
+.hp-terrain {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+.hp-terrain__layer {
+  position: absolute;
+  inset: 0;
+  transform:
+    translateZ(calc(var(--z) * var(--hp-fade-out) * -1px))
+    scale(calc(1 + var(--z) * var(--hp-fade-out) / var(--p)));
+}
+
+.hp-plan--terrain {
+  overflow: visible;
+}
+
 .hp-ground-shadow {
   position: absolute;
   inset: 0;
@@ -669,11 +792,45 @@ body.hp-lab-mode {
   46% { opacity: 1; }
 }
 
+/* Gradarea și armătura aparțin desenului plat, ca etichetele. */
+.hp-plan__core-ticks line {
+  stroke: rgb(169 133 70 / 0.5);
+  stroke-width: 1;
+}
+
+.hp-plan__core-ticks line[data-long] {
+  stroke: rgb(169 133 70 / 0.85);
+  stroke-width: 1.4;
+}
+
+.hp-plan__core-ticks,
+.hp-plan__core-armature {
+  opacity: var(--hp-fade-labels);
+}
+
+.hp-plan__core-armature {
+  transform-box: view-box;
+  transform-origin: 500px 500px;
+  animation: hp-armature 34s linear infinite reverse;
+}
+
+.hp-plan__core-armature path {
+  fill: none;
+  stroke: var(--hp-cyan);
+  stroke-width: 1.6;
+  opacity: 0.4;
+}
+
+@keyframes hp-armature {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .hp-plan__core {
   fill: rgb(169 133 70 / 0.07);
   stroke: var(--hp-brass);
   stroke-width: 2;
-  filter: drop-shadow(0 0 10px rgb(169 133 70 / 0.42));
+  filter: drop-shadow(0 0 6px rgb(169 133 70 / 0.3));
 }
 
 .hp-plan__core--inner {
@@ -1213,10 +1370,23 @@ body.hp-lab-mode {
   animation-delay: 560ms;
 }
 
-.hp-plan__gate,
-.hp-plan__niches {
+.hp-plan__gate {
   animation: hp-fade 700ms ease-out backwards;
   animation-delay: 1000ms;
+}
+
+/*
+ * Desenul iese la iveală în ordinea de baleiaj.
+ *
+ * Nișele și nodurile își iau întârzierea din propriul unghi, prin `--order`,
+ * deci cetatea nu apare toată odată, ci pe măsură ce instrumentul o parcurge —
+ * aceeași ordine pe care fasciculul o repetă apoi la fiecare tur. Înainte,
+ * nodurile intrau în ordinea din index, care nu are nicio legătură cu locul lor
+ * pe inel: șapte licăriri fără nicio logică vizibilă.
+ */
+.hp-plan__niches g {
+  animation: hp-fade 620ms ease-out backwards;
+  animation-delay: calc(900ms + var(--order, 0) * 1700ms);
 }
 
 .hp-plan__core {
@@ -1246,7 +1416,7 @@ body.hp-lab-mode {
    și dispariția la înclinare nu se calcă una pe alta. */
 .hp-plan__node {
   animation: hp-fade 620ms ease-out backwards;
-  animation-delay: calc(1120ms + var(--i, 0) * 90ms);
+  animation-delay: calc(1120ms + var(--order, 0) * 1700ms);
 }
 
 .hp-plan__route {
@@ -1273,8 +1443,37 @@ body.hp-lab-mode {
 }
 
 @keyframes hp-line-rise {
-  from { opacity: 0; transform: translateY(0.36em); clip-path: inset(0 0 104% 0); }
-  to { opacity: 1; transform: translateY(0); clip-path: inset(-20% 0 -20% 0); }
+  from {
+    opacity: 0;
+    transform: translateY(0.36em);
+    clip-path: inset(0 0 104% 0);
+    /* Tăietura de text: groasă, fără contrast. Se subțiază pe măsură ce urcă. */
+    --hp-opsz: 9;
+    --hp-wght: 320;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    clip-path: inset(-20% 0 -20% 0);
+    --hp-opsz: 144;
+    --hp-wght: 460;
+  }
+}
+
+/*
+ * Axele interpolează doar dacă sunt înregistrate ca numere; altfel browserul le
+ * tratează ca text și sare direct de la o valoare la alta la jumătatea animației.
+ */
+@property --hp-opsz {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 144;
+}
+
+@property --hp-wght {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 460;
 }
 
 @keyframes hp-sheen {

@@ -22,6 +22,7 @@ import {
   pointX,
   pointY,
   polygonPoints,
+  revealOrder,
   ringBandPath,
   sectorPath,
   sweepHit,
@@ -31,7 +32,43 @@ import { PLAN_NODES } from './planNodes';
 const CONTOURS = [0, 1, 2, 3, 4, 5].map((i) => ({
   d: contourPath(360 + i * 58, i * 1.3),
   key: `contour-${i}`,
+  // Cu cât curba e mai depărtată de incintă, cu atât stă mai în spate.
+  depth: 34 + i * 32,
 }));
+
+/** Perspectiva declarată pe `.hp-viewport`; scara compensatoare derivă din ea. */
+const PERSPECTIVE = 1400;
+
+/**
+ * Relieful, ca teanc de planuri la adâncimi diferite.
+ *
+ * Cele șase curbe erau șase `path`-uri în același SVG, adică șase linii pe
+ * aceeași foaie: la înclinare se mișcau toate identic, deci desenul avea
+ * perspectivă, dar nu avea grosime. Aici fiecare curbă își primește propriul
+ * strat și propriul `translateZ`, sub perspectiva pe care viewport-ul o declară
+ * deja, deci se deplasează una față de alta când planșa se înclină după pointer.
+ *
+ * Scara compensează exact micșorarea dată de depărtare — `1 + z / perspectivă`
+ * este inversul proiecției — deci compoziția în repaus rămâne pixel cu pixel cea
+ * dinainte. Adâncimea se vede numai când ceva o mișcă, ceea ce e și ideea.
+ */
+export function PlanTerrain() {
+  return (
+    <div className="hp-terrain" aria-hidden="true">
+      {CONTOURS.map((contour, i) => (
+        <div
+          key={contour.key}
+          className="hp-terrain__layer"
+          style={{ '--i': String(i), '--z': String(contour.depth), '--p': String(PERSPECTIVE) } as CSSProperties}
+        >
+          <svg className="hp-plan hp-plan--terrain" viewBox={VIEW_BOX} focusable="false">
+            <path className="hp-plan__contour" d={contour.d} />
+          </svg>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const EDGE_TICKS = Array.from({ length: 22 }, (_, i) => 80 + i * 40);
 
@@ -54,6 +91,30 @@ const ROUTE_PATH = arcPath(ROUTE_RADIUS, ROUTE_FROM, ROUTE_TO);
 
 /** Cât timp după trecerea fasciculului rămâne numele sistemului pe readout, în grade. */
 const ACQUIRE_ARC = 26;
+
+/*
+ * Armătura nucleului.
+ *
+ * Nucleul era un halou și două hexagoane: la mărimea la care stă în cadru, asta
+ * citea ca o pată caldă, nu ca un mecanism. Punctul spre care se uită tot restul
+ * compoziției e singurul loc unde detaliul chiar se vede, deci acolo trebuie pus.
+ */
+const CORE_TICKS = Array.from({ length: 48 }, (_, i) => {
+  const deg = i * 7.5;
+  const long = i % 4 === 0;
+  return {
+    key: `core-tick-${i}`,
+    x1: pointX(long ? 124 : 128, deg), y1: pointY(long ? 124 : 128, deg),
+    x2: pointX(134, deg), y2: pointY(134, deg),
+    long,
+  };
+});
+
+/** Trei arce cu goluri între ele, rotite ca un singur grup în sens invers baleiajului. */
+const CORE_ARMATURE = [0, 120, 240].map((from) => ({
+  key: `core-arc-${from}`,
+  d: arcPath(112, from, from + 78),
+}));
 
 /**
  * Ce vede instrumentul, scris cu litere.
@@ -143,16 +204,8 @@ export function CitadelPlan({ activeSlug, onNodeFocus, interactive = true }: Cit
         pentru cele șase discipline și șapte noduri etichetate cu sistemele echipei.
       </desc>
 
-      <g className="hp-plan__terrain">
-        {CONTOURS.map((contour, i) => (
-          <path
-            key={contour.key}
-            className="hp-plan__contour"
-            d={contour.d}
-            style={{ '--i': String(i) } as CSSProperties}
-          />
-        ))}
-      </g>
+      {/* Relieful nu mai stă aici: e un teanc de planuri la adâncimi diferite,
+          desenat de `PlanTerrain` în spatele foii. */}
 
       <g className="hp-plan__ticks" aria-hidden="true">
         {EDGE_TICKS.map((offset) => (
@@ -183,7 +236,11 @@ export function CitadelPlan({ activeSlug, onNodeFocus, interactive = true }: Cit
       {/* Șase nișe locuite = șase discipline. */}
       <g className="hp-plan__niches">
         {NICHE_ANGLES.map((deg) => (
-          <g key={`niche-${deg}`} transform={`translate(${pointX(283, deg).toFixed(1)},${pointY(283, deg).toFixed(1)}) rotate(${deg + 90})`}>
+          <g
+            key={`niche-${deg}`}
+            transform={`translate(${pointX(283, deg).toFixed(1)},${pointY(283, deg).toFixed(1)}) rotate(${deg + 90})`}
+            style={{ '--order': revealOrder(deg).toFixed(4) } as CSSProperties}
+          >
             <rect x={-17} y={-13} width={34} height={26} />
           </g>
         ))}
@@ -192,14 +249,37 @@ export function CitadelPlan({ activeSlug, onNodeFocus, interactive = true }: Cit
       {/* Nucleul fațetat, cu pivotul vermilion — singurul din tot cadrul. */}
       <defs>
         <radialGradient id="hp-core-halo">
-          <stop offset="0%" stopColor="#a98546" stopOpacity="0.42" />
-          <stop offset="38%" stopColor="#a98546" stopOpacity="0.15" />
+          <stop offset="0%" stopColor="#a98546" stopOpacity="0.3" />
+          <stop offset="30%" stopColor="#a98546" stopOpacity="0.1" />
           <stop offset="100%" stopColor="#a98546" stopOpacity="0" />
         </radialGradient>
       </defs>
       {/* Lumina nucleului. Cadrul avea totul la același ton: fără un punct cald
-          în mijloc, ochiul nu are unde să se așeze și desenul citește ca zgomot. */}
-      <circle className="hp-plan__halo" cx={CENTER} cy={CENTER} r={205} fill="url(#hp-core-halo)" />
+          în mijloc, ochiul nu are unde să se așeze și desenul citește ca zgomot.
+          Raza stă strânsă — la 205 haloul umplea toată incinta și spăla inelul
+          interior, adică exact opusul unui punct focal. */}
+      <circle className="hp-plan__halo" cx={CENTER} cy={CENTER} r={158} fill="url(#hp-core-halo)" />
+
+      {/* Gradarea din jurul nucleului: fiecare a patra diviziune e lungă. */}
+      <g className="hp-plan__core-ticks" aria-hidden="true">
+        {CORE_TICKS.map((tick) => (
+          <line
+            key={tick.key}
+            x1={tick.x1.toFixed(1)} y1={tick.y1.toFixed(1)}
+            x2={tick.x2.toFixed(1)} y2={tick.y2.toFixed(1)}
+            data-long={tick.long || undefined}
+          />
+        ))}
+      </g>
+
+      {/* Armătura se rotește invers față de fascicul, ca mișcarea din centru să
+          nu pară aceeași mișcare cu cea de pe inel. */}
+      <g className="hp-plan__core-armature" aria-hidden="true">
+        {CORE_ARMATURE.map((arc) => (
+          <path key={arc.key} d={arc.d} />
+        ))}
+      </g>
+
       <polygon className="hp-plan__core" points={polygonPoints(94, 6, 30)} />
       <polygon className="hp-plan__core hp-plan__core--inner" points={polygonPoints(58, 6, 30)} />
       <circle className="hp-plan__pivot-glow" cx={CENTER} cy={CENTER} r={9} />
@@ -252,7 +332,7 @@ export function CitadelPlan({ activeSlug, onNodeFocus, interactive = true }: Cit
 
       {/* Nodurile sunt link-uri reale: planul este indexul. */}
       <g className="hp-plan__nodes">
-        {PLAN_NODES.map(({ deg, project, shortDiscipline }, i) => {
+        {PLAN_NODES.map(({ deg, project, shortDiscipline }) => {
           const nx = pointX(RING_OUTER, deg);
           const ny = pointY(RING_OUTER, deg);
           const anchor = labelAnchor(deg);
@@ -275,7 +355,7 @@ export function CitadelPlan({ activeSlug, onNodeFocus, interactive = true }: Cit
               onMouseLeave={() => onNodeFocus(null)}
               onFocus={() => onNodeFocus(project.slug)}
               onBlur={() => onNodeFocus(null)}
-              style={{ '--i': String(i) } as CSSProperties}
+              style={{ '--order': revealOrder(deg).toFixed(4) } as CSSProperties}
             >
               <circle
                 className="hp-plan__pulse"

@@ -40,7 +40,7 @@ import { effectiveQuality } from '../../experience/experienceMachine';
 import { useExperienceActorRef, useExperienceSelector } from '../../experience/useExperience';
 import { useJourneyDirector } from '../../experience/useJourneyDirector';
 import { useGreenfieldMode } from '../../hooks/useGreenfieldMode';
-import { HeroPlanAtmosphere, HeroPlanSheet, HeroPlanTitle } from '../hero-plan/heroOpening';
+import { HeroPlanAtmosphere, HeroPlanSheet, HeroPlanTitle, PlanReticle } from '../hero-plan/heroOpening';
 import { NodePreview } from '../hero-plan/NodePreview';
 import { useHeroOpening } from '../hero-plan/useHeroOpening';
 import { scrollSmoothTo } from '../../../components/smoothScroll';
@@ -183,7 +183,18 @@ function MacroFlowExperience() {
    */
   const heroBeatRef = useRef<HTMLElement>(null);
   const onHeroProgress = useCallback((progress: number) => {
-    heroBeatRef.current?.style.setProperty('--hp-progress', progress.toFixed(4));
+    const beat = heroBeatRef.current;
+    if (!beat) return;
+    beat.style.setProperty('--hp-progress', progress.toFixed(4));
+    /*
+     * Cât timp deschiderea mai e o foaie de hârtie.
+     *
+     * Reticulul ține locul cursorului de sistem, dar dispare odată cu desenul, pe
+     * la 0.42 — iar secțiunea mai are după aceea peste două ecrane de derulat.
+     * Fără steagul ăsta, `cursor: none` rămânea aplicat pe tot restul drumului
+     * prin cetate, adică fără niciun cursor pe ecran.
+     */
+    beat.dataset.plan = progress < 0.35 ? 'sheet' : 'world';
   }, []);
 
   const rootRef = useRef<HTMLElement>(null);
@@ -785,6 +796,7 @@ function MacroFlowExperience() {
           {/* Ancorat în viewport, nu în scenă: panoul stă în colțul cadrului, iar
               `.hp-stage` se înclină odată cu planul. */}
           <NodePreview activeSlug={opening.activeSlug} />
+          <PlanReticle locked={opening.activeSlug !== null} />
         </div>
         <p className="hp-scroll-cue" aria-hidden="true">
           <i /> Derulează &middot; cetatea se ridică
