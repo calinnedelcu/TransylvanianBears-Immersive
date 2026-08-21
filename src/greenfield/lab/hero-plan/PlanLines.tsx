@@ -20,8 +20,6 @@ const RING = CITADEL.ring;
 const GATE = CITADEL.gate;
 const BAYS = CITADEL.bays;
 const CORE = CITADEL.core;
-const MARKER = CITADEL.nodeMarker;
-const ROUTE = CITADEL.route;
 
 const rad = (deg: number) => (deg * Math.PI) / 180;
 const at = (radius: number, deg: number, y = 0) =>
@@ -114,28 +112,17 @@ function buildDrawing(): Drawn[] {
   drawn.push({ points: [at(0.6, 45), at(0.6, 225)], tone: 'signal' });
   drawn.push({ points: [at(0.6, 135), at(0.6, 315)], tone: 'signal' });
 
-  // Seven system nodes: diamond, spur to the route, tick outward.
-  CITADEL.nodes.forEach((node) => {
-    const d = MARKER.size * 1.6;
-    const c = at(MARKER.radius, node.deg);
-    drawn.push({
-      points: [
-        new THREE.Vector3(c.x + d, 0, c.z),
-        new THREE.Vector3(c.x, 0, c.z + d),
-        new THREE.Vector3(c.x - d, 0, c.z),
-        new THREE.Vector3(c.x, 0, c.z - d),
-        new THREE.Vector3(c.x + d, 0, c.z),
-      ],
-      tone: 'signal',
-    });
-    drawn.push({
-      points: [at(ROUTE.radius, node.deg), at(MARKER.radius - d, node.deg)],
-      tone: 'signal',
-    });
-  });
-
-  // The signal route.
-  drawn.push({ points: arc(ROUTE.radius, ROUTE.startDeg, ROUTE.endDeg, 120, 0.02), tone: 'signal' });
+  // No system nodes and no route.
+  //
+  // Seven diamonds, a spur from each one to a signal arc, and the arc itself: that
+  // was the drawing of the index - the reader picked a system off the citadel and
+  // light ran down the route to it. The index is gone and the story is one scroll,
+  // so all of it drew a way of reading the building that no longer exists. The arc
+  // is the pale curve that used to hang over the plan with a lit head on it.
+  //
+  // What stays is the architecture: the enclosure, the niches, the gate, the core
+  // and its pivot cross, the frame ticks. That is the citadel being drawn, which is
+  // what the opening is about.
 
   return drawn;
 }

@@ -38,7 +38,6 @@ import {
 } from './school-act/schoolActCamera';
 import { CitadelSequence } from '../hero-plan/CitadelScene';
 import type { HeroOpening } from '../hero-plan/useHeroOpening';
-import { ThresholdResponseSequence } from './ThresholdResponseSequence';
 import {
   sampleVerticalSliceCamera,
   useVerticalSliceCameraCurves,
@@ -1299,11 +1298,12 @@ function World({
             />
           ) : null}
           {showThreshold ? <ThresholdExposure /> : null}
-          <ThresholdResponseSequence
-            progressRef={progressRef}
-            qualityTier={qualityTier}
-            reducedMotion={reducedMotion}
-          />
+          {/* The old gate's mechanism used to live here: six aperture blades on a
+              pivot at (0, 4.72, 15.84) - the doorway - with a cyan signal line
+              running up to a lit head, and a response sequence that opened them.
+              That door became a pair of timber leaves on hinges some time ago and
+              this kept rendering next to it: blades and a light trace standing in
+              the gateway of a building they no longer belong to. */}
         </group>
       ) : null}
       {showNexus ? (
