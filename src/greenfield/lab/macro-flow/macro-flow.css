@@ -1190,25 +1190,37 @@ body.mf-lab-mode {
   text-wrap: balance;
 }
 
+/*
+ * The instrument strip.
+ *
+ * It sat against the right edge, in the same corner as the evidence cores and in
+ * the middle of where the optic roams, so the reticle kept crossing it. And the
+ * three modes said nothing about themselves: each button carries a line
+ * describing what its mode does and that line was hidden from everyone but a
+ * screen reader, which left switching between them as a highlight moving along a
+ * row of one-word labels.
+ */
 .mf-lens-control {
   display: grid;
-  width: min(520px, calc(100vw - 14vw));
+  width: min(660px, calc(100vw - 8vw));
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  justify-self: end;
+  justify-self: center;
   margin: 0;
   border: 1px solid var(--mf-line);
-  background: rgb(7 10 11 / 0.68);
+  background: rgb(7 10 11 / 0.82);
   backdrop-filter: blur(18px);
 }
 
 .mf-lens-control button {
   display: grid;
   min-width: 0;
-  min-height: 52px;
+  /* Tall enough for the active tile's description, so the strip does not jog as
+     the reader moves between modes. */
+  min-height: 74px;
   grid-template-columns: 24px 1fr;
-  align-items: center;
+  align-items: start;
   gap: 9px;
-  padding: 8px 12px;
+  padding: 12px 12px;
   border: 0;
   border-right: 1px solid var(--mf-line);
   background: transparent;
@@ -1249,13 +1261,30 @@ body.mf-lab-mode {
   white-space: nowrap;
 }
 
+/* The active mode says what it is doing. */
+.mf-lens-control button[data-active] small {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+  font-size: 10px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  opacity: 0.74;
+}
+
 .mf-evidence-cores {
   position: absolute;
   z-index: 2;
   display: flex;
   pointer-events: none;
-  right: max(7vw, 92px);
-  bottom: 116px;
+  /* Directly over the strip rather than beside it, so the optic has the whole
+     frame above them both. */
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 140px;
   width: auto;
   min-height: 38px;
   align-items: center;

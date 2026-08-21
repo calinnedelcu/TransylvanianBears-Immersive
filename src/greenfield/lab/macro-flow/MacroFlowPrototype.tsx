@@ -551,11 +551,19 @@ function MacroFlowExperience() {
   }, [activeChapter, audioEnabled, getBuriedSoundscape]);
 
   const moveLens = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    // The sensor reaches the whole frame.
+    //
+    // X was clamped to 0.59-0.94 on desktop and 0.75-0.80 on compact - a five
+    // percent window. An instrument you can only point into the right-hand third
+    // of the picture is not an instrument, and on a phone it could not be aimed at
+    // all. The bounds now only keep it off the very edges, where half the optic
+    // would be outside the viewport.
     const compact = window.innerWidth <= 820;
-    const minimumX = compact ? 0.75 : 0.59;
-    const maximumX = compact ? 0.8 : 0.94;
-    const minimumY = compact ? 0.36 : 0.06;
-    const maximumY = compact ? 0.64 : 0.94;
+    const minimumX = compact ? 0.16 : 0.13;
+    const maximumX = compact ? 0.84 : 0.9;
+    const minimumY = compact ? 0.2 : 0.1;
+    // Stops above the instrument strip: the optic used to roam over it.
+    const maximumY = compact ? 0.66 : 0.76;
     const x = Math.max(minimumX, Math.min(maximumX, event.clientX / window.innerWidth));
     const yFromTop = Math.max(minimumY, Math.min(maximumY, event.clientY / window.innerHeight));
     lensPointerRef.current = { x, y: 1 - yFromTop, active: true };

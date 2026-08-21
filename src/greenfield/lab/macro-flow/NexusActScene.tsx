@@ -219,9 +219,23 @@ function createSemanticMaterial(
         return fract(sin(dot(value, vec2(127.1, 311.7))) * 43758.5453);
       }
 
+      /**
+       * A repeating line in world space, widened to whatever a pixel covers.
+       *
+       * Fixed at 0.035 it aliased: the courses are a line every 0.74 units, and on
+       * a sloped roof seen from across the street that lands well under a pixel,
+       * so the pattern beat against the sampling grid and every roof in the city
+       * came out crawling with diagonal hatching. The derivative gives the real
+       * width on screen, and the pattern dissolves into flat tone at the distance
+       * where it can no longer be resolved instead of tearing itself apart.
+       */
       float jointLine(float value, float density, float width) {
-        float cell = abs(fract(value * density) - 0.5);
-        return 1.0 - smoothstep(width, width + 0.035, cell);
+        float scaled = value * density;
+        float cell = abs(fract(scaled) - 0.5);
+        float pixel = fwidth(scaled);
+        float soft = max(0.035, pixel * 1.6);
+        float visible = 1.0 - smoothstep(0.16, 0.42, pixel);
+        return (1.0 - smoothstep(width, width + soft, cell)) * visible;
       }
 
       void main() {
@@ -402,16 +416,30 @@ function createDataKeepShape() {
   return shape;
 }
 
-function createMountainShape(seedOffset: number) {
+/**
+ * A ridge line for the horizon.
+ *
+ * The old one was twelve segments alternating between 2.2 and 5.2 high across
+ * thirty-six units: a regular zigzag, and it read as one. Real ridges have a few
+ * dominant peaks with smaller ones falling away from them, so this sums three
+ * octaves - the shape of the range, the summits on it, and the roughness on those
+ * - and pushes the base well below zero so nothing shows the card's bottom edge.
+ */
+function createMountainShape(seedOffset: number, halfWidth = 62, peak = 17) {
   const shape = new THREE.Shape();
-  shape.moveTo(-18, 0);
-  for (let index = 0; index <= 12; index += 1) {
-    const x = -18 + index * 3;
-    const ridge = index % 2 === 0 ? 2.2 : 5.2;
-    const height = ridge + seeded(seedOffset + index) * 2.8;
-    shape.lineTo(x, height);
+  const segments = 46;
+  shape.moveTo(-halfWidth, -14);
+  for (let index = 0; index <= segments; index += 1) {
+    const t = index / segments;
+    const x = -halfWidth + t * halfWidth * 2;
+    const range = Math.sin(t * Math.PI) ** 0.7;
+    const summits =
+      0.62 * seeded(seedOffset + Math.floor(index / 6))
+      + 0.26 * seeded(seedOffset + 41 + Math.floor(index / 2))
+      + 0.12 * seeded(seedOffset + 97 + index);
+    shape.lineTo(x, range * peak * (0.42 + summits * 0.72));
   }
-  shape.lineTo(18, 0);
+  shape.lineTo(halfWidth, -14);
   shape.closePath();
   return shape;
 }
@@ -478,18 +506,29 @@ function updateDataStreamColors(geometry: THREE.BufferGeometry, colors: string[]
 }
 
 function CarpathianDataHorizon() {
-  const nearShape = useMemo(() => createMountainShape(31), []);
-  const farShape = useMemo(() => createMountainShape(91), []);
+  // Three ranges, behind where the camera ever gets to.
+  //
+  // These stood at -51 and -48.5, and the camera now drives to -62: the reader
+  // spent the end of the act flying into a flat card and through it. They sit at
+  // -86, -112 and -140 now, wider and taller to hold the same part of the frame
+  // from further off, and paler with distance so the fog can stack them.
+  const near = useMemo(() => createMountainShape(31, 54, 15), []);
+  const mid = useMemo(() => createMountainShape(91, 74, 21), []);
+  const far = useMemo(() => createMountainShape(157, 96, 27), []);
 
   return (
     <group>
-      <mesh position={[-5, -0.1, -51]}>
-        <shapeGeometry args={[farShape]} />
-        <meshBasicMaterial color="#0d191a" fog />
+      <mesh position={[8, -0.4, -140]}>
+        <shapeGeometry args={[far]} />
+        <meshBasicMaterial color="#0b1417" fog />
       </mesh>
-      <mesh position={[5, -0.18, -48.5]} scale={[1.15, 0.72, 1]}>
-        <shapeGeometry args={[nearShape]} />
-        <meshBasicMaterial color="#142423" fog />
+      <mesh position={[-12, -0.3, -112]}>
+        <shapeGeometry args={[mid]} />
+        <meshBasicMaterial color="#0d1a1c" fog />
+      </mesh>
+      <mesh position={[4, -0.2, -86]}>
+        <shapeGeometry args={[near]} />
+        <meshBasicMaterial color="#122123" fog />
       </mesh>
     </group>
   );
