@@ -26,7 +26,7 @@ import {
   type BuriedActCameraCurve,
 } from './buried-act/buriedActCamera';
 
-import { NexusActScene } from './NexusActScene';
+import { NexusActScene, measureNexusLensWindow } from './NexusActScene';
 import { VerticalSliceLoader } from './VerticalSliceLoader';
 import { VerticalSliceLoadingGate } from './VerticalSliceLoadingGate';
 import type { LensPointerState, MacroLensMode, MacroTraceOutcome, NexusFlightInput } from './macroFlowTypes';
@@ -209,6 +209,7 @@ function CameraDirector({
     // the layout can have moved under them.
     const measure = () => {
       root.dataset.cameraRanges = measureVerticalSliceCameraRanges() ? 'measured' : 'fallback';
+      root.dataset.lensWindow = measureNexusLensWindow() ? 'measured' : 'fallback';
     };
     measure();
     window.addEventListener('resize', measure);
@@ -1148,12 +1149,19 @@ function NexusWorld({ compact }: { compact: boolean }) {
   return (
     <>
       <color attach="background" args={['#05080b']} />
-      {/* Far and cold. Haze in a dataset is noise, not mood. */}
-      <fog attach="fog" args={['#080f13', 44, 150]} />
+      {/* Far and cold, but it has to start somewhere the reader can see.
+          The near plane was at 44, and the whole street sits inside 44 of the
+          camera: nothing in the act was ever fogged, so the far end of the road
+          fell off a cliff into black instead of receding. */}
+      <fog attach="fog" args={['#0a1318', 11, 96]} />
       {/* Even illumination, because the point is that every frame matches. */}
-      <ambientLight intensity={0.42} color="#c4d4dc" />
+      <ambientLight intensity={0.52} color="#c4d4dc" />
       {/* Directly above and soft: a light rig over a capture volume, not a sun. */}
       <directionalLight position={[0, 40, 6]} intensity={0.72} color="#dfe9ee" />
+      {/* And one off the side, low, so the buildings down both kerbs have a face
+          instead of a silhouette. Overhead light alone leaves every vertical
+          surface in the act reading as a hole cut in the sky. */}
+      <directionalLight position={[-16, 9, 12]} intensity={0.34} color="#9fc0cd" />
       {/* The instrument's own colour, which is the only thing here allowed to be
           expressive: reticles, annotations, the lens looking. */}
       <pointLight

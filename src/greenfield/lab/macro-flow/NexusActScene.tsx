@@ -270,6 +270,52 @@ function createCityMaterial(raw: string, segment: string) {
   return createSemanticMaterial(raw, segment, 0);
 }
 
+/**
+ * How much of the semantic lens is in the frame.
+ *
+ * This was `range(progress, 0.13, 0.16)` fading out over `0.285 -> 0.318`, in
+ * journey progress - fractions of the whole document. The lens chapter actually
+ * runs 0.104 to 0.134 of it, so the lens began to appear in the last one percent
+ * of the section it belongs to and would only have been fully on inside the next
+ * chapter, where the city is not rendered at all. Raw, Segmentation and Detection
+ * were switching a uniform that was multiplied by zero: the three buttons that are
+ * the point of the chapter produced identical frames.
+ *
+ * Measured from the sections instead, and re-measured on resize, so it cannot
+ * drift again the next time a beat changes height.
+ */
+let LENS_WINDOW = { inFrom: 0.13, inTo: 0.16, outFrom: 0.285, outTo: 0.318 };
+
+export function measureNexusLensWindow(): boolean {
+  if (typeof document === 'undefined') return false;
+  const lens = document.getElementById('mf-lens');
+  const proof = document.getElementById('mf-proof');
+  const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+  if (!lens || !proof || scrollable <= 0 || proof.offsetTop <= lens.offsetTop) return false;
+  const start = lens.offsetTop / scrollable;
+  const end = proof.offsetTop / scrollable;
+  const span = Math.max(1e-4, end - start);
+  // Reaching in before the section and letting go after it, so the lens is already
+  // there when the reader arrives and does not snap off at the boundary.
+  LENS_WINDOW = {
+    inFrom: start - span * 0.4,
+    inTo: start + span * 0.14,
+    outFrom: end - span * 0.1,
+    outTo: end + span * 0.3,
+  };
+  return true;
+}
+
+/** What the sampler is using. Exposed so a probe can check it. */
+export function nexusLensWindow() {
+  return { ...LENS_WINDOW };
+}
+
+function lensPresenceAt(progress: number) {
+  return smooth(range(progress, LENS_WINDOW.inFrom, LENS_WINDOW.inTo))
+    * (1 - smooth(range(progress, LENS_WINDOW.outFrom, LENS_WINDOW.outTo)));
+}
+
 function updateSemanticMaterials(
   materials: THREE.ShaderMaterial[],
   lensMode: MacroLensMode,
@@ -1273,8 +1319,7 @@ function StreetFurniture({
   }, [markingCount, qualityTier, rockCount, scratch, scratchColor, shrubCount]);
 
   useFrame(({ gl, size }) => {
-    const lensPresence = smooth(range(progressRef.current, 0.13, 0.16))
-      * (1 - smooth(range(progressRef.current, 0.285, 0.318)));
+    const lensPresence = lensPresenceAt(progressRef.current);
     updateSemanticMaterials(
       Object.values(semanticMaterials),
       lensMode,
@@ -1356,8 +1401,7 @@ function Traffic({
     const cabins = cabinRef.current;
     const wheels = wheelRef.current;
     if (!bodies || !cabins || !wheels) return;
-    const lensPresence = smooth(range(progressRef.current, 0.13, 0.16))
-      * (1 - smooth(range(progressRef.current, 0.285, 0.318)));
+    const lensPresence = lensPresenceAt(progressRef.current);
     updateSemanticMaterials(
       [materials.body, materials.cabin],
       lensMode,
@@ -1513,8 +1557,7 @@ function TrackedSubjects({
   }, [pedestrians, scratchColor, transforms]);
 
   useFrame(({ clock, gl, size }) => {
-    const lensPresence = smooth(range(progressRef.current, 0.13, 0.16))
-      * (1 - smooth(range(progressRef.current, 0.285, 0.318)));
+    const lensPresence = lensPresenceAt(progressRef.current);
     updateSemanticMaterials(
       [materials.solid, materials.body, materials.head, materials.limb],
       lensMode,
@@ -1860,8 +1903,7 @@ function BatchedCityBuildings({
   }, [scratchColor, windowColumns, windowRows]);
 
   useFrame(({ gl, size }) => {
-    const lensPresence = smooth(range(progressRef.current, 0.13, 0.16))
-      * (1 - smooth(range(progressRef.current, 0.285, 0.318)));
+    const lensPresence = lensPresenceAt(progressRef.current);
     updateSemanticMaterials(
       Object.values(materials),
       lensMode,
@@ -2348,8 +2390,7 @@ function CompactNexusCity({
     const progress = progressRef.current;
     const reveal = motionRange(progress, 0.035, 0.062, reducedMotion);
     const departure = motionRange(progress, 0.285, 0.345, reducedMotion);
-    const lensPresence = smooth(range(progress, 0.13, 0.16))
-      * (1 - smooth(range(progress, 0.285, 0.318)));
+    const lensPresence = lensPresenceAt(progress);
     updateSemanticMaterials(
       [materials.architecture, materials.street, materials.opening, materials.person, materials.traffic],
       lensMode,
@@ -2464,6 +2505,108 @@ function CompactNexusCity({
   );
 }
 
+/**
+ * What the street lamps were not doing.
+ *
+ * Twelve lamp heads stood lit down both kerbs and there was not a single light in
+ * the whole act: they were emissive boxes over a road nothing fell on, so the
+ * street read as flat geometry in the dark and the far end of it read as nothing
+ * at all. Real lights are the wrong answer here - twelve of them on a scene this
+ * cheap is a lot of shader for pools that never move - so the pools are drawn:
+ * a disc on the tarmac under each head and a cone of air above it.
+ *
+ * Steady, and matched to the lamps' own colour. This is a capture volume and the
+ * brief for it is that every frame matches, so nothing here flickers.
+ */
+const LAMP_COUNT = 12;
+const LAMP_COLOR = '#e8c98a';
+
+function lampPlacement(index: number) {
+  const side = index % 2 === 0 ? -1 : 1;
+  return { x: side * 3.63, z: 2 - Math.floor(index / 2) * 8.8 };
+}
+
+function StreetLamplight({ qualityTier }: Pick<NexusActSceneProps, 'qualityTier'>) {
+  const poolRef = useRef<THREE.InstancedMesh>(null);
+  const coneRef = useRef<THREE.InstancedMesh>(null);
+  const scratch = useMemo(() => new THREE.Object3D(), []);
+
+  const pool = useMemo(() => new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    toneMapped: false,
+    uniforms: { uColor: { value: new THREE.Color(LAMP_COLOR) } },
+    vertexShader: `varying vec2 vUv;
+      void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `varying vec2 vUv; uniform vec3 uColor;
+      void main() {
+        float d = length(vUv - 0.5) * 2.0;
+        // A hot core and a long tail, which is what a lamp on tarmac looks like.
+        float a = smoothstep(1.0, 0.0, d) * 0.44 + smoothstep(0.36, 0.0, d) * 0.62;
+        if (a < 0.004) discard;
+        gl_FragColor = vec4(uColor, a);
+      }`,
+  }), []);
+
+  const cone = useMemo(() => new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    toneMapped: false,
+    uniforms: { uColor: { value: new THREE.Color(LAMP_COLOR) } },
+    vertexShader: `varying vec2 vUv;
+      void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `varying vec2 vUv; uniform vec3 uColor;
+      void main() {
+        // Densest at the head, gone before it reaches the road.
+        float a = smoothstep(0.0, 0.85, vUv.y) * 0.14;
+        if (a < 0.004) discard;
+        gl_FragColor = vec4(uColor, a);
+      }`,
+  }), []);
+
+  useEffect(() => () => { pool.dispose(); cone.dispose(); }, [pool, cone]);
+
+  useLayoutEffect(() => {
+    for (let index = 0; index < LAMP_COUNT; index += 1) {
+      const { x, z } = lampPlacement(index);
+      if (poolRef.current) {
+        scratch.position.set(x, 0.035, z);
+        scratch.rotation.set(-Math.PI / 2, 0, 0);
+        scratch.scale.setScalar(9.2);
+        scratch.updateMatrix();
+        poolRef.current.setMatrixAt(index, scratch.matrix);
+      }
+      if (coneRef.current) {
+        scratch.position.set(x, 1.55, z);
+        scratch.rotation.set(0, 0, 0);
+        scratch.scale.set(1, 1, 1);
+        scratch.updateMatrix();
+        coneRef.current.setMatrixAt(index, scratch.matrix);
+      }
+    }
+    if (poolRef.current) poolRef.current.instanceMatrix.needsUpdate = true;
+    if (coneRef.current) coneRef.current.instanceMatrix.needsUpdate = true;
+  }, [scratch]);
+
+  return (
+    <group renderOrder={4}>
+      <instancedMesh ref={poolRef} args={[undefined, undefined, LAMP_COUNT]} frustumCulled={false} raycast={() => {}}>
+        <planeGeometry args={[1, 1]} />
+        <primitive object={pool} attach="material" />
+      </instancedMesh>
+      {qualityTier === 'cinematic' ? (
+        <instancedMesh ref={coneRef} args={[undefined, undefined, LAMP_COUNT]} frustumCulled={false} raycast={() => {}}>
+          <cylinderGeometry args={[0.34, 2.5, 3.0, 10, 1, true]} />
+          <primitive object={cone} attach="material" />
+        </instancedMesh>
+      ) : null}
+    </group>
+  );
+}
+
 function NexusCity({
   progressRef,
   lensMode,
@@ -2492,7 +2635,7 @@ function NexusCity({
     const progress = progressRef.current;
     const fieldReveal = motionRange(progress, 0.045, 0.09, reducedMotion);
     const solidReveal = motionRange(progress, 0.058, 0.112, reducedMotion);
-    const lensPresence = smooth(range(progress, 0.13, 0.16)) * (1 - smooth(range(progress, 0.285, 0.318)));
+    const lensPresence = lensPresenceAt(progress);
     updateSemanticMaterials(
       cityMaterials,
       lensMode,
@@ -3173,7 +3316,7 @@ function LensOptic({ progressRef, lensPointerRef, lensMode }: Pick<NexusActScene
 
   useFrame(({ camera, size }, delta) => {
     if (!rootRef.current) return;
-    const presence = smooth(range(progressRef.current, 0.13, 0.16)) * (1 - smooth(range(progressRef.current, 0.285, 0.31)));
+    const presence = lensPresenceAt(progressRef.current);
     const lensPointer = lensPointerRef?.current;
     cursor.set((lensPointer?.x ?? 0.76) * 2 - 1, (lensPointer?.y ?? 0.54) * 2 - 1, 0.12).unproject(camera);
     direction.copy(cursor).sub(camera.position).normalize();
@@ -3232,8 +3375,7 @@ function CompactLensOptic({
 
   useFrame(({ camera }, delta) => {
     if (!rootRef.current) return;
-    const presence = smooth(range(progressRef.current, 0.13, 0.16))
-      * (1 - smooth(range(progressRef.current, 0.285, 0.31)));
+    const presence = lensPresenceAt(progressRef.current);
     const lensPointer = lensPointerRef.current;
     cursor.set(lensPointer.x * 2 - 1, lensPointer.y * 2 - 1, 0.12).unproject(camera);
     direction.copy(cursor).sub(camera.position).normalize();
@@ -3273,7 +3415,10 @@ export function NexusActScene(props: NexusActSceneProps) {
             reducedMotion={reducedMotion}
           />
         ) : (
-          <NexusCity {...props} reducedMotion={reducedMotion} />
+          <>
+            <NexusCity {...props} reducedMotion={reducedMotion} />
+            <StreetLamplight qualityTier={props.qualityTier} />
+          </>
         )
       ) : null}
       {fieldProfile ? (
