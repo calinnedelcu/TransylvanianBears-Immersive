@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * The state the opening shares with its 3D scene.
@@ -15,30 +15,19 @@ export function useHeroOpening() {
   // Unde sta desenul pe ecran. Scena 3D isi deriva pozitia camerei din asta,
   // ca modelul sa aterizeze exact peste plan la orice latime.
   const planFrameRef = useRef<PlanFrame | null>(null);
-  const tagsRef = useRef<HTMLDivElement | null>(null);
 
   /**
-   * Hover and choice are two different things, and merging them made the labels
-   * unusable: the camera walks to whichever system is chosen and the labels are
-   * projected from that camera, so hovering sent the label out from under the
-   * cursor and the hover ended itself. Hover lights a system up and names it.
-   * Travelling to one takes a click.
+   * Which system the pointer is over, and nothing more.
+   *
+   * There used to be a chosen system as well, kept apart from the hovered one
+   * because merging them made the labels unusable: the camera walked to whatever
+   * was chosen and the labels were projected from that camera, so hovering sent a
+   * label out from under the cursor and ended its own hover. Choosing is gone with
+   * the index it belonged to - the story is one scroll now - and what survives is
+   * the drawing lighting a system up as you pass over it.
    */
   const [hoverSlug, setHoverSlug] = useState<string | null>(null);
-  const [focusSlug, setFocusSlug] = useState<string | null>(null);
-  const activeSlug = focusSlug ?? hoverSlug;
-  // Sistemele deschise raman aprinse: pleci dintr-o cetate diferita de cea in care ai intrat.
-  const [visited, setVisited] = useState<ReadonlySet<string>>(() => new Set());
-
-  const selectNode = useCallback((slug: string) => {
-    setFocusSlug((current) => (current === slug ? null : slug));
-    setVisited((current) => {
-      if (current.has(slug)) return current;
-      const next = new Set(current);
-      next.add(slug);
-      return next;
-    });
-  }, []);
+  const activeSlug = hoverSlug;
 
   useEffect(() => {
     const measure = () => {
@@ -65,12 +54,8 @@ export function useHeroOpening() {
   return {
     planRef,
     planFrameRef,
-    tagsRef,
     activeSlug,
-    focusSlug,
-    visited,
     setHoverSlug,
-    selectNode,
   };
 }
 

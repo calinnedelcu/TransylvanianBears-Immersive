@@ -4,10 +4,8 @@ import { useEffect, useMemo, useRef, type MutableRefObject } from 'react';
 import * as THREE from 'three';
 import CITADEL from '../../../../shared/citadel.json';
 import { PlanLines } from './PlanLines';
-import { WorldTags } from './WorldTags';
 import type { BuildUniforms, Lamp } from './luminousCitadel';
 import {
-  EMISSIVE_STRENGTH,
   GLASS_COLOR,
   GLASS_OPACITY,
   createBuildPulse,
@@ -20,7 +18,6 @@ import {
 import { onRing } from './citadelSpace';
 import { gateBeyond, gateThreshold } from './departures';
 import { NightSky } from './NightSky';
-import { SignalRoute } from './SignalRoute';
 
 const CITADEL_URL = '/assets/world/citadel.glb';
 useGLTF.preload(CITADEL_URL);
@@ -172,39 +169,19 @@ function authoredName(object: THREE.Object3D): string {
   return object.name.replace(/_/g, ' ');
 }
 
-/** Walks up from whatever mesh was hit to the named node it belongs to. */
-function nodeSlugFor(object: THREE.Object3D | null): string | null {
-  let current = object;
-  while (current) {
-    const match = /^Node(?: signal)? (.+)$/.exec(authoredName(current));
-    if (match) return match[1];
-    current = current.parent;
-  }
-  return null;
-}
-
 function CitadelModel({
   progressRef,
   handoffRef,
-  activeSlug,
-  visited,
   reducedMotion,
-  onHover,
-  onSelect,
 }: {
   progressRef: MutableRefObject<number>;
   handoffRef?: MutableRefObject<number>;
-  activeSlug: string | null;
-  visited: ReadonlySet<string>;
   reducedMotion: boolean;
-  onHover: (slug: string | null) => void;
-  onSelect: (slug: string) => void;
 }) {
   const { scene } = useGLTF(CITADEL_URL);
   const tipRef = useRef<THREE.Group>(null);
   const worldRef = useRef<THREE.Group>(null);
   const worldSolidRef = useRef<THREE.Group>(null);
-  const signalsRef = useRef<Array<{ slug: string; material: THREE.MeshStandardMaterial; base: number }>>([]);
   const piecesRef = useRef<
     Array<{
       object: THREE.Object3D;
@@ -438,23 +415,6 @@ function CitadelModel({
         });
       });
 
-    // Each system marker keeps its own material instance so one can light alone.
-    signalsRef.current = [];
-    citadel?.traverse((object) => {
-      if (!(object instanceof THREE.Mesh)) return;
-      const slug = nodeSlugFor(object);
-      if (!slug || !authoredName(object).startsWith('Node signal')) return;
-  
-      const material = (object.material as THREE.MeshStandardMaterial).clone();
-      object.material = material;
-      // The clone is what renders, so the lamp record has to point at it, and the
-      // base comes from the constant rather than from the material: lit pieces now
-      // start dark and are brought up by the build, so reading the live intensity
-      // here captured a zero and left every unvisited signal off for good.
-      delete object.userData.lamp;
-      signalsRef.current.push({ slug, material, base: EMISSIVE_STRENGTH });
-    });
-
     // Nothing is solid while the sheet is still a drawing: the citadel is simply
     // absent. It no longer gets flattened, because the stages now rise by moving
     // up out of the ground rather than by stretching from zero height.
@@ -650,43 +610,13 @@ function CitadelModel({
     }
   });
 
-  useFrame(() => {
-    // A visited system stays lit, so the citadel you leave is not the one you met.
-    // Signals light with the citadel, then answer to selection on top of that.
-    const signalLit = smooth(range(progressRef.current, MATERIAL_START, MATERIAL_END));
-    signalsRef.current.forEach(({ slug, material, base }) => {
-      const wanted = (slug === activeSlug ? 5.2 : visited.has(slug) ? 2.6 : base) * signalLit;
-      material.emissiveIntensity += (wanted - material.emissiveIntensity) * 0.12;
-    });
-  });
-
-  // Read on the event, not at render: progressRef never triggers a re-render, so a
-  // value captured here would freeze at whatever it was when the tree last built.
-  const canInspect = () => progressRef.current > 0.9;
-
   return (
     <>
-      <group
-        onPointerMove={(event) => {
-          if (!canInspect()) return;
-          const slug = nodeSlugFor(event.object);
-          if (slug) {
-            event.stopPropagation();
-            onHover(slug);
-          }
-        }}
-        onPointerOut={() => canInspect() && onHover(null)}
-        onClick={(event) => {
-          if (!canInspect()) return;
-          const slug = nodeSlugFor(event.object);
-          if (slug) {
-            event.stopPropagation();
-            onSelect(slug);
-          }
-        }}
-      >
-        <group ref={worldSolidRef} />
-      </group>
+      {/* The citadel is scenery on a road the reader is already travelling.
+          There were pointer handlers here that hovered and selected a system,
+          from when it was an index you picked a project off. The story is one
+          continuous scroll now and nothing was listening on the other end. */}
+      <group ref={worldSolidRef} />
       <group ref={tipRef} rotation={[Math.PI / 2, 0, 0]}>
         {/* Drawn lines live on the sheet, so the whole plan tips as one piece. */}
         <PlanLines progressRef={progressRef} fadeStart={DRAWING_FADE_START} fadeEnd={RISE_END} />
@@ -759,34 +689,13 @@ type PlanFrame = { cx: number; cy: number; radius: number };
  * the SVG plan actually sits, so the model lands exactly on top of the drawing at
  * any viewport. That is what lets the drawing hand over without a visible cut.
  */
-/**
- * Where the camera stands to inspect one system, derived from its ring angle.
- *
- * Fifteen units from the wall at a forty degree field of view puts nothing in the
- * frame but the wall: the reader chose a system and was shown masonry. It stands
- * further out and higher now, and looks past the chosen bay into the courtyard,
- * so the system is read in the citadel rather than instead of it.
- */
-function nodePose(deg: number) {
-  const a = (deg * Math.PI) / 180;
-  const out = CITADEL.ring.outerRadius;
-  return {
-    eye: new THREE.Vector3(Math.cos(a) * (out + 23), 13.5, Math.sin(a) * (out + 23)),
-    target: new THREE.Vector3(Math.cos(a) * (out - 3), 6.2, Math.sin(a) * (out - 3)),
-  };
-}
-
-const NODE_POSES = new Map(CITADEL.nodes.map((node) => [node.id, nodePose(node.deg)]));
-
 function CameraRig({
   progressRef,
   planFrameRef,
-  focusSlug,
   handoffRef,
 }: {
   progressRef: MutableRefObject<number>;
   planFrameRef: MutableRefObject<PlanFrame | null>;
-  focusSlug: string | null;
   handoffRef?: MutableRefObject<number>;
 }) {
   const { camera, size } = useThree();
@@ -794,7 +703,6 @@ function CameraRig({
   const target = useMemo(() => new THREE.Vector3(), []);
   const planEye = useMemo(() => new THREE.Vector3(), []);
   const planTarget = useMemo(() => new THREE.Vector3(), []);
-  const inspectRef = useRef(0);
 
   useFrame(() => {
     const frame = planFrameRef.current;
@@ -839,16 +747,6 @@ function CameraRig({
     }
     eye.y = Math.max(eye.y + arc, GROUND_CLEARANCE);
     target.lerpVectors(planTarget, HERO_TARGET, t);
-
-    // Traverse: once the citadel stands, choosing a system walks the camera to it
-    // and choosing nothing walks it back. The scroll pose stays the anchor.
-    const pose = focusSlug ? NODE_POSES.get(focusSlug) : undefined;
-    const inspect = pose && progressRef.current > 0.92 ? 1 : 0;
-    inspectRef.current += (inspect - inspectRef.current) * 0.07;
-    if (pose && inspectRef.current > 0.001) {
-      eye.lerp(pose.eye, inspectRef.current);
-      target.lerp(pose.target, inspectRef.current);
-    }
 
     // Out through the gate.
     //
@@ -929,9 +827,7 @@ type CitadelSceneProps = {
   planFrameRef: MutableRefObject<PlanFrame | null>;
   reducedMotion: boolean;
   /** Lit and named: whatever the reader is on, hovered or chosen. */
-  activeSlug: string | null;
   /** Chosen outright. Only this moves the camera; see the note in the page. */
-  focusSlug: string | null;
   /**
    * 0 to 1 across the scroll between the citadel standing and the first chapter.
    *
@@ -940,10 +836,6 @@ type CitadelSceneProps = {
    * through the gate the citadel just opened, which is the only exit it has.
    */
   handoffRef?: MutableRefObject<number>;
-  visited: ReadonlySet<string>;
-  onHover: (slug: string | null) => void;
-  onSelect: (slug: string) => void;
-  tagsRef: MutableRefObject<HTMLDivElement | null>;
 };
 
 /**
@@ -958,13 +850,7 @@ export function CitadelSequence({
   progressRef,
   planFrameRef,
   reducedMotion,
-  activeSlug,
-  focusSlug,
   handoffRef,
-  visited,
-  onHover,
-  onSelect,
-  tagsRef,
   exposure,
   lit = true,
   sky = true,
@@ -975,12 +861,9 @@ export function CitadelSequence({
       <CameraRig
         progressRef={progressRef}
         planFrameRef={planFrameRef}
-        focusSlug={focusSlug}
         handoffRef={handoffRef}
       />
-      <WorldTags progressRef={progressRef} tagsRef={tagsRef} showFrom={RISE_END} />
       {sky ? <NightSky progressRef={progressRef} showFrom={TIP_END} /> : null}
-      <SignalRoute progressRef={progressRef} activeSlug={activeSlug} showFrom={RISE_START} />
 
       {/* Blue hour: cool sky key, warm occupancy fill, readable shadow detail.
           Skippable, because a host scene arrives with a lighting rig of its own
@@ -1008,11 +891,7 @@ export function CitadelSequence({
       <CitadelModel
         progressRef={progressRef}
         handoffRef={handoffRef}
-        activeSlug={activeSlug}
-        visited={visited}
         reducedMotion={reducedMotion}
-        onHover={onHover}
-        onSelect={onSelect}
       />
     </>
   );

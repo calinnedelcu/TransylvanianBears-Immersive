@@ -1295,13 +1295,7 @@ function World({
               progressRef={heroProgressRef}
               planFrameRef={opening.planFrameRef}
               reducedMotion={reducedMotion}
-              activeSlug={opening.activeSlug}
-              focusSlug={opening.focusSlug}
               handoffRef={heroHandoffRef}
-              visited={opening.visited}
-              onHover={opening.setHoverSlug}
-              onSelect={opening.selectNode}
-              tagsRef={opening.tagsRef}
             />
           ) : null}
           {showThreshold ? <ThresholdExposure /> : null}
