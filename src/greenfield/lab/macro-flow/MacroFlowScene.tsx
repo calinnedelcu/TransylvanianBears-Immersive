@@ -824,7 +824,15 @@ function PostEffects({
   qualityTier,
   activeChapter,
 }: Pick<MacroFlowSceneProps, 'qualityTier' | 'activeChapter'>) {
-  if (activeChapter === 'lens' || activeChapter === 'proof') return null;
+  // Only the editorial clearing goes without.
+  //
+  // The lens chapter used to be excluded too, and the composer is where the bloom
+  // lives: every lit window and every lamp on that street loses its glow the frame
+  // the chapter label changes, so walking from the first chapter into the second
+  // put the lights out. Mean frame luminance stepped 32 to 24 across a boundary
+  // nothing else moves at. The clearing has no 3D behind it, so it keeps the
+  // exemption it actually needs.
+  if (activeChapter === 'proof') return null;
   if (qualityTier !== 'cinematic' && activeChapter !== 'threshold') return null;
 
   // The opening used to be a castle with warm windows on a dark horizon, and the
