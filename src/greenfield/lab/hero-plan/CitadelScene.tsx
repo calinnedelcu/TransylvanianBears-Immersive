@@ -5,8 +5,10 @@ import * as THREE from 'three';
 import CITADEL from '../../../../shared/citadel.json';
 import { PlanLines } from './PlanLines';
 import { WorldTags } from './WorldTags';
-import type { BuildUniforms } from './luminousCitadel';
+import type { BuildUniforms, Lamp } from './luminousCitadel';
 import {
+  EMISSIVE_STRENGTH,
+  GLASS_COLOR,
   GLASS_OPACITY,
   createBuildPulse,
   createCrossingFlash,
@@ -212,6 +214,7 @@ function CitadelModel({
       settle: number;
       build: BuildUniforms | null;
       solid: THREE.MeshStandardMaterial | null;
+      lamp: Lamp | null;
     }>
   >([]);
   const bladesRef = useRef<Array<{ pivot: THREE.Object3D; baseYaw: number; turn: number; phase: number }>>([]);
@@ -318,24 +321,40 @@ function CitadelModel({
     citadel?.children.forEach((stage) => {
       const weight = STAGE_WEIGHT[authoredName(stage)];
       if (weight === undefined) return;
-      stage.children.forEach((object) => {
+      // traverse, not children.
+      //
+      // A merged family with two materials in it comes back from the exporter as a
+      // mesh with a mesh inside it - the second primitive - and reading only the
+      // stage's direct children missed every one of those. They still got the glass
+      // material and a lamp record from makeLuminous, and then nothing to drive
+      // either: four tower window sets stayed dark for good while the panes beside
+      // them lit. It also missed the gate leaves once they were rehung on pivots.
+      stage.traverse((object) => {
         if (!(object as THREE.Mesh).isMesh) return;
+        // Carried pieces are moved by their parent. Driving their position too
+        // would drop them twice as far as the piece they belong to.
+        const parent = object.parent;
+        const carried = parent !== stage && Boolean((parent as THREE.Mesh | null)?.isMesh);
         const baseY = (object.userData.baseY as number | undefined) ?? object.position.y;
         object.userData.baseY = baseY;
         box.setFromObject(object);
         const height = Number.isFinite(box.max.y) ? Math.max(1.5, box.max.y - box.min.y) : 8;
-        // Mostly scattered, lightly weighted so structure still tends to lead.
-        const delay = Math.min(0.999, weight * 0.25 + scatterOrder(object.name) * 0.75);
+        // Mostly scattered, lightly weighted so structure still tends to lead. A
+        // carried piece takes its parent's schedule, or the two halves of one
+        // merged family pour at different moments.
+        const order = scatterOrder(carried && parent ? parent.name : object.name);
+        const delay = Math.min(0.999, weight * 0.25 + order * 0.75);
         piecesRef.current.push({
           object,
           baseY,
-          drop: height + Math.max(2, box.max.y),
+          drop: carried ? 0 : height + Math.max(2, box.max.y),
           delay,
           // A second, independent scatter: the order pieces turn to stone is not
           // the order they arrived in, so the citadel keeps changing after it is up.
-          settle: scatterOrder(`${object.name}-settle`),
+          settle: scatterOrder(`${carried && parent ? parent.name : object.name}-settle`),
           build: (object.userData.build as BuildUniforms | undefined) ?? null,
           solid: (object.userData.glass as THREE.MeshStandardMaterial | undefined) ?? null,
+          lamp: (object.userData.lamp as Lamp | undefined) ?? null,
         });
       });
     });
@@ -425,9 +444,15 @@ function CitadelModel({
       if (!(object instanceof THREE.Mesh)) return;
       const slug = nodeSlugFor(object);
       if (!slug || !authoredName(object).startsWith('Node signal')) return;
+  
       const material = (object.material as THREE.MeshStandardMaterial).clone();
       object.material = material;
-      signalsRef.current.push({ slug, material, base: material.emissiveIntensity });
+      // The clone is what renders, so the lamp record has to point at it, and the
+      // base comes from the constant rather than from the material: lit pieces now
+      // start dark and are brought up by the build, so reading the live intensity
+      // here captured a zero and left every unvisited signal off for good.
+      delete object.userData.lamp;
+      signalsRef.current.push({ slug, material, base: EMISSIVE_STRENGTH });
     });
 
     // Nothing is solid while the sheet is still a drawing: the citadel is simply
@@ -472,7 +497,7 @@ function CitadelModel({
       citadelRef.current.visible = p >= RISE_START;
 
       piecesRef.current.forEach((piece) => {
-        const { object, baseY, drop, delay, settle, build, solid } = piece;
+        const { object, baseY, drop, delay, settle, build, solid, lamp } = piece;
 
         // Phase one: the piece travels up out of the ground, still glass.
         const from = RISE_START + delay * (RISE_END - RISE_START) * 0.82;
@@ -499,6 +524,15 @@ function CitadelModel({
             : smooth(range(built, 0.55, 0.9)) * (1 - smooth(range(built, 0.9, 1)));
           build.uFlash.value = Math.max(snap * 0.85, flare);
         }
+        // A lamp comes up with the wall it is set into, not before it. Driven here
+        // rather than in the shader because these pieces deliberately skip the
+        // build shader: a window that goes translucent stops being a window.
+        if (lamp) {
+          const lit = smooth(built);
+          lamp.material.emissiveIntensity = lamp.base * lit;
+          lamp.material.color.copy(GLASS_COLOR).lerp(lamp.tint, lit);
+        }
+
         // A finished piece is opaque, and has to be in the opaque queue to prove it.
         //
         // Half poured it must not write depth: it would write for the part that is
@@ -618,8 +652,10 @@ function CitadelModel({
 
   useFrame(() => {
     // A visited system stays lit, so the citadel you leave is not the one you met.
+    // Signals light with the citadel, then answer to selection on top of that.
+    const signalLit = smooth(range(progressRef.current, MATERIAL_START, MATERIAL_END));
     signalsRef.current.forEach(({ slug, material, base }) => {
-      const wanted = slug === activeSlug ? 5.2 : visited.has(slug) ? 2.6 : base;
+      const wanted = (slug === activeSlug ? 5.2 : visited.has(slug) ? 2.6 : base) * signalLit;
       material.emissiveIntensity += (wanted - material.emissiveIntensity) * 0.12;
     });
   });

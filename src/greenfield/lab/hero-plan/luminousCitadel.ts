@@ -28,6 +28,8 @@ const EDGE_TONES: Array<[RegExp, string, number]> = [
  */
 export const GLASS_COLOR = new THREE.Color('#4a6270');
 const GLASS_OPACITY = 0.34;
+/** How hard a lit surface burns once its piece has turned to stone. */
+export const EMISSIVE_STRENGTH = 2.6;
 
 /**
  * Line hierarchy.
@@ -305,6 +307,12 @@ function toneFor(materialName: string): [string, number] {
   return match ? [match[1], match[2]] : ['#9aa3a0', 0.45];
 }
 
+export type Lamp = {
+  material: THREE.MeshStandardMaterial;
+  base: number;
+  tint: THREE.Color;
+};
+
 export type LuminousParts = {
   /** Line overlays, so they can fade in with the rise. */
   lines: THREE.LineSegments[];
@@ -391,19 +399,27 @@ export function makeLuminous(root: THREE.Object3D, threshold = 32): LuminousPart
       //
       // Roughness and metalness are 1 so the packed map lands unscaled; the
       // authored scalars ride in the uniforms for the pieces that have no map.
-      color: emissive ? source.color.clone() : 0xffffff,
+      // Lit pieces start as glass like everything else.
+      //
+      // They skip the build shader, because a window that goes translucent stops
+      // being a window - and skipping it is why they used to arrive at full
+      // brightness the instant they cleared the ground, a row of lamps hanging in
+      // the air over a building that had not been built yet. They now pour in on
+      // the same schedule as the wall they are set into, driven from the frame
+      // loop instead of the shader: see `lamp` below.
+      color: emissive ? GLASS_COLOR.clone() : 0xffffff,
       map: emissive ? null : source.map ?? null,
       roughnessMap: emissive ? null : source.roughnessMap ?? null,
       metalnessMap: emissive ? null : source.metalnessMap ?? null,
       roughness: emissive ? 0.95 : 1,
       metalness: 0,
       emissive: emissive ? source.emissive.clone() : new THREE.Color('#000000'),
-      emissiveIntensity: emissive ? 2.6 : 0,
-      transparent: !emissive,
-      opacity: emissive ? 1 : GLASS_OPACITY,
+      emissiveIntensity: 0,
+      transparent: true,
+      opacity: GLASS_OPACITY,
       // Without this the pieces fight each other for depth and flicker as the
       // camera moves; the edges carry the form anyway.
-      depthWrite: emissive,
+      depthWrite: false,
       side: THREE.DoubleSide,
       // Cast from the back faces only.
       //
@@ -467,6 +483,12 @@ export function makeLuminous(root: THREE.Object3D, threshold = 32): LuminousPart
       attachBuild(solid, build, 'solid');
       object.userData.build = build;
       object.userData.glass = solid;
+      glass.push(solid);
+    }
+    if (emissive) {
+      // What the frame loop needs to bring a lamp up with its own wall.
+      object.userData.glass = solid;
+      object.userData.lamp = { material: solid, base: EMISSIVE_STRENGTH, tint: source.color.clone() };
       glass.push(solid);
     }
 
