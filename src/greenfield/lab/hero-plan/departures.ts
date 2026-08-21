@@ -46,7 +46,13 @@ export function gateThreshold(): Pose {
  */
 export function gateBeyond(): Pose {
   return {
-    eye: onRing(GATE, IN - 4.0, 2.7),
-    target: new THREE.Vector3(0, 6.2, 0),
+    eye: onRing(GATE, IN - 5.6, 2.7),
+    // Aimed at the middle of the keep's doorway, which is 2.5m up.
+    //
+    // This used to look at 6.2, and the head of that portal is at 4.82: the walk
+    // ended pointed at blank wall above the door, with the lit recess and the
+    // light spilling out of it below the bottom of the frame. The reader crossed
+    // the whole courtyard and arrived at masonry.
+    target: new THREE.Vector3(0, 2.5, 0),
   };
 }

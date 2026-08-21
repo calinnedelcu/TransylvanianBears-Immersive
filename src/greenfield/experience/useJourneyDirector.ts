@@ -321,10 +321,14 @@ export function useJourneyDirector({
       // neither one cuts.
       const passages = root.querySelectorAll<HTMLElement>('.hp-passage');
       if (heroBeat && firstChapter && passages.length) {
+        // Fractions of this trigger, which runs half a screen past the first
+        // chapter's top so the second line has somewhere to go: held to the end of
+        // the walk it simply stayed up, and the reader arrived in the city with it
+        // still sitting over the chapter's own heading.
         const WINDOWS: Record<string, [number, number, number, number]> = {
           // in, held from, held to, out
-          gate: [0.30, 0.40, 0.60, 0.70],
-          inside: [0.80, 0.88, 1.00, 1.00],
+          gate: [0.24, 0.32, 0.48, 0.56],
+          inside: [0.64, 0.71, 0.80, 0.90],
         };
         const show = (value: number) => {
           passages.forEach((element) => {
@@ -345,7 +349,7 @@ export function useJourneyDirector({
           trigger: heroBeat,
           start: 'bottom bottom+=100%',
           endTrigger: firstChapter,
-          end: 'top top',
+          end: 'top top-=50%',
           onUpdate: (self) => show(self.progress),
           onLeave: () => show(1),
           onLeaveBack: () => show(0),
