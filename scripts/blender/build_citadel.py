@@ -479,22 +479,31 @@ def build_gate(limestone, brass, timber) -> None:
 def build_core(limestone, plaster, timber, roof_mat, brass, pivot_mat) -> None:
     core = DEF["core"]
     facets = core["facets"]
+    # Turn the whole tower half a facet.
+    #
+    # A hexagonal prism built with no yaw puts a vertex on every 30 + k*60, which
+    # means the gate axis at -90 ran into a corner of the keep rather than a face
+    # of it. Everything hung off that angle inherited the error: the openings sat
+    # folded over an edge, the pilasters meant for the corners lay flat on the
+    # faces, and the reader walked through the gate towards a keep with a spine
+    # down the middle of the frame instead of a wall to put a door in.
+    yaw = rad(30)
 
     plinth = prism("Core plinth", (0, 0, core["plinthHeight"] / 2),
-                   core["plinthRadius"], core["plinthHeight"], facets)
+                   core["plinthRadius"], core["plinthHeight"], facets, yaw)
     finish(plinth, limestone)
 
     body_z = core["plinthHeight"] + core["bodyHeight"] / 2
-    body = prism("Core body", (0, 0, body_z), core["radius"], core["bodyHeight"], facets)
+    body = prism("Core body", (0, 0, body_z), core["radius"], core["bodyHeight"], facets, yaw)
     finish(body, plaster)
 
     gallery = prism("Core gallery", (0, 0, core["galleryZ"]),
-                    core["radius"] + core["galleryDepth"], 0.3, facets)
+                    core["radius"] + core["galleryDepth"], 0.3, facets, yaw)
     finish(gallery, timber, bevel=0.02)
 
     roof_z = core["plinthHeight"] + core["bodyHeight"] + core["roofHeight"] / 2
     roof = prism("Core roof", (0, 0, roof_z),
-                 core["radius"] + core["roofOverhang"], core["roofHeight"], facets)
+                 core["radius"] + core["roofOverhang"], core["roofHeight"], facets, yaw)
     roof.scale = (1.0, 1.0, 1.0)
     # Taper the cap into a low pyramid instead of a spire.
     mesh = roof.data
@@ -506,19 +515,148 @@ def build_core(limestone, plaster, timber, roof_mat, brass, pivot_mat) -> None:
     finish(roof, roof_mat, bevel=0.03)
 
     apex = prism("Core pivot", (0, 0, top_z + core["pivotHeight"] / 2),
-                 0.17, core["pivotHeight"], 6)
+                 0.17, core["pivotHeight"], 6, yaw)
     finish(apex, pivot_mat, bevel=0.02)
 
-    # One recessed opening per facet, facing outward. Facet centres sit at 30+k*60,
-    # so one of them looks straight down the gate axis at -90.
+    # One recessed opening per facet, facing outward. With the tower turned half a
+    # facet the face centres sit at 30 + k*60, so one of them looks straight down
+    # the gate axis at -90 - which is where the courtyard portal goes instead.
     inradius = core["radius"] * math.cos(math.pi / facets)
     for index in range(facets):
         angle = 30 + index * (360 / facets)
+        # Except on the facet that faces the gate. A real portal goes there, and
+        # this panel sat two centimetres in front of it: from the courtyard the
+        # doorway read as two thin slots with a brass plate down the middle.
+        if abs((angle - (DEF["gate"]["centerDeg"] % 360) + 180) % 360 - 180) < 1:
+            continue
         fx, fy = polar(inradius + 0.05, angle)
         yaw = rad(angle) + math.pi / 2
         frame = box(f"Core opening {index:02d}", (fx, fy, 3.4),
                     (1.5, 0.18, 2.6), yaw)
         finish(frame, brass, bevel=0.02)
+
+
+def build_court(limestone, limestone_light, plaster, timber, roof_mat, brass, glass) -> None:
+    """The courtyard, and the way into the keep.
+
+    Everything from the gate to the keep used to be bare ground: seven and a half
+    metres of nothing, ending on one blank plaster facet. That is the frame the
+    opening walks the reader into and hands the story over on, so it was the worst
+    empty space in the model. It gets a paved approach, a lit portal on the facet
+    that looks straight down the gate axis, lamps to break the floor up, and stores
+    leaning on the inside of the wall so the ring reads as inhabited.
+    """
+    core = DEF["core"]
+    ring = DEF["ring"]
+    centre = DEF["gate"]["centerDeg"]
+    facets = core["facets"]
+    inradius = core["radius"] * math.cos(math.pi / facets)
+    plinth_r = core["plinthRadius"]
+    plinth_h = core["plinthHeight"]
+    # Facets sit at 30 + k*60, so one of them looks straight down the gate axis.
+    facing = rad(centre) + math.pi / 2
+
+    # --- the approach ---------------------------------------------------------
+    # One slab from the inside of the gate to the foot of the keep steps, so the
+    # walk has a floor under it instead of open ground.
+    run_from, run_to = ring["innerRadius"] + 0.2, plinth_r + 1.9
+    ax, ay = polar((run_from + run_to) / 2, centre)
+    apron = box("Court apron", (ax, ay, 0.06), (5.2, run_from - run_to, 0.12), facing)
+    finish(apron, limestone_light, bevel=0.03)
+
+    # --- steps up onto the plinth ---------------------------------------------
+    for index in range(3):
+        depth, rise = 0.62, plinth_h / 3
+        r = plinth_r + 1.55 - index * depth
+        sx, sy = polar(r, centre)
+        step = box(f"Court step {index:02d}", (sx, sy, rise * (index + 0.5)),
+                   (4.4 - index * 0.3, depth, rise), facing)
+        finish(step, limestone, bevel=0.02)
+
+    # --- the portal -----------------------------------------------------------
+    # Not a hole - the keep is a solid prism and a boolean here is a liability.
+    # A surround standing proud of the facet with a lit recess behind it reads as
+    # a doorway at every distance the camera ever sees it from.
+    opening_w, opening_h = 2.6, 3.8
+    jamb_w, head_h = 0.34, 0.4
+
+    # The recess is dark and the light is only what spills out of it low down.
+    # A full sheet of emissive across the opening is a light box: it blows the
+    # facet, the jambs and the steps to the same white and stops reading as a way
+    # into anywhere. A dark room with light on its floor reads as occupied.
+    rx, ry = polar(inradius + 0.02, centre)
+    recess = box("Court portal recess", (rx, ry, plinth_h + opening_h / 2),
+                 (opening_w, 0.08, opening_h), facing)
+    finish(recess, timber)
+
+    gx, gy = polar(inradius + 0.05, centre)
+    spill = box("Court portal light", (gx, gy, plinth_h + 0.62),
+                (opening_w - 0.7, 0.08, 1.15), facing)
+    finish(spill, glass)
+
+    for side in (-1, 1):
+        ox = side * (opening_w + jamb_w) / 2
+        jx, jy = polar(inradius + 0.16, centre)
+        jamb = box(f"Court portal jamb {'L' if side < 0 else 'R'}",
+                   (jx + ox * math.cos(facing), jy + ox * math.sin(facing),
+                    plinth_h + opening_h / 2),
+                   (jamb_w, 0.42, opening_h + head_h), facing)
+        finish(jamb, limestone, bevel=0.02)
+
+    hx, hy = polar(inradius + 0.16, centre)
+    head = box("Court portal head", (hx, hy, plinth_h + opening_h + head_h / 2),
+               (opening_w + jamb_w * 2, 0.46, head_h), facing)
+    finish(head, limestone, bevel=0.02)
+
+    lintel = box("Court portal lintel", (hx, hy, plinth_h + opening_h + 0.04),
+                 (opening_w, 0.5, 0.1), facing)
+    finish(lintel, brass, bevel=0.01)
+
+    # One leaf standing open against the jamb: the way in is open, and the door
+    # that opens it is visible rather than implied.
+    leaf_x = -(opening_w / 2 + 0.2)
+    dx, dy = polar(inradius + 0.6, centre)
+    leaf = box("Court portal leaf",
+               (dx + leaf_x * math.cos(facing), dy + leaf_x * math.sin(facing),
+                plinth_h + opening_h / 2),
+               (0.2, opening_w * 0.82, opening_h - 0.2), facing)
+    finish(leaf, timber, bevel=0.02)
+
+    # --- lamps ----------------------------------------------------------------
+    # Off the gate axis, so they light the court without standing in the shot.
+    for index, offset in enumerate((-62, -128, 62, 128)):
+        angle = centre + offset
+        r = ring["innerRadius"] - 2.6
+        px, py = polar(r, angle)
+        post = box(f"Court lamp post {index:02d}", (px, py, 1.5), (0.16, 0.16, 3.0),
+                   rad(angle) + math.pi / 2)
+        finish(post, timber, bevel=0.01)
+        head_lamp = box(f"Court lamp head {index:02d}", (px, py, 3.14), (0.42, 0.42, 0.28),
+                        rad(angle) + math.pi / 2)
+        finish(head_lamp, brass, bevel=0.02)
+        flame = box(f"Court lamp glass {index:02d}", (px, py, 2.86), (0.26, 0.26, 0.34),
+                    rad(angle) + math.pi / 2)
+        finish(flame, glass)
+
+    # --- stores against the inside of the wall --------------------------------
+    for index, angle in enumerate((centre + 46, centre + 92, centre + 152,
+                                   centre - 46, centre - 92, centre - 152)):
+        depth, width, height = 2.1, 3.4, 2.35
+        r = ring["innerRadius"] - depth / 2
+        sx, sy = polar(r, angle)
+        yaw = rad(angle) + math.pi / 2
+        shed = box(f"Court store {index:02d}", (sx, sy, height / 2), (width, depth, height), yaw)
+        finish(shed, plaster, bevel=0.03)
+        # A roof that slopes away from the wall, so the row is not six flat tops.
+        rx, ry = polar(r - 0.12, angle)
+        roof = box(f"Court store roof {index:02d}", (rx, ry, height + 0.12),
+                   (width + 0.34, depth + 0.5, 0.24), yaw)
+        roof.rotation_euler = (rad(-9), 0.0, yaw)
+        finish(roof, roof_mat, bevel=0.02)
+        # One lit opening each: the ring is occupied, not stored in.
+        wx, wy = polar(r - depth / 2 - 0.02, angle)
+        window = box(f"Court store light {index:02d}", (wx, wy, 1.32), (1.05, 0.1, 0.85), yaw)
+        finish(window, glass)
 
 
 def build_nodes(brass, signal) -> None:
@@ -775,6 +913,7 @@ def group_scene() -> None:
         ("Stage gate", ("Gate ", "Gallery post")),
         ("Stage towers", ("Tower ",)),
         ("Stage core", ("Core ",)),
+        ("Stage court", ("Court ",)),
         ("Stage nodes", ("Node ",)),
     ]
     stage_objects = {}
@@ -891,6 +1030,7 @@ def main() -> None:
     build_core(limestone, plaster, timber, roof_mat, brass, pivot_mat)
     build_wall_detail(limestone, brass, timber, glass)
     build_core_detail(limestone, timber, brass)
+    build_court(limestone, limestone_light, plaster, timber, roof_mat, brass, glass)
     build_nodes(brass, signal)
 
     group_scene()

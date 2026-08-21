@@ -74,6 +74,17 @@ const PULSE_SECONDS = 0.95;
 /** Just inside the threshold, at head height. */
 const GATE_LIGHT = onRing(CITADEL.gate.centerDeg, CITADEL.ring.innerRadius - 1.5, 3.4);
 /**
+ * The light in the keep's doorway, across the courtyard from the gate.
+ *
+ * The reader comes through the arch and the far side of the court has to be worth
+ * arriving at. Derived from the keep's own geometry so it stands in the doorway
+ * rather than near it: facets sit at 30 + k*60 and one of them looks straight
+ * down the gate axis, which is where the portal is.
+ */
+const KEEP_INRADIUS = CITADEL.core.radius * Math.cos(Math.PI / CITADEL.core.facets);
+const KEEP_LIGHT = onRing(CITADEL.gate.centerDeg, KEEP_INRADIUS + 1.1, 2.0);
+
+/**
  * How far a leaf swings, in radians.
  *
  * Eighty-three degrees, not ninety. The leaf is 1.85m wide and hinges 1.85m off the
@@ -205,6 +216,7 @@ function CitadelModel({
   >([]);
   const bladesRef = useRef<Array<{ pivot: THREE.Object3D; baseYaw: number; turn: number; phase: number }>>([]);
   const gateLightRef = useRef<THREE.PointLight>(null);
+  const keepLightRef = useRef<THREE.PointLight>(null);
   const glowRef = useRef<THREE.Mesh>(null);
   const dustRef = useRef<THREE.Points>(null);
   const flashRef = useRef<THREE.Mesh>(null);
@@ -276,6 +288,12 @@ function CitadelModel({
       'Stage gate': 0.4,
       'Stage towers': 0.55,
       'Stage core': 0.75,
+      // The courtyard fills in behind the walls, once there is a wall to fill in
+      // behind. A stage missing from this table is silently never collected: its
+      // pieces get the glass material and then no build uniform to drive them out
+      // of it, so they stand translucent forever while everything around them
+      // turns to stone.
+      'Stage court': 0.85,
       'Stage nodes': 0.95,
     };
 
@@ -516,6 +534,13 @@ function CitadelModel({
       gateLightRef.current.intensity = opened * (11 + near * 19);
       gateLightRef.current.visible = opened > 0.002;
     }
+    // The keep lights the moment the citadel finishes and gains on the approach,
+    // so the courtyard the reader walks into has a far side.
+    if (keepLightRef.current) {
+      const lit = smooth(range(p, MATERIAL_END - 0.08, MATERIAL_END));
+      keepLightRef.current.intensity = lit * (13 + near * 26);
+      keepLightRef.current.visible = lit > 0.002;
+    }
     if (glowRef.current) {
       glowRef.current.visible = opened > 0.002;
       glow.uniforms.uOpen.value = opened;
@@ -623,6 +648,16 @@ function CitadelModel({
         distance={15}
         decay={2}
         color="#ffbe80"
+        visible={false}
+      />
+      {/* The keep's doorway, seen from the arch and walked towards. */}
+      <pointLight
+        ref={keepLightRef}
+        position={KEEP_LIGHT}
+        intensity={0}
+        distance={17}
+        decay={2}
+        color="#ffc98d"
         visible={false}
       />
       {/* The light standing in the gateway. It sits just inside the plane of the
