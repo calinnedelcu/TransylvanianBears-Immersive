@@ -20,6 +20,12 @@ export const LABEL_RADIUS = 348;
 /** Depărtarea etichetei de traseul ei, ca textul să nu calce peste nod. */
 export const LABEL_OFFSET = 14;
 
+/** Cât ține o rotație completă a fasciculului. Tot ce e sincron cu el derivă de aici. */
+export const SWEEP_PERIOD = 12;
+
+/** Fasciculul se oprește sub etichete: LABEL_RADIUS e 348, deci 322 rămâne în desen. */
+export const SWEEP_RADIUS = 322;
+
 /** Golul din inel, în grade, care devine poarta. */
 export const GATE_START = 80;
 export const GATE_END = 100;
@@ -56,6 +62,46 @@ export function arcPath(radius: number, from: number, to: number): string {
     `A${radius} ${radius} 0 ${large} ${sweep}`,
     `${pointX(radius, to).toFixed(1)} ${pointY(radius, to).toFixed(1)}`,
   ].join(' ');
+}
+
+/**
+ * Lungimea reală a traseului de semnal, ca `stroke-dasharray` să fie arcul, nu o
+ * cifră rotundă mai mare decât el.
+ *
+ * Cu o dasharray de 1500 pe un arc de 1064, desenul se termina la 71% din
+ * keyframe și restul animației creștea în gol — ceea ce nu se vedea până când
+ * capul luminos a trebuit să meargă pe aceeași cadență și a ajuns la capăt cu
+ * trei secunde înaintea liniei.
+ */
+export const ROUTE_FROM = 70;
+export const ROUTE_TO = -215;
+export const ROUTE_LENGTH = ROUTE_RADIUS * Math.abs(ROUTE_TO - ROUTE_FROM) * (Math.PI / 180);
+
+/**
+ * Sector plin pornit din centru — o felie din coada fasciculului.
+ *
+ * SVG nu are gradient conic, deci coada se face din felii subțiri cu opacitate
+ * descrescătoare, grupate și rotite ca un singur obiect.
+ */
+export function sectorPath(radius: number, from: number, to: number): string {
+  return [
+    `M${CENTER} ${CENTER}`,
+    `L${pointX(radius, from).toFixed(1)} ${pointY(radius, from).toFixed(1)}`,
+    `A${radius} ${radius} 0 0 1 ${pointX(radius, to).toFixed(1)} ${pointY(radius, to).toFixed(1)}`,
+    'Z',
+  ].join(' ');
+}
+
+/**
+ * Momentul din rotație în care fasciculul trece peste un unghi dat, în secunde.
+ *
+ * Muchia de atac e desenată la 0° și grupul se rotește uniform, deci sincronul
+ * dintre fascicul și noduri e o simplă întârziere de animație — fără JS, fără
+ * rAF, și fără să poată aluneca unul față de celălalt.
+ */
+export function sweepHit(deg: number): number {
+  const normalised = ((deg % 360) + 360) % 360;
+  return (normalised / 360) * SWEEP_PERIOD;
 }
 
 /** Curbă de nivel: cerc deformat determinist, turtit pe verticală ca un relief. */

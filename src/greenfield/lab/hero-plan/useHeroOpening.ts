@@ -51,6 +51,72 @@ export function useHeroOpening() {
     };
   }, []);
 
+  /**
+   * Unde e pointerul în deschidere, ca -1..1 pe ambele axe.
+   *
+   * Scris pe secțiune, nu pe rădăcină, fiindcă valoarea e folosită numai de
+   * lucruri care trăiesc sub `.hp-opening` și trebuie să moară odată cu ea. Se
+   * scrie o singură dată pe frame: pointermove poate ajunge la 120Hz pe
+   * trackpad, iar două scrieri de custom property în același frame înseamnă un
+   * recalc de stil aruncat.
+   *
+   * Numai pentru dispozitive cu pointer fin. Pe touch, `pointermove` vine doar
+   * în timpul unui drag, deci desenul s-ar înclina la scroll și ar rămâne strâmb.
+   */
+  useEffect(() => {
+    const frame = planRef.current?.closest<HTMLElement>('.hp-opening');
+    if (!frame) return;
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    let queued = 0;
+    let targetX = 0;
+    let targetY = 0;
+    let px = 0;
+    let py = 0;
+
+    /**
+     * Valoarea urmărește ținta, nu o ia direct.
+     *
+     * O tranziție CSS pe `.hp-tilt` ar fi fost mai simplă, dar aceeași proprietate
+     * `transform` e rescrisă la fiecare frame din progresul de scroll: o tranziție
+     * peste ea ar fi transformat derularea într-o alunecare cu întârziere. Deci
+     * netezirea stă aici, pe valoare, și transformul rămâne instantaneu.
+     */
+    const write = () => {
+      px += (targetX - px) * 0.09;
+      py += (targetY - py) * 0.09;
+      frame.style.setProperty('--hp-px', px.toFixed(4));
+      frame.style.setProperty('--hp-py', py.toFixed(4));
+      const settled = Math.abs(targetX - px) < 0.0015 && Math.abs(targetY - py) < 0.0015;
+      queued = settled ? 0 : requestAnimationFrame(write);
+    };
+
+    const onMove = (event: PointerEvent) => {
+      targetX = (event.clientX / window.innerWidth) * 2 - 1;
+      targetY = (event.clientY / window.innerHeight) * 2 - 1;
+      if (!queued) queued = requestAnimationFrame(write);
+    };
+
+    // Fără pointer, desenul se întoarce drept — altfel rămâne înclinat la ultima
+    // poziție a cursorului după ce acesta a părăsit fereastra.
+    const onLeave = () => {
+      targetX = 0;
+      targetY = 0;
+      if (!queued) queued = requestAnimationFrame(write);
+    };
+
+    window.addEventListener('pointermove', onMove, { passive: true });
+    document.addEventListener('pointerleave', onLeave);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerleave', onLeave);
+      if (queued) cancelAnimationFrame(queued);
+      frame.style.removeProperty('--hp-px');
+      frame.style.removeProperty('--hp-py');
+    };
+  }, []);
+
   return {
     planRef,
     planFrameRef,

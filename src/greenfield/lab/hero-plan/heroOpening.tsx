@@ -1,4 +1,4 @@
-import { type CSSProperties } from 'react';
+import { useEffect, useRef, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ARCHIVE, PROJECTS, TEAM } from '../../data';
 import { CitadelPlan, CitadelPlanShell } from './CitadelPlan';
@@ -16,13 +16,83 @@ import type { HeroOpening } from './useHeroOpening';
 
 const pad = (count: number) => String(count).padStart(2, '0');
 
+/**
+ * Aerul din jurul planșei.
+ *
+ * Primul cadru al site-ului era negru plat: cerul și orizontul descrise în CSS
+ * pornesc amândouă de la `--hp-fade-in`, deci apar abia după ce planul începe să
+ * se încline, iar scena 3D nu desenează nimic la progres 0. Rămâneau opt animații
+ * în tot ecranul — un traseu și șapte noduri — pe un fundal fără nicio sursă de
+ * lumină.
+ *
+ * Straturile de aici sunt lumina de dinaintea lumii: lampa de planșetă care ține
+ * desenul, spălarea rece dinspre fereastră, praful din fascicul și granulația
+ * care leagă totul. Toate pleacă până la progres 0.2, unde cetatea începe să se
+ * ridice și lumea reală preia cadrul — atmosfera planșei n-are ce căuta peste ea.
+ */
+export function HeroPlanAtmosphere() {
+  return (
+    <div className="hp-aura" aria-hidden="true">
+      <div className="hp-aura__wash" />
+      <div className="hp-aura__lamp" />
+      <div className="hp-aura__dust" />
+      <div className="hp-aura__grain" />
+      <div className="hp-aura__vignette" />
+    </div>
+  );
+}
+
 /** Counted from the index itself, so the page cannot overstate the work. */
 const EVIDENCE = [
-  { value: pad(PROJECTS.length), label: 'sisteme' },
-  { value: pad(TEAM.length), label: 'constructori' },
-  { value: pad(ARCHIVE.length), label: 'intrări în arhivă' },
-  { value: '25—26', label: 'perioadă' },
+  { value: pad(PROJECTS.length), count: PROJECTS.length, label: 'sisteme' },
+  { value: pad(TEAM.length), count: TEAM.length, label: 'constructori' },
+  { value: pad(ARCHIVE.length), count: ARCHIVE.length, label: 'intrări în arhivă' },
+  // Perioada nu e o măsurătoare, e o etichetă: nu are de la ce să numere.
+  { value: '25—26', count: null, label: 'perioadă' },
 ];
+
+/** Cât durează urcarea cifrei, aliniată la intrarea benzii de dovezi. */
+const COUNT_MS = 900;
+const COUNT_DELAY = 920;
+
+/**
+ * Cifra urcă până la valoarea ei reală.
+ *
+ * Textul rămâne în DOM de la primul render cu valoarea finală, deci un cititor
+ * de ecran, un crawler sau o filă cu mișcare redusă văd numărul, nu un zero care
+ * se schimbă. Animația doar rescrie ce e deja acolo, și numai dacă apucă.
+ */
+function CountTo({ value, count }: { value: string; count: number | null }) {
+  const ref = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || count === null) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    let raf = 0;
+    let start = 0;
+    const step = (now: number) => {
+      if (!start) start = now;
+      const t = Math.min(1, (now - start) / COUNT_MS);
+      // Aceeași curbă ca intrarea textului, ca cifra să nu pară un alt sistem.
+      const eased = 1 - (1 - t) ** 3;
+      node.textContent = pad(Math.round(count * eased));
+      if (t < 1) raf = requestAnimationFrame(step);
+      else node.textContent = value;
+    };
+
+    node.textContent = pad(0);
+    const timer = window.setTimeout(() => { raf = requestAnimationFrame(step); }, COUNT_DELAY);
+    return () => {
+      window.clearTimeout(timer);
+      if (raf) cancelAnimationFrame(raf);
+      node.textContent = value;
+    };
+  }, [count, value]);
+
+  return <dt ref={ref}>{value}</dt>;
+}
 
 /**
  * The title of the whole thing.
@@ -66,7 +136,7 @@ export function HeroPlanTitle({ onFollow }: { onFollow?: () => void }) {
       <dl className="hp-evidence">
         {EVIDENCE.map((item) => (
           <div key={item.label}>
-            <dt>{item.value}</dt>
+            <CountTo value={item.value} count={item.count} />
             <dd>{item.label}</dd>
           </div>
         ))}

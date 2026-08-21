@@ -29,8 +29,15 @@ body.hp-lab-mode {
   --hp-line: rgb(215 208 195 / 0.16);
   --hp-progress: 0;
 
+  /* Poziția pointerului în cadru, -1..1. Zero până când se mișcă ceva. */
+  --hp-px: 0;
+  --hp-py: 0;
+
   /* Praguri derivate, ca să nu repetăm aceleași calc-uri în zece locuri. */
   --hp-fade-out: clamp(0, calc(1 - var(--hp-progress) * 2.4), 1);
+  /* Atmosfera planșei pleacă înaintea restului: la 0.12 începe extrudarea și
+     lumina trebuie să vină deja din lume, nu de pe masa de desen. */
+  --hp-aura-out: clamp(0, calc(1 - var(--hp-progress) * 5), 1);
   --hp-fade-labels: clamp(0, calc(1 - var(--hp-progress) * 2.6), 1);
   --hp-fade-in: clamp(0, calc((var(--hp-progress) - 0.15) * 1.5), 1);
   --hp-extrude-in: clamp(0, calc((var(--hp-progress) - 0.12) * 2.6), 1);
@@ -134,6 +141,132 @@ body.hp-lab-mode {
   perspective-origin: 50% 62%;
 }
 
+/* ============================================================================
+   Atmosfera planșei — ce ține primul cadru înainte să existe o lume.
+   Se stinge până la progres 0.2: de acolo încolo lumina vine din scena 3D, iar
+   două atmosfere peste aceeași imagine se citesc ca o ceață, nu ca o lumină.
+   ========================================================================= */
+.hp-aura {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--hp-aura-out);
+}
+
+/* Fereastra rece sus-dreapta, lumina caldă joasă stânga: două surse, deci volum. */
+.hp-aura__wash {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(58% 46% at 10% 88%, rgb(105 206 208 / 0.10), transparent 66%),
+    radial-gradient(86% 64% at 82% 4%, rgb(43 66 87 / 0.44), transparent 72%),
+    linear-gradient(178deg, rgb(14 20 27 / 0.9) 0%, rgb(9 11 12 / 0.5) 54%, rgb(10 13 15 / 0.85) 100%);
+}
+
+/*
+ * Lampa de planșetă. Stă peste desen și respiră; pointer-ul o mută cu câteva
+ * procente, ca hârtia să pară ținută sub o lumină reală, nu tipărită pe ecran.
+ */
+.hp-aura__lamp {
+  position: absolute;
+  inset: -18%;
+  background: radial-gradient(
+    42% 42% at calc(70% + var(--hp-px, 0) * 4%) calc(50% + var(--hp-py, 0) * 4%),
+    rgb(169 133 70 / 0.22),
+    rgb(169 133 70 / 0.08) 36%,
+    transparent 64%
+  );
+  will-change: transform, opacity;
+  animation: hp-breathe 19s ease-in-out infinite;
+}
+
+@keyframes hp-breathe {
+  0%, 100% { opacity: 0.78; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.045); }
+}
+
+/*
+ * Praf în fascicul. Două câmpuri de puncte cu pas și viteză diferite: singurul
+ * mod ieftin de a obține paralaxă fără un al doilea canvas.
+ *
+ * Deriva merge pe `transform`, nu pe `background-position`. Prima variantă muta
+ * poziția fundalului, ceea ce înseamnă repictarea întregului strat la fiecare
+ * frame: două straturi cât ecranul, la 2160×1350 fizic, au dus pagina de la 120
+ * la 49 fps. Cu transform, stratul se rasterizează o dată și pe urmă doar se
+ * mută. Amplitudinea e sub marginea de 8%, deci nu se descoperă niciodată o
+ * muchie, iar `alternate` scapă de saltul de la capătul buclei fără să ceară o
+ * deplasare exact cât dala — care ar fi cerut un strat cu sute de pixeli de
+ * rezervă în fiecare direcție.
+ */
+.hp-aura__dust {
+  position: absolute;
+  inset: -8%;
+}
+
+.hp-aura__dust::before,
+.hp-aura__dust::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat;
+  background-image:
+    radial-gradient(1px 1px at 17% 23%, rgb(215 208 195 / 0.55), transparent 100%),
+    radial-gradient(1px 1px at 62% 71%, rgb(215 208 195 / 0.4), transparent 100%),
+    radial-gradient(1px 1px at 84% 31%, rgb(105 206 208 / 0.45), transparent 100%),
+    radial-gradient(1px 1px at 38% 88%, rgb(215 208 195 / 0.32), transparent 100%),
+    radial-gradient(1px 1px at 9% 62%, rgb(169 133 70 / 0.42), transparent 100%);
+}
+
+.hp-aura__dust::before {
+  background-size: 320px 320px;
+  animation: hp-drift-near 78s ease-in-out infinite alternate;
+}
+
+.hp-aura__dust::after {
+  background-size: 540px 540px;
+  opacity: 0.6;
+  animation: hp-drift-far 124s ease-in-out infinite alternate;
+}
+
+@keyframes hp-drift-near {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(3%, -3.6%, 0); }
+}
+
+@keyframes hp-drift-far {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-2.4%, 2.8%, 0); }
+}
+
+/*
+ * Granulație. O singură dală de 180px repetată, mutată în șase pași — tot prin
+ * transform, din același motiv ca praful. Marginea de 60px acoperă cel mai mare
+ * pas, deci dala nu se termină niciodată în cadru.
+ */
+.hp-aura__grain {
+  position: absolute;
+  inset: -60px;
+  opacity: 0.055;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: hp-grain 900ms steps(1) infinite;
+}
+
+@keyframes hp-grain {
+  0% { transform: translate3d(0, 0, 0); }
+  17% { transform: translate3d(-32px, 24px, 0); }
+  34% { transform: translate3d(41px, -18px, 0); }
+  51% { transform: translate3d(-19px, -37px, 0); }
+  68% { transform: translate3d(28px, 33px, 0); }
+  85% { transform: translate3d(-44px, 9px, 0); }
+}
+
+.hp-aura__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(118% 88% at 50% 44%, transparent 40%, rgb(4 6 7 / 0.74) 100%);
+}
+
 /* Blue hour: apare pe măsură ce planul se înclină, nu de la început. */
 .hp-sky {
   position: absolute;
@@ -161,7 +294,12 @@ body.hp-lab-mode {
   position: relative;
   z-index: 2;
   opacity: var(--hp-fade-out);
-  transform: translateY(calc(var(--hp-progress) * -18dvh));
+  /* Contra-mișcare mică față de planșă: textul stă mai aproape de cititor. */
+  transform: translate3d(
+    calc(var(--hp-px) * var(--hp-fade-out) * -7px),
+    calc(var(--hp-progress) * -18dvh + var(--hp-py) * var(--hp-fade-out) * -5px),
+    0
+  );
 }
 
 .hp-lab:not([data-phase='plan']) .hp-copy {
@@ -190,10 +328,44 @@ body.hp-lab-mode {
 
 .hp-wordmark span {
   display: block;
+  --hp-word: var(--hp-ink-strong);
 }
 
 .hp-wordmark span:last-child {
+  --hp-word: var(--hp-ink);
   color: var(--hp-ink);
+}
+
+/*
+ * Luciul care trece o dată peste wordmark.
+ *
+ * Prin `background-clip: text`, deci banda atinge numai glifele. Varianta cu un
+ * pseudo-element și `mix-blend-mode` lumina dreptunghiul întreg, adică se vedea
+ * o cutie trecând peste titlu. Poziția de repaus e 100%, exact unde se termină
+ * animația: fără `forwards`, deci fără salt la sfârșit.
+ */
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .hp-wordmark span {
+    background-image: linear-gradient(
+      100deg,
+      var(--hp-word) 46%,
+      #fff4dd 50%,
+      var(--hp-word) 54%
+    );
+    background-size: 300% 100%;
+    background-position: 100% 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+/* În contrast forțat gradientul nu se pictează, deci titlul ar dispărea. */
+@media (forced-colors: active) {
+  .hp-wordmark span {
+    background-image: none;
+    color: CanvasText;
+  }
 }
 
 .hp-line {
@@ -242,14 +414,59 @@ body.hp-lab-mode {
   border-right: 1px solid currentcolor;
   border-bottom: 1px solid currentcolor;
   transform: rotate(-45deg);
+  transition: translate 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/*
+ * Săgeata pleacă în direcția în care duce butonul: lateral la link, în jos la
+ * derulare. Mișcarea stă pe proprietatea `translate`, nu pe `transform`: cele
+ * două chevroane își iau unghiul din `transform`, iar o regulă de hover scrisă
+ * acolo ar fi întors săgeata primarului cu 90° în loc s-o miște.
+ */
+.hp-lab .hp-btn:hover i ,
+
+.hp-opening .hp-btn:hover i {
+  translate: 3px 0;
+}
+
+.hp-lab .hp-btn--primary:hover i ,
+
+.hp-opening .hp-btn--primary:hover i {
+  translate: 0 3px;
 }
 
 .hp-lab .hp-btn--primary ,
 
 .hp-opening .hp-btn--primary {
+  position: relative;
+  overflow: hidden;
   border-color: var(--hp-ink);
   background: var(--hp-ink);
   color: var(--hp-bg);
+}
+
+/*
+ * Butonul spune „urmează semnalul", deci are un semnal care trece prin el — pe
+ * aceeași muchie și în aceeași alamă ca traseul din plan. Instrucțiunea și
+ * desenul vorbesc aceeași limbă.
+ */
+.hp-lab .hp-btn--primary::after,
+.hp-opening .hp-btn--primary::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 38%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--hp-brass), transparent);
+  animation: hp-btn-signal 3.6s cubic-bezier(0.55, 0, 0.35, 1) infinite;
+}
+
+@keyframes hp-btn-signal {
+  0% { transform: translateX(-110%); opacity: 0; }
+  14% { opacity: 1; }
+  58% { transform: translateX(300%); opacity: 1; }
+  66%, 100% { transform: translateX(300%); opacity: 0; }
 }
 
 .hp-lab .hp-btn--primary:hover ,
@@ -318,8 +535,13 @@ body.hp-lab-mode {
   position: relative;
   width: min(62dvh, 44vw, 600px);
   aspect-ratio: 1;
+  /* Paralaxa stă înaintea înclinării de scroll și e înmulțită cu --hp-fade-out,
+     deci dispare exact când planul începe să devină clădire: două rotații care
+     se ceartă pe aceeași axă ar face ca pointerul să tremure cetatea. */
   transform:
     translate3d(calc(var(--hp-shift) * -17vw - 2vw), calc(var(--hp-progress) * 7dvh), 0)
+    rotateY(calc(var(--hp-px) * var(--hp-fade-out) * 7deg))
+    rotateX(calc(var(--hp-py) * var(--hp-fade-out) * -5deg))
     rotateX(calc(var(--hp-progress) * 74deg))
     scale(calc(1 + var(--hp-progress) * 0.55));
   transform-style: preserve-3d;
@@ -366,11 +588,27 @@ body.hp-lab-mode {
   text-transform: uppercase;
 }
 
+/* Indiciul de derulare are ceva de arătat: o sclipire care coboară pe linie. */
 .hp-scroll-cue i {
+  position: relative;
   display: block;
+  overflow: hidden;
   width: 42px;
   height: 1px;
-  background: linear-gradient(90deg, rgb(215 208 195 / 0.6), transparent);
+  background: rgb(215 208 195 / 0.22);
+}
+
+.hp-scroll-cue i::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgb(215 208 195 / 0.95), transparent);
+  animation: hp-cue 2.6s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+
+@keyframes hp-cue {
+  0% { transform: translateX(-100%); }
+  62%, 100% { transform: translateX(100%); }
 }
 
 /* --------------------------------------------------------- desenul ------- */
@@ -419,10 +657,23 @@ body.hp-lab-mode {
   opacity: 0.9;
 }
 
+/* Halo-ul respiră pe cadența fasciculului: nucleul primește energie o dată pe
+   rotație, ca și nodurile. Pleacă odată cu desenul plat. */
+.hp-plan__halo {
+  opacity: var(--hp-fade-labels);
+  animation: hp-halo 12s ease-in-out infinite;
+}
+
+@keyframes hp-halo {
+  0%, 100% { opacity: 0.72; }
+  46% { opacity: 1; }
+}
+
 .hp-plan__core {
   fill: rgb(169 133 70 / 0.07);
   stroke: var(--hp-brass);
   stroke-width: 2;
+  filter: drop-shadow(0 0 10px rgb(169 133 70 / 0.42));
 }
 
 .hp-plan__core--inner {
@@ -431,28 +682,128 @@ body.hp-lab-mode {
 
 .hp-plan__pivot {
   fill: var(--hp-vermilion);
+  filter: drop-shadow(0 0 8px rgb(224 75 54 / 0.95));
+}
+
+/*
+ * Bătaia pivotului stă pe un cerc separat, nu pe romb.
+ *
+ * Rombul își ia cele 45° dintr-un atribut `transform`, care se mapează pe aceeași
+ * proprietate CSS: orice scalare adăugată acolo ar fi trecut prin `transform-origin`
+ * a doua oară și ar fi mișcat centrul. Cercul n-are transform propriu, deci poate
+ * fi scalat fără să atingă rombul.
+ */
+.hp-plan__pivot-glow {
+  fill: var(--hp-vermilion);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: hp-pivot 4s ease-in-out infinite;
+}
+
+@keyframes hp-pivot {
+  0%, 100% { opacity: 0.34; transform: scale(1); }
+  50% { opacity: 0.06; transform: scale(3.1); }
 }
 
 .hp-plan__spurs line {
   stroke: var(--hp-cyan);
   stroke-width: 1;
   opacity: 0.35;
+  /* Ramificația se aprinde în aceeași secundă în care fasciculul atinge nodul
+     de care aparține: detecția pleacă spre nucleu. */
+  animation: hp-spur 12s linear infinite;
+}
+
+@keyframes hp-spur {
+  0% { opacity: 1; stroke-width: 2.2; }
+  18% { opacity: 0.35; stroke-width: 1; }
+  100% { opacity: 0.35; stroke-width: 1; }
 }
 
 .hp-plan__route {
   fill: none;
   stroke: var(--hp-cyan);
   stroke-width: calc(1.6px + var(--hp-progress) * 2px);
-  stroke-dasharray: 1500;
-  stroke-dashoffset: 1500;
+  /* Lungimea vine din geometrie, nu dintr-o cifră rotundă: capul luminos merge
+     pe același arc și trebuie să ajungă la capăt odată cu linia. */
+  stroke-dasharray: var(--hp-route-len, 1064);
+  stroke-dashoffset: var(--hp-route-len, 1064);
   animation: hp-trace 9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation-delay: 1500ms;
 }
 
 @keyframes hp-trace {
-  0% { stroke-dashoffset: 1500; opacity: 1; }
+  0% { stroke-dashoffset: var(--hp-route-len, 1064); opacity: 1; }
   45% { stroke-dashoffset: 0; opacity: 1; }
   85% { stroke-dashoffset: 0; opacity: 1; }
   100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+/* Capul semnalului: aceeași durată, aceeași curbă, aceeași întârziere. */
+.hp-plan__route-head {
+  fill: var(--hp-ink-strong);
+  offset-rotate: 0deg;
+  filter: drop-shadow(0 0 7px rgb(105 206 208 / 0.95));
+  animation: hp-route-head 9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation-delay: 1500ms;
+}
+
+@keyframes hp-route-head {
+  0% { offset-distance: 0%; opacity: 0; }
+  6% { opacity: 1; }
+  45% { offset-distance: 100%; opacity: 1; }
+  56% { offset-distance: 100%; opacity: 0; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+
+/* ---------------------------------------------------------- fasciculul --- */
+/*
+ * Planul e un instrument, nu o planșă tipărită.
+ *
+ * Muchia de atac e desenată la 0° și grupul se rotește uniform, deci fiecare nod
+ * își știe momentul din unghi: `sweepHit()` dă exact aceeași secundă pentru inel,
+ * pentru licăr și pentru ramificație. Nimic nu e sincronizat din JS, deci nimic
+ * nu poate aluneca după câteva minute de rulare.
+ */
+.hp-plan__sweep {
+  transform-box: view-box;
+  transform-origin: 500px 500px;
+  animation: hp-sweep 12s linear infinite;
+  /* Coada aparține desenului plat; la înclinare pleacă odată cu etichetele. */
+  opacity: var(--hp-fade-labels);
+}
+
+.hp-plan__sweep path {
+  fill: var(--hp-cyan);
+}
+
+.hp-plan__sweep-edge {
+  stroke: var(--hp-cyan);
+  stroke-width: 1.6;
+  opacity: 0.5;
+  filter: drop-shadow(0 0 6px rgb(105 206 208 / 0.8));
+}
+
+@keyframes hp-sweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Inelul de răspuns al nodului, o dată pe rotație, când fasciculul îl atinge. */
+.hp-plan__ping {
+  fill: none;
+  stroke: var(--hp-cyan);
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: hp-ping 12s linear infinite;
+}
+
+@keyframes hp-ping {
+  0% { opacity: 0.85; transform: scale(0.55); }
+  14% { opacity: 0; transform: scale(2.5); }
+  100% { opacity: 0; transform: scale(2.5); }
 }
 
 /* Nodurile sunt link-uri: planul este indexul. */
@@ -464,18 +815,25 @@ body.hp-lab-mode {
   fill: var(--hp-bg);
   stroke: var(--hp-cyan);
   stroke-width: 2;
-  transition: fill 160ms ease;
+  filter: drop-shadow(0 0 5px rgb(105 206 208 / 0.55));
+  transition: fill 160ms ease, filter 160ms ease;
+}
+
+.hp-plan__node:hover .hp-plan__mark,
+.hp-plan__node[data-active] .hp-plan__mark {
+  filter: drop-shadow(0 0 11px rgb(105 206 208 / 0.9));
 }
 
 .hp-plan__pulse {
   fill: var(--hp-cyan);
   opacity: 0.1;
-  animation: hp-blip 9s ease-in-out infinite;
+  animation: hp-blip 12s ease-out infinite;
 }
 
 @keyframes hp-blip {
-  0%, 100% { opacity: 0.1; }
-  50% { opacity: 0.5; }
+  0% { opacity: 0.6; }
+  22% { opacity: 0.1; }
+  100% { opacity: 0.1; }
 }
 
 .hp-plan__index {
@@ -535,6 +893,12 @@ body.hp-lab-mode {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 13px;
   letter-spacing: 0.16em;
+}
+
+/* Linia vie e a instrumentului, nu a legendei: cifrele nu au voie să salte. */
+.hp-plan__note--live {
+  fill: var(--hp-cyan);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Straturile de extrudare nu au etichete: doar volum plin.
@@ -890,7 +1254,6 @@ body.hp-lab-mode {
 }
 
 .hp-kicker,
-.hp-wordmark span,
 .hp-line,
 .hp-cta,
 .hp-evidence,
@@ -898,9 +1261,30 @@ body.hp-lab-mode {
   animation: hp-fade-up 760ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
+/*
+ * Wordmark-ul nu se estompează, se descoperă: linia urcă de sub propria margine,
+ * iar luciul trece peste ea o secundă mai târziu. Două animații pe același
+ * element, deci și întârzierile vin în pereche, în aceeași ordine.
+ */
+.hp-wordmark span {
+  animation:
+    hp-line-rise 1000ms cubic-bezier(0.16, 1, 0.3, 1) backwards,
+    hp-sheen 1700ms cubic-bezier(0.32, 0, 0.24, 1) backwards;
+}
+
+@keyframes hp-line-rise {
+  from { opacity: 0; transform: translateY(0.36em); clip-path: inset(0 0 104% 0); }
+  to { opacity: 1; transform: translateY(0); clip-path: inset(-20% 0 -20% 0); }
+}
+
+@keyframes hp-sheen {
+  from { background-position: 0 0; }
+  to { background-position: 100% 0; }
+}
+
 .hp-kicker { animation-delay: 180ms; }
-.hp-wordmark span:first-child { animation-delay: 300ms; }
-.hp-wordmark span:last-child { animation-delay: 400ms; }
+.hp-wordmark span:first-child { animation-delay: 300ms, 760ms; }
+.hp-wordmark span:last-child { animation-delay: 400ms, 880ms; }
 .hp-line { animation-delay: 620ms; }
 .hp-cta { animation-delay: 780ms; }
 .hp-evidence { animation-delay: 920ms; }
@@ -937,6 +1321,35 @@ body.hp-lab-mode {
   .hp-plan__wall {
     stroke-dasharray: none;
   }
+
+  /* Instrumentul se oprește: rămâne desenul, fără baleiaj și fără praf. */
+  .hp-btn--primary::after,
+  .hp-scroll-cue i::after,
+  .hp-plan__halo,
+  .hp-plan__pivot-glow,
+  .hp-plan__sweep,
+  .hp-plan__ping,
+  .hp-plan__pulse,
+  .hp-plan__route,
+  .hp-plan__route-head,
+  .hp-plan__spurs line,
+  .hp-aura__lamp,
+  .hp-aura__dust::before,
+  .hp-aura__dust::after,
+  .hp-aura__grain {
+    animation: none;
+  }
+
+  .hp-plan__sweep,
+  .hp-plan__route-head,
+  .hp-btn--primary::after,
+  .hp-scroll-cue i::after {
+    display: none;
+  }
+
+  .hp-plan__route {
+    stroke-dashoffset: 0;
+  }
 }
 
 /* ============================================================================
@@ -950,7 +1363,16 @@ body.hp-lab-mode {
   bottom: 26px;
   z-index: 4;
   width: min(46ch, 44vw);
-  min-height: 148px;
+  /*
+   * Înălțimea acoperă cazul cel mai lung, nu pe cel mai scurt.
+   *
+   * Panoul e ancorat de jos, deci creșterea îl împinge în sus: cu 148px, cele
+   * șapte sisteme dădeau cutii între 148 și 178, iar marginea de sus sărea 29px
+   * la fiecare trecere de la un nod la altul. Titlul și fraza sunt limitate la
+   * două și trei rânduri, deci niciun proiect adăugat mai târziu nu poate
+   * depăși rezervarea.
+   */
+  min-height: 196px;
   padding-top: 16px;
   border-top: 1px solid var(--hp-line);
   /* Vizibil in doua momente: cat timp planul e desen, si dupa ce cetatea s-a
@@ -988,7 +1410,11 @@ body.hp-lab-mode {
 }
 
 .hp-preview__title {
+  display: -webkit-box;
+  overflow: hidden;
   margin: 0 0 6px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   color: var(--hp-ink-strong);
   font-family: 'Fraunces Variable', 'Fraunces', 'Iowan Old Style', Georgia, serif;
   font-size: 1.5rem;
@@ -998,8 +1424,12 @@ body.hp-lab-mode {
 }
 
 .hp-preview__summary {
+  display: -webkit-box;
+  overflow: hidden;
   max-width: 46ch;
   margin: 0 0 12px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
   color: rgb(215 208 195 / 0.72);
   font-size: 0.88rem;
   line-height: 1.45;

@@ -40,9 +40,9 @@ import { effectiveQuality } from '../../experience/experienceMachine';
 import { useExperienceActorRef, useExperienceSelector } from '../../experience/useExperience';
 import { useJourneyDirector } from '../../experience/useJourneyDirector';
 import { useGreenfieldMode } from '../../hooks/useGreenfieldMode';
-import { HeroPlanSheet, HeroPlanTitle } from '../hero-plan/heroOpening';
+import { HeroPlanAtmosphere, HeroPlanSheet, HeroPlanTitle } from '../hero-plan/heroOpening';
+import { NodePreview } from '../hero-plan/NodePreview';
 import { useHeroOpening } from '../hero-plan/useHeroOpening';
-import '../hero-plan/hero-plan.css';
 import { scrollSmoothTo } from '../../../components/smoothScroll';
 import '../hero-plan/hero-plan.css';
 import type { MacroLensMode } from './MacroFlowScene';
@@ -776,11 +776,15 @@ function MacroFlowExperience() {
         data-chapter="threshold"
       >
         <div className="hp-viewport">
+          <HeroPlanAtmosphere />
           <HeroPlanTitle onFollow={() => {
             const beat = heroBeatRef.current;
             if (beat) scrollSmoothTo(beat.offsetTop + beat.offsetHeight);
           }} />
           <HeroPlanSheet opening={opening} interactive={activeChapter === 'threshold'} />
+          {/* Ancorat în viewport, nu în scenă: panoul stă în colțul cadrului, iar
+              `.hp-stage` se înclină odată cu planul. */}
+          <NodePreview activeSlug={opening.activeSlug} />
         </div>
         <p className="hp-scroll-cue" aria-hidden="true">
           <i /> Derulează &middot; cetatea se ridică
