@@ -582,59 +582,80 @@ def build_court(limestone, limestone_light, plaster, timber, roof_mat, brass, gl
     # --- steps up onto the plinth ---------------------------------------------
     for index in range(3):
         depth, rise = 0.62, plinth_h / 3
-        r = plinth_r + 1.55 - index * depth
+        r = plinth_r + 3.1 - index * depth
         sx, sy = polar(r, centre)
         step = box(f"Court step {index:02d}", (sx, sy, rise * (index + 0.5)),
                    (4.4 - index * 0.3, depth, rise), facing)
         finish(step, limestone, bevel=0.02)
 
-    # --- the portal -----------------------------------------------------------
-    # Not a hole - the keep is a solid prism and a boolean here is a liability.
-    # A surround standing proud of the facet with a lit recess behind it reads as
-    # a doorway at every distance the camera ever sees it from.
+    # --- the portal, as a porch with a light at the back of it -----------------
+    #
+    # Not a recess in the keep. The keep is a solid hexagonal prism and a tunnel cut
+    # into it is a boolean, which this build does not do - the first attempt built
+    # one anyway and it came out entirely inside the masonry, invisible from the
+    # courtyard, leaving a flat pale panel where a doorway should be.
+    #
+    # So the passage projects outward instead. Dark cheeks and a dark soffit run two
+    # and a half metres out from the keep face to a stone mouth, with a lit opening
+    # at the far end. From across the courtyard it reads as a way in with something
+    # on the other side; walking at it, the light grows because it is nearer, which
+    # is the whole reason the white-out at the crossing means anything.
     opening_w, opening_h = 2.6, 3.8
     jamb_w, head_h = 0.34, 0.4
+    porch = 2.5
+    mouth = inradius + porch
+    sill_z = plinth_h
 
-    # The recess is dark and the light is only what spills out of it low down.
-    # A full sheet of emissive across the opening is a light box: it blows the
-    # facet, the jambs and the steps to the same white and stops reading as a way
-    # into anywhere. A dark room with light on its floor reads as occupied.
-    rx, ry = polar(inradius + 0.02, centre)
-    recess = box("Court portal recess", (rx, ry, plinth_h + opening_h / 2),
-                 (opening_w, 0.08, opening_h), facing)
-    finish(recess, timber)
-
-    gx, gy = polar(inradius + 0.05, centre)
-    spill = box("Court portal light", (gx, gy, plinth_h + 0.62),
-                (opening_w - 0.7, 0.08, 1.15), facing)
-    finish(spill, glass)
+    for name, radius, size, height in (
+        ("floor", inradius + porch / 2, (opening_w + 0.5, porch, 0.12), sill_z + 0.06),
+        ("soffit", inradius + porch / 2, (opening_w + 0.5, porch, 0.24), sill_z + opening_h + 0.12),
+    ):
+        cx, cy = polar(radius, centre)
+        finish(box(f"Court portal {name}", (cx, cy, height), size, facing), limestone, bevel=0.02)
 
     for side in (-1, 1):
+        off = side * (opening_w / 2 + 0.12)
+        cx, cy = polar(inradius + porch / 2, centre)
+        cheek = box(f"Court portal cheek {side + 1}",
+                    (cx + off * math.cos(facing), cy + off * math.sin(facing),
+                     sill_z + opening_h / 2),
+                    (0.24, porch, opening_h), facing)
+        finish(cheek, timber, bevel=0.02)
+
+    # The light at the end. Narrower than the mouth, so it reads as a way on.
+    lx, ly = polar(inradius + 0.08, centre)
+    beacon = box("Court portal beacon", (lx, ly, sill_z + opening_h * 0.46),
+                 (opening_w * 0.62, 0.12, opening_h * 0.56), facing)
+    finish(beacon, glass)
+    # A dark surround, so the lit part is an opening and not a lit wall.
+    back = box("Court portal back", (lx, ly, sill_z + opening_h / 2),
+               (opening_w, 0.06, opening_h), facing)
+    finish(back, timber)
+
+    # Stone mouth at the outer end: jambs, head, and a brass lintel under it.
+    mx, my = polar(mouth, centre)
+    for side in (-1, 1):
         ox = side * (opening_w + jamb_w) / 2
-        jx, jy = polar(inradius + 0.16, centre)
         jamb = box(f"Court portal jamb {'L' if side < 0 else 'R'}",
-                   (jx + ox * math.cos(facing), jy + ox * math.sin(facing),
-                    plinth_h + opening_h / 2),
-                   (jamb_w, 0.42, opening_h + head_h), facing)
+                   (mx + ox * math.cos(facing), my + ox * math.sin(facing),
+                    sill_z + opening_h / 2),
+                   (jamb_w, 0.46, opening_h + head_h), facing)
         finish(jamb, limestone, bevel=0.02)
 
-    hx, hy = polar(inradius + 0.16, centre)
-    head = box("Court portal head", (hx, hy, plinth_h + opening_h + head_h / 2),
-               (opening_w + jamb_w * 2, 0.46, head_h), facing)
+    head = box("Court portal head", (mx, my, sill_z + opening_h + head_h / 2),
+               (opening_w + jamb_w * 2, 0.5, head_h), facing)
     finish(head, limestone, bevel=0.02)
-
-    lintel = box("Court portal lintel", (hx, hy, plinth_h + opening_h + 0.04),
-                 (opening_w, 0.5, 0.1), facing)
+    lintel = box("Court portal lintel", (mx, my, sill_z + opening_h + 0.04),
+                 (opening_w, 0.54, 0.1), facing)
     finish(lintel, brass, bevel=0.01)
 
-    # One leaf standing open against the jamb: the way in is open, and the door
-    # that opens it is visible rather than implied.
-    leaf_x = -(opening_w / 2 + 0.2)
-    dx, dy = polar(inradius + 0.6, centre)
+    # One leaf standing open against the mouth.
+    leaf_x = -(opening_w / 2 + 0.26)
+    dx, dy = polar(mouth + 0.42, centre)
     leaf = box("Court portal leaf",
                (dx + leaf_x * math.cos(facing), dy + leaf_x * math.sin(facing),
-                plinth_h + opening_h / 2),
-               (0.2, opening_w * 0.82, opening_h - 0.2), facing)
+                sill_z + opening_h / 2),
+               (0.22, opening_w * 0.8, opening_h - 0.2), facing)
     finish(leaf, timber, bevel=0.02)
 
     # --- lamps ----------------------------------------------------------------
@@ -1171,6 +1192,7 @@ def build_occupation(limestone, limestone_light, plaster, timber, roof_mat, bras
         finish(coals, glass)
 
     for prefix, merged in (
+        ("Court portal cheek", "Court portal cheeks"),
         ("Roof course", "Roof courses"),
         ("Roof stack", "Roof stacks"),
         ("Roof cap", "Roof caps"),

@@ -81,7 +81,8 @@ const GATE_LIGHT = onRing(CITADEL.gate.centerDeg, CITADEL.ring.innerRadius - 1.5
  * down the gate axis, which is where the portal is.
  */
 const KEEP_INRADIUS = CITADEL.core.radius * Math.cos(Math.PI / CITADEL.core.facets);
-const KEEP_LIGHT = onRing(CITADEL.gate.centerDeg, KEEP_INRADIUS + 1.1, 2.0);
+/** Inside the keep's passage, level with the light at the end of it. */
+const KEEP_LIGHT = onRing(CITADEL.gate.centerDeg, KEEP_INRADIUS + 0.9, 2.4);
 
 /**
  * How far a leaf swings, in radians.
@@ -466,6 +467,11 @@ function CitadelModel({
       pulse.uniforms.uT.value = Math.min(1, Math.max(0, wave));
     }
 
+    // How close the reader is to the wall, read before the pieces because the
+    // light at the end of the keep's passage gains on the approach.
+    const handoff = handoffRef?.current ?? 0;
+    const near = smooth(range(handoff, 0.36, GATE_CROSSING));
+
     if (citadelRef.current) {
       // The solid appears exactly where the lines are, at almost no height, so the
       // drawing does not cut to a model: it thickens into one.
@@ -504,7 +510,10 @@ function CitadelModel({
         // build shader: a window that goes translucent stops being a window.
         if (lamp) {
           const lit = smooth(built);
-          lamp.material.emissiveIntensity = lamp.base * lit;
+          // The light at the end of the keep's passage is the one the reader is
+          // walking at, so it gains as they close on it. Everything else holds.
+          const approach = authoredName(object) === 'Court portal beacon' ? 1 + near * 2.6 : 1;
+          lamp.material.emissiveIntensity = lamp.base * lit * approach;
           lamp.material.color.copy(GLASS_COLOR).lerp(lamp.tint, lit);
         }
 
@@ -531,7 +540,6 @@ function CitadelModel({
     // itself standing wide open and the walk up to it arrived at a doorway that
     // had nothing left to do. The building seals itself instead, and the doors
     // give way as the camera closes on them.
-    const handoff = handoffRef?.current ?? 0;
     // The doors open in the window where the camera can actually see them.
     //
     // Both earlier attempts missed it in opposite directions. Opening at the end of
@@ -550,7 +558,6 @@ function CitadelModel({
     // nothing is a gate opening on nothing; the light coming through the widening
     // gap is the reason to walk in. It builds again as the camera nears, so the
     // approach brightens rather than holding at whatever the doors uncovered.
-    const near = smooth(range(handoff, 0.36, GATE_CROSSING));
     const opened = swing(gateOpen, 0);
     if (gateLightRef.current) {
       // Kept deliberately low. What sells the gate is that it is the only lit thing
