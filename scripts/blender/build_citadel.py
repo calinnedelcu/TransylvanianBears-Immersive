@@ -369,12 +369,9 @@ def build_ring(limestone, plaster, roof_mat, timber, brass, glass) -> None:
             towers["radius"], towers["height"], 8, rad(angle),
         )
         finish(shaft, limestone)
-        cap = prism(
-            f"Tower cap {index:02d}",
-            (tx, ty, towers["height"] + towers["capHeight"] / 2),
-            towers["radius"] + 0.42, towers["capHeight"], 8, rad(angle),
-        )
-        finish(cap, roof_mat, bevel=0.03)
+        # No flat cap. build_towers gives this a corbelled crown, a parapet with
+        # merlons and a roof that comes to a point; a slab on top of a prism was
+        # exactly what made these read as pillars rather than towers.
 
 
 def build_gate(limestone, brass, timber) -> None:
@@ -1192,6 +1189,163 @@ def build_occupation(limestone, limestone_light, plaster, timber, roof_mat, bras
         join_by_prefix(prefix + " " if not prefix.endswith(" ") else prefix, merged)
 
 
+def taper_top(obj, factor: float = 0.14) -> None:
+    """Pull a prism's top ring into a point, which is how the keep's roof is made."""
+    for vertex in obj.data.vertices:
+        if vertex.co.z > 0:
+            vertex.co.x *= factor
+            vertex.co.y *= factor
+
+
+def build_towers(limestone, plaster, timber, roof_mat, brass, glass) -> None:
+    """The four towers, which were four naked prisms.
+
+    Two of them are the gate jambs - hexagonal shafts 11.4m tall, the tallest thing
+    in the model, and they had no cap, no cornice, no opening and no course: they
+    read as grey pillars parked next to the door. The other two carried a flat slab
+    for a roof. Between them they are most of the citadel's skyline, so most of what
+    the eye judges the building by was the part with nothing on it.
+
+    Each gets the same anatomy, which is what a tower has: a battered foot, courses
+    that break the shaft, a corbelled crown, a parapet, a roof that comes to a
+    point, and lit windows so somebody is up there.
+    """
+    ring = DEF["ring"]
+    gate = DEF["gate"]
+    towers = DEF["towers"]
+    core = DEF["core"]
+    mid = (ring["innerRadius"] + ring["outerRadius"]) / 2
+
+    def dress(tag, cx, cy, angle, radius, height, sides):
+        yaw = rad(angle)
+        inradius = radius * math.cos(math.pi / sides)
+        step = 360.0 / sides
+
+        # A battered foot: a tower that meets the ground on a line has no weight.
+        foot = prism(f"{tag} foot", (cx, cy, 0.62), radius + 0.3, 1.24, sides, yaw)
+        finish(foot, limestone, bevel=0.04)
+
+        # Two courses, which is what stops a shaft reading as an extrusion.
+        for level, z in enumerate((height * 0.36, height * 0.68)):
+            course = prism(f"{tag} course {level}", (cx, cy, z), radius + 0.16, 0.28, sides, yaw)
+            finish(course, limestone, bevel=0.02)
+
+        # Corbelled crown, parapet, and merlons on top of it.
+        corbel = prism(f"{tag} corbel", (cx, cy, height - 0.5), radius + 0.34, 0.42, sides, yaw)
+        finish(corbel, limestone, bevel=0.02)
+        parapet = prism(f"{tag} parapet", (cx, cy, height + 0.42), radius + 0.28, 0.9, sides, yaw)
+        finish(parapet, limestone, bevel=0.02)
+        for k in range(sides):
+            a = angle + k * step
+            mx, my = polar(1.0, a)
+            merlon = box(f"{tag} merlon {k}", (cx + mx * (inradius + 0.16), cy + my * (inradius + 0.16),
+                                               height + 1.12), (0.66, 0.34, 0.5), rad(a) + math.pi / 2)
+            finish(merlon, limestone, bevel=0.02)
+
+        # A roof that comes to a point. The flat slab was the tell.
+        roof = prism(f"{tag} roof", (cx, cy, height + 2.55), radius + 0.5, 2.4, sides, yaw)
+        taper_top(roof)
+        finish(roof, roof_mat, bevel=0.03)
+        spire = prism(f"{tag} spire", (cx, cy, height + 3.95), 0.14, 0.8, 6, yaw)
+        finish(spire, brass, bevel=0.02)
+
+        # Lit windows on the two faces that look outward, slits on the rest, so the
+        # tower is occupied from the hero frame and defended from everywhere else.
+        for k in range(sides):
+            a = angle + k * step
+            fx, fy = polar(1.0, a)
+            face_yaw = rad(a) + math.pi / 2
+            lit = k in (0, 1, sides - 1)
+            for level, z in enumerate((height * 0.5, height * 0.82) if lit else (height * 0.6,)):
+                w, h_ = (0.68, 1.15) if lit else (0.2, 1.0)
+                surround = box(f"{tag} reveal {k}{level}",
+                               (cx + fx * (inradius + 0.04), cy + fy * (inradius + 0.04), z),
+                               (w + 0.34, 0.24, h_ + 0.34), face_yaw)
+                finish(surround, limestone, bevel=0.02)
+                pane = box(f"{tag} pane {k}{level}",
+                           (cx + fx * (inradius + 0.14), cy + fy * (inradius + 0.14), z),
+                           (w, 0.12, h_), face_yaw)
+                finish(pane, glass if lit else timber)
+
+    # The two gate towers, on the jamb geometry that is already solved.
+    jamb_inset = 2.15 * math.cos(math.pi / 6)
+    opening = ring["outerRadius"] * math.sin(rad(gate["halfWidthDeg"]))
+    jamb_offset = math.degrees(math.asin(min(0.9, (opening + jamb_inset + 0.14) / mid)))
+    for sign in (-1, 1):
+        angle = gate["centerDeg"] + sign * jamb_offset
+        jx, jy = polar(mid, angle)
+        dress(f"Gatetower {'L' if sign < 0 else 'R'}", jx, jy, angle, 2.15, gate["towerHeight"], 6)
+
+    # And the two wall towers.
+    for index, angle in enumerate(towers["angles"]):
+        tx, ty = polar(ring["outerRadius"] - 0.5, angle)
+        dress(f"Walltower {index:02d}", tx, ty, angle, towers["radius"], towers["height"], 8)
+
+    # The keep becomes a lantern.
+    #
+    # Its shaft was ten metres of blank plaster with a gallery stuck round it. A
+    # glazed band above the gallery makes the middle of the citadel the thing that
+    # glows, which is what the whole enclosure is arranged around.
+    facets = core["facets"]
+    inradius = core["radius"] * math.cos(math.pi / facets)
+    top = core["plinthHeight"] + core["bodyHeight"]
+    # Three narrow lights per facet, not one sheet.
+    #
+    # The first version glazed most of each facet, and six panels four metres wide
+    # at the emissive intensity every lit surface in this model shares came out as
+    # a white slab that took the whole hero frame. A lantern is a lot of small
+    # lights behind a frame; the mullions are most of what makes it read as one.
+    lantern_z = (core["galleryZ"] + top) / 2 + 0.45
+    lantern_h = top - core["galleryZ"] - 2.1
+    light_w = core["radius"] * 0.2
+    for index in range(facets):
+        a = 30 + index * (360.0 / facets)
+        fx, fy = polar(1.0, a)
+        yaw = rad(a) + math.pi / 2
+        tangent = (-math.sin(yaw), math.cos(yaw))
+        for slot in (-1, 0, 1):
+            offset = slot * core["radius"] * 0.28
+            pane = box(f"Lantern pane {index}{slot + 1}",
+                       (fx * (inradius + 0.06) + tangent[0] * offset,
+                        fy * (inradius + 0.06) + tangent[1] * offset, lantern_z),
+                       (light_w, 0.12, lantern_h), yaw)
+            finish(pane, glass)
+        for slot in (-1.5, -0.5, 0.5, 1.5):
+            offset = slot * core["radius"] * 0.28
+            mullion = box(f"Lantern mullion {index}{slot > 0}{abs(slot) > 1}",
+                          (fx * (inradius + 0.16) + tangent[0] * offset,
+                           fy * (inradius + 0.16) + tangent[1] * offset, lantern_z),
+                          (0.16, 0.2, lantern_h + 0.3), yaw)
+            finish(mullion, timber, bevel=0.01)
+        transom = box(f"Lantern transom {index:02d}",
+                      (fx * (inradius + 0.16), fy * (inradius + 0.16), lantern_z),
+                      (core["radius"] * 0.92, 0.2, 0.16), yaw)
+        finish(transom, timber, bevel=0.01)
+
+    for prefix, merged in (
+        ("Gatetower L merlon", "Gatetower L merlons"),
+        ("Gatetower R merlon", "Gatetower R merlons"),
+        ("Walltower 00 merlon", "Walltower 00 merlons"),
+        ("Walltower 01 merlon", "Walltower 01 merlons"),
+        ("Gatetower L course", "Gatetower L courses"),
+        ("Gatetower R course", "Gatetower R courses"),
+        ("Walltower 00 course", "Walltower 00 courses"),
+        ("Walltower 01 course", "Walltower 01 courses"),
+        ("Gatetower L reveal", "Gatetower L reveals"),
+        ("Gatetower R reveal", "Gatetower R reveals"),
+        ("Walltower 00 reveal", "Walltower 00 reveals"),
+        ("Walltower 01 reveal", "Walltower 01 reveals"),
+        ("Gatetower L pane", "Gatetower L panes"),
+        ("Gatetower R pane", "Gatetower R panes"),
+        ("Walltower 00 pane", "Walltower 00 panes"),
+        ("Walltower 01 pane", "Walltower 01 panes"),
+        ("Lantern pane", "Lantern panes"),
+        ("Lantern mullion", "Lantern mullions"),
+        ("Lantern transom", "Lantern transoms"),
+    ):
+        join_by_prefix(prefix + " ", merged)
+
+
 def join_by_prefix(prefix: str, name: str) -> None:
     """Merge repeated scatter meshes. They never animate apart, so paying a draw
     call each is waste; the brief budgets fewer than seventy on desktop."""
@@ -1232,7 +1386,7 @@ def group_scene() -> None:
         ("Stage ring", ("Ring ",)),
         ("Stage bays", ("Bay ",)),
         ("Stage gate", ("Gate ", "Gallery post")),
-        ("Stage towers", ("Tower ",)),
+        ("Stage towers", ("Tower ", "Gatetower ", "Walltower ", "Lantern ")),
         ("Stage core", ("Core ",)),
         ("Stage court", ("Court ",)),
         ("Stage trim", ("Trim ",)),
@@ -1356,6 +1510,7 @@ def main() -> None:
     build_court(limestone, limestone_light, plaster, timber, roof_mat, brass, glass)
     build_articulation(limestone, timber, roof_mat, brass)
     build_occupation(limestone, limestone_light, plaster, timber, roof_mat, brass, glass)
+    build_towers(limestone, plaster, timber, roof_mat, brass, glass)
     build_nodes(brass, signal)
 
     group_scene()
