@@ -26,7 +26,7 @@ import {
   type BuriedActCameraCurve,
 } from './buried-act/buriedActCamera';
 
-import { NexusActScene, measureNexusLensWindow } from './NexusActScene';
+import { NexusActScene, measureNexusCityReveal, measureNexusLensWindow } from './NexusActScene';
 import { VerticalSliceLoader } from './VerticalSliceLoader';
 import { VerticalSliceLoadingGate } from './VerticalSliceLoadingGate';
 import type { LensPointerState, MacroLensMode, MacroTraceOutcome, NexusFlightInput } from './macroFlowTypes';
@@ -210,6 +210,7 @@ function CameraDirector({
     const measure = () => {
       root.dataset.cameraRanges = measureVerticalSliceCameraRanges() ? 'measured' : 'fallback';
       root.dataset.lensWindow = measureNexusLensWindow() ? 'measured' : 'fallback';
+      root.dataset.cityReveal = measureNexusCityReveal() ? 'measured' : 'fallback';
     };
     measure();
     window.addEventListener('resize', measure);

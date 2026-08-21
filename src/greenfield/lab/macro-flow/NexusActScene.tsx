@@ -171,6 +171,7 @@ function createSemanticMaterial(
     },
     vertexShader: `
       varying vec3 vNormalView;
+      varying vec3 vNormalWorld;
       varying vec3 vWorldPosition;
       varying vec3 vInstanceTint;
       varying vec3 vVertexTint;
@@ -195,6 +196,7 @@ function createSemanticMaterial(
         vec4 viewPosition = viewMatrix * worldPosition;
         vWorldPosition = worldPosition.xyz;
         vNormalView = normalize(normalMatrix * objectNormal);
+        vNormalWorld = normalize(mat3(modelMatrix) * objectNormal);
         vDepth = -viewPosition.z;
         gl_Position = projectionMatrix * viewPosition;
       }
@@ -210,6 +212,7 @@ function createSemanticMaterial(
       uniform float uRadius;
       uniform float uSemanticClass;
       varying vec3 vNormalView;
+      varying vec3 vNormalWorld;
       varying vec3 vWorldPosition;
       varying vec3 vInstanceTint;
       varying vec3 vVertexTint;
@@ -273,8 +276,13 @@ function createSemanticMaterial(
         vec3 rawColor = uRaw * vInstanceTint * vVertexTint * diffuse * materialGrain * surfacePattern * architectureLift;
         vec3 inspected = rawColor;
         float silhouette = pow(1.0 - abs(normalView.z), 3.2);
+        // Floor lines belong on walls. Keyed off world height, they were also
+        // being drawn across every pitched roof in the city, where one band cuts
+        // the slope on the diagonal and reads as a strip of hatching. Weighted by
+        // how far the surface faces up, they stay on the facades that have floors.
+        float upFacing = clamp(normalize(vNormalWorld).y, 0.0, 1.0);
         float structuralBand = uSemanticClass < 0.5
-          ? jointLine(vWorldPosition.y, 0.42, 0.042) * 0.42
+          ? jointLine(vWorldPosition.y, 0.42, 0.042) * 0.42 * (1.0 - upFacing * upFacing)
           : 0.0;
 
         if (uMode > 0.5 && uMode < 1.5) {
@@ -341,6 +349,51 @@ export function measureNexusLensWindow(): boolean {
 /** What the sampler is using. Exposed so a probe can check it. */
 export function nexusLensWindow() {
   return { ...LENS_WINDOW };
+}
+
+/**
+ * When the city rises, measured against the chapter it rises in.
+ *
+ * The window was 0.045 to 0.091 of journey progress with a fixed 0.0018 per row of
+ * stagger. Three things wrong with that. The chapter starts at 0.063, so the front
+ * row began growing before the reader had arrived; the far rows finished at 0.091
+ * plus their stagger, and at thirty-three rows that is 0.149 - past the end of the
+ * whole act, so the far half of the city never finished going up at all. And the
+ * stagger being a fixed amount per row meant making the city longer made it later,
+ * which is what extending it to cover the camera path did.
+ *
+ * The window is measured from the section now, and the stagger is a share of it, so
+ * the last row is always up by the end of it however many rows there are.
+ */
+let CITY_REVEAL = { from: 0.045, to: 0.091 };
+
+export function measureNexusCityReveal(): boolean {
+  if (typeof document === 'undefined') return false;
+  const field = document.getElementById('mf-field');
+  const lens = document.getElementById('mf-lens');
+  const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+  if (!field || !lens || scrollable <= 0 || lens.offsetTop <= field.offsetTop) return false;
+  const start = field.offsetTop / scrollable;
+  const end = lens.offsetTop / scrollable;
+  const span = Math.max(1e-4, end - start);
+  // Already going up as the reader comes through the gate, all of it standing a
+  // third of the way down the street.
+  CITY_REVEAL = { from: start - span * 0.14, to: start + span * 0.36 };
+  return true;
+}
+
+/** What the reveal is using. Exposed so a probe can check it. */
+export function nexusCityReveal() {
+  return { ...CITY_REVEAL };
+}
+
+/** Where one row is in the rise, 0 at the near end of the street. */
+function cityRevealAt(progress: number, row: number) {
+  const window = CITY_REVEAL.to - CITY_REVEAL.from;
+  const staggerSpan = window * 0.56;
+  const rise = window * 0.44;
+  const from = CITY_REVEAL.from + (row / Math.max(1, CITY_ROWS - 1)) * staggerSpan;
+  return Math.max(0.001, smooth(range(progress, from, from + rise)));
 }
 
 function lensPresenceAt(progress: number) {
@@ -1565,6 +1618,7 @@ function TrackedSubjects({
   }), []);
   const geometries = useMemo(() => ({
     box: new THREE.BoxGeometry(1, 1, 1),
+    boundary: createBoundaryFrameGeometry(),
     body: new THREE.CapsuleGeometry(0.2, 0.5, 4, 8),
     head: new THREE.SphereGeometry(0.2, 10, 8),
     limb: new THREE.CapsuleGeometry(0.075, 0.42, 3, 7),
@@ -1576,9 +1630,8 @@ function TrackedSubjects({
     limb: createSemanticMaterial('#ffffff', '#72d9d6', 5),
     boundary: new THREE.MeshBasicMaterial({
       color: '#df6553',
-      wireframe: true,
       transparent: true,
-      opacity: 0.88,
+      opacity: 0.92,
       depthWrite: false,
       toneMapped: false,
     }),
@@ -1714,13 +1767,56 @@ function TrackedSubjects({
       <instancedMesh ref={armRef} args={[geometries.limb, materials.limb, pedestrianCount * 2]} frustumCulled={false} />
       <instancedMesh
         ref={boundaryRef}
-        args={[geometries.box, materials.boundary, detectionCount]}
+        args={[geometries.boundary, materials.boundary, detectionCount]}
         visible={lensMode === 'detection'}
         frustumCulled={false}
         renderOrder={4}
       />
     </group>
   );
+}
+
+/**
+ * A detection box, drawn as corner brackets.
+ *
+ * This was a unit cube with `wireframe: true`, which in three draws every triangle
+ * edge - so each of the six faces got its diagonal as well, and a box locked onto a
+ * pedestrian came out as a tangle of pink lines rather than a boundary. Wireframe
+ * also has no thickness to control and thins to nothing at distance.
+ *
+ * Twelve edges, each drawn only at its two ends, merged into one geometry so the
+ * whole set is still a single instanced draw. Corner brackets are also what a
+ * detector overlay actually looks like: they mark the extent without covering the
+ * subject the box is around.
+ */
+function createBoundaryFrameGeometry() {
+  const bar = 0.3;
+  const thick = 0.035;
+  const parts: THREE.BufferGeometry[] = [];
+  const axes: Array<0 | 1 | 2> = [0, 1, 2];
+
+  axes.forEach((axis) => {
+    const others = axes.filter((value) => value !== axis) as [0 | 1 | 2, 0 | 1 | 2];
+    [-0.5, 0.5].forEach((a) => {
+      [-0.5, 0.5].forEach((b) => {
+        [-1, 1].forEach((end) => {
+          const size: [number, number, number] = [thick, thick, thick];
+          size[axis] = bar;
+          const box = new THREE.BoxGeometry(size[0], size[1], size[2]);
+          const at: [number, number, number] = [0, 0, 0];
+          at[axis] = end * (0.5 - bar / 2);
+          at[others[0]] = a;
+          at[others[1]] = b;
+          box.translate(at[0], at[1], at[2]);
+          parts.push(box);
+        });
+      });
+    });
+  });
+
+  const merged = mergeGeometries(parts, false);
+  parts.forEach((part) => part.dispose());
+  return merged ?? new THREE.BoxGeometry(1, 1, 1);
 }
 
 function createGableRoofGeometry() {
@@ -1979,8 +2075,7 @@ function BatchedCityBuildings({
     let entranceIndex = 0;
 
     CITY_BLOCKS.forEach((block, index) => {
-      const stagger = block.row * 0.0018;
-      const revealTarget = Math.max(0.001, smooth(range(progressRef.current, 0.045 + stagger, 0.091 + stagger)));
+      const revealTarget = cityRevealAt(progressRef.current, block.row);
       const revealScale = revealTarget;
       const yOffset = (1 - revealTarget) * -0.32;
       const [x, , z] = block.position;
