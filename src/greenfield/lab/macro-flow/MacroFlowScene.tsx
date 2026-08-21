@@ -821,6 +821,17 @@ function PostEffects({
   // stands here now is a drawing: fine luminous lines and, later, glass. A low
   // bloom threshold does not flatter linework, it dissolves it, and the stars in
   // the sky bloom into blobs long before anything on the citadel does.
+  // No screen space occlusion here, and it was tried.
+  //
+  // Occlusion is the obvious lever for untextured architecture, so N8AO went in
+  // first. It washed the citadel: a pale haze over the towers and the wall head
+  // rather than dark in the crevices, and measured against the same frame without
+  // it, local contrast went from 0.85 to 0.84 - it was costing a normal pass to
+  // add nothing and take away a tower. The likely cause is the double sided
+  // materials the build phase needs, whose normals flip on back faces and give the
+  // pass the wrong surface to occlude against. Depth is coming from geometry and
+  // from the key light instead, which is what the detail tier is for.
+
   return (
     <EffectComposer multisampling={0} enableNormalPass={false}>
       <Bloom intensity={0.42} luminanceThreshold={0.82} luminanceSmoothing={0.32} mipmapBlur />
@@ -1231,20 +1242,23 @@ function World({
       ) : null}
       <directionalLight
         ref={keyLightRef}
-        castShadow={qualityTier === 'cinematic' && !showBuried && !showThreshold && !showNexus}
+        // The threshold was excluded from this when the opening was a flat drawing
+        // and there was nothing solid to cast. There is a building there now, and
+        // a building lit from every side at once is a toy.
+        castShadow={qualityTier === 'cinematic' && !showBuried && !showNexus}
         position={showThreshold ? [14, 26, 22] : [10, 18, 18]}
         intensity={showBuried ? 0.58 : showThreshold ? (compact ? 1.95 : 1.75) : 1.75}
         color={showBuried ? '#bbae98' : showThreshold ? '#c8d6de' : '#dae3d9'}
-        shadow-mapSize-width={qualityTier === 'cinematic' ? 1536 : 512}
-        shadow-mapSize-height={qualityTier === 'cinematic' ? 1536 : 512}
+        shadow-mapSize-width={qualityTier === 'cinematic' ? (showThreshold ? 2048 : 1536) : 512}
+        shadow-mapSize-height={qualityTier === 'cinematic' ? (showThreshold ? 2048 : 1536) : 512}
         shadow-camera-near={2}
         shadow-camera-far={70}
-        shadow-camera-left={-28}
-        shadow-camera-right={28}
-        shadow-camera-top={24}
-        shadow-camera-bottom={-12}
-        shadow-bias={-0.00035}
-        shadow-normalBias={0.055}
+        shadow-camera-left={showThreshold ? -34 : -28}
+        shadow-camera-right={showThreshold ? 34 : 28}
+        shadow-camera-top={showThreshold ? 30 : 24}
+        shadow-camera-bottom={showThreshold ? -20 : -12}
+        shadow-bias={showThreshold ? -0.0006 : -0.00035}
+        shadow-normalBias={showThreshold ? 0.09 : 0.055}
       />
       </>
       )}

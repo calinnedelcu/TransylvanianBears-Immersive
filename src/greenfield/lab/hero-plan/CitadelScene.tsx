@@ -274,7 +274,7 @@ function CitadelModel({
     citadel?.children
       .filter((stage) => authoredName(stage).startsWith('Stage '))
       .forEach((stage) => makeLuminous(stage));
-    if (landscape) makeSilhouette(landscape, '#0d1512');
+    if (landscape) makeSilhouette(landscape, '#0d1512', true);
     if (scatter) makeSilhouette(scatter, '#080d0c');
 
     // The enclosure comes up first and the core last, the way a building is read:
@@ -294,6 +294,8 @@ function CitadelModel({
       // of it, so they stand translucent forever while everything around them
       // turns to stone.
       'Stage court': 0.85,
+      // Mouldings arrive with the mass they sit on, a beat behind it.
+      'Stage trim': 0.88,
       'Stage nodes': 0.95,
     };
 
@@ -494,9 +496,21 @@ function CitadelModel({
             : smooth(range(built, 0.55, 0.9)) * (1 - smooth(range(built, 0.9, 1)));
           build.uFlash.value = Math.max(snap * 0.85, flare);
         }
-        // Only a finished piece occludes: half poured, it would write depth for
-        // the part that is still glass and punch a hole in whatever is behind it.
-        if (solid) solid.depthWrite = built > 0.995;
+        // A finished piece is opaque, and has to be in the opaque queue to prove it.
+        //
+        // Half poured it must not write depth: it would write for the part that is
+        // still glass and punch a hole in whatever is behind it. But left in the
+        // transparent queue once it is done, it is sorted by its own centroid
+        // instead of per pixel by depth - and for a merged moulding running the
+        // whole enclosure that centroid is the middle of the courtyard. Outlines of
+        // far pieces then draw over near walls and the citadel picks up a ghost of
+        // itself. Toggling `transparent` costs nothing: it is not a program
+        // parameter, only a queue and a blend state.
+        const done = built > 0.995;
+        if (solid && solid.transparent === done) {
+          solid.transparent = !done;
+          solid.depthWrite = done;
+        }
       });
     }
     // The gate opens for the reader, not before them.

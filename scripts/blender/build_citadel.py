@@ -871,6 +871,162 @@ def build_core_detail(limestone, timber, brass) -> None:
         finish(tie, brass, bevel=0.01)
 
 
+def build_articulation(limestone, timber, roof_mat, brass) -> None:
+    """The small tier of detail, and the reason the building stops reading as bricks.
+
+    Everything here is under half a metre. That is the point: the model had one
+    scale of detail - masses between one and ten metres - and a building with a
+    single scale of detail is a toy however good its palette is. Real architecture
+    steps down, mass to bay to moulding to joint, and the eye reads the steps.
+
+    All of it merges per family before export. Three hundred separate blocks would
+    be three hundred draw calls plus an outline pair each, which the brief does not
+    have; merged, the whole tier costs about ten.
+    """
+    ring = DEF["ring"]
+    gate = DEF["gate"]
+    bays = DEF["bays"]
+    towers = DEF["towers"]
+    core = DEF["core"]
+    gate_from = gate["centerDeg"] + gate["halfWidthDeg"]
+    gate_to = gate["centerDeg"] - gate["halfWidthDeg"] + 360.0
+    top = ring["height"] + ring["parapetHeight"]
+    bay_centres = [bays["startDeg"] + i * bays["stepDeg"] for i in range(bays["count"])]
+
+    def clear_of_bay(angle: float, margin: float) -> bool:
+        norm = ((angle % 360) + 360) % 360
+        return not any(
+            abs((norm - ((c % 360) + 360) % 360 + 180) % 360 - 180) < margin
+            for c in bay_centres
+        )
+
+    # A foot on the wall. A vertical plane meeting the ground at a hard line is the
+    # single clearest tell that a thing was extruded rather than built.
+    plinth = annulus("Trim plinth", ring["outerRadius"] - 0.1, ring["outerRadius"] + 0.44,
+                     gate_from, gate_to, 0.0, 0.82, ring["segments"])
+    finish(plinth, limestone, bevel=0.03)
+
+    # Corbels under the parapet: the machicolation reading, and the thing that puts
+    # a hard shadow line right where the wall meets its head.
+    count = 72
+    for step in range(count):
+        angle = gate_from + (gate_to - gate_from) * (step / count)
+        if not clear_of_bay(angle, bays["widthDeg"] * 0.62):
+            continue
+        cx, cy = polar(ring["outerRadius"] + 0.26, angle)
+        corbel = box(f"Trim corbel {step:02d}", (cx, cy, ring["height"] - 0.42),
+                     (0.3, 0.66, 0.44), rad(angle) + math.pi / 2)
+        finish(corbel, limestone, bevel=0.02)
+
+    # And a cornice over them, so the corbels carry something.
+    cornice = annulus("Trim cornice", ring["outerRadius"] - 0.1, ring["outerRadius"] + 0.52,
+                      gate_from, gate_to, ring["height"] - 0.14, 0.26, ring["segments"])
+    finish(cornice, limestone, bevel=0.02)
+
+    # Cap stones on the merlons. Same loop as the merlons themselves, or they land
+    # on air: the parapet skips the bays and the caps have to skip them the same way.
+    for step in range(60):
+        angle = gate_from + (gate_to - gate_from) * (step / 60)
+        if not clear_of_bay(angle, bays["widthDeg"] * 0.75):
+            continue
+        mx, my = polar(ring["outerRadius"] - 0.2, angle)
+        cap = box(f"Trim cap {step:02d}", (mx, my, top + 0.74),
+                  (0.78, 0.64, 0.14), rad(angle) + math.pi / 2)
+        finish(cap, limestone, bevel=0.02)
+
+    # Quoins on the bay corners: alternating blocks, which is how a corner is built
+    # and how the eye knows two walls meet rather than one wall folding.
+    for index in range(bays["count"]):
+        angle = bays["startDeg"] + index * bays["stepDeg"]
+        half = bays["widthDeg"] / 2
+        for side in (-1, 1):
+            for course in range(7):
+                z = 0.55 + course * 0.82
+                if z > bays["height"] - 0.4:
+                    continue
+                wide = course % 2 == 0
+                qx, qy = polar(ring["outerRadius"] + bays["projection"] - 0.12,
+                               angle + side * half)
+                quoin = box(f"Trim quoin {index}{side + 1}{course}", (qx, qy, z),
+                            (0.52 if wide else 0.34, 0.62, 0.62), rad(angle) + math.pi / 2)
+                finish(quoin, limestone, bevel=0.02)
+
+        # A sill under the opening and a hood over it, so the window sits in the
+        # wall instead of being printed on it.
+        outer = ring["outerRadius"] + bays["projection"]
+        yaw = rad(angle) + math.pi / 2
+        sx, sy = polar(outer + 0.12, angle)
+        sill = box(f"Trim sill {index:02d}", (sx, sy, bays["openingBaseZ"] - 0.2),
+                   (bays["openingWidth"] + 0.72, 0.42, 0.16), yaw)
+        finish(sill, limestone, bevel=0.02)
+        hood = box(f"Trim hood {index:02d}",
+                   (sx, sy, bays["openingBaseZ"] + bays["openingHeight"] + 0.26),
+                   (bays["openingWidth"] + 0.86, 0.5, 0.18), yaw)
+        finish(hood, limestone, bevel=0.02)
+
+        # Eaves board under the bay roof, and a ridge along its outer edge.
+        ex, ey = polar(outer + 0.28, angle)
+        eave = box(f"Trim eave {index:02d}", (ex, ey, bays["height"] - 0.09),
+                   (bays["widthDeg"] * 0.32 + 3.3, 0.24, 0.2), yaw)
+        finish(eave, timber, bevel=0.02)
+        rx, ry = polar(outer + 0.3, angle)
+        ridge = box(f"Trim ridge {index:02d}", (rx, ry, bays["height"] + bays["roofHeight"] + 0.03),
+                    (bays["widthDeg"] * 0.32 + 3.6, 0.3, 0.16), yaw)
+        finish(ridge, roof_mat, bevel=0.02)
+
+    # Tower corbels and a cornice ring under each cap.
+    for index, angle in enumerate(towers["angles"]):
+        tx, ty = polar(ring["outerRadius"] - 0.6, angle)
+        band = prism(f"Trim tower band {index:02d}",
+                     (tx, ty, towers["height"] - 0.36), towers["radius"] + 0.22, 0.3, 8)
+        finish(band, limestone, bevel=0.02)
+        for step in range(10):
+            a = step * 36
+            cx = tx + math.cos(rad(a)) * (towers["radius"] + 0.12)
+            cy = ty + math.sin(rad(a)) * (towers["radius"] + 0.12)
+            corbel = box(f"Trim tower corbel {index}{step}", (cx, cy, towers["height"] - 0.74),
+                         (0.28, 0.4, 0.34), rad(a) + math.pi / 2)
+            finish(corbel, limestone, bevel=0.02)
+
+    # Corbels under the keep's gallery, on the facet centres it already uses.
+    inradius = core["radius"] * math.cos(math.pi / core["facets"])
+    for index in range(core["facets"]):
+        a = 30 + index * (360 / core["facets"])
+        for offset in (-1.2, 0.0, 1.2):
+            base_x, base_y = polar(inradius + 0.12, a)
+            yaw = rad(a) + math.pi / 2
+            cx = base_x + offset * math.cos(yaw)
+            cy = base_y + offset * math.sin(yaw)
+            corbel = box(f"Trim keep corbel {index}{offset > 0}{offset < 0}",
+                         (cx, cy, core["galleryZ"] - 0.32), (0.26, 0.42, 0.34), yaw)
+            finish(corbel, limestone, bevel=0.02)
+
+    # Brass nosing on the gate steps: the tread edge is where a step reads from.
+    for index in range(4):
+        depth = 1.1
+        nx, ny = polar(ring["outerRadius"] + 1.0 + index * depth - depth / 2 + 0.06,
+                       gate["centerDeg"])
+        nosing = box(f"Trim nosing {index:02d}", (nx, ny, 0.42 - index * 0.13 + 0.14),
+                     (6.4 + index * 0.7, 0.12, 0.05), rad(gate["centerDeg"]) + math.pi / 2)
+        finish(nosing, brass, bevel=0.01)
+
+    # Merge per family. Three hundred blocks, about ten draw calls.
+    for prefix, merged in (
+        ("Trim corbel", "Trim corbels"),
+        ("Trim cap", "Trim caps"),
+        ("Trim quoin", "Trim quoins"),
+        ("Trim sill", "Trim sills"),
+        ("Trim hood", "Trim hoods"),
+        ("Trim eave", "Trim eaves"),
+        ("Trim ridge", "Trim ridges"),
+        ("Trim tower corbel", "Trim tower corbels"),
+        ("Trim tower band", "Trim tower bands"),
+        ("Trim keep corbel", "Trim keep corbels"),
+        ("Trim nosing", "Trim nosings"),
+    ):
+        join_by_prefix(prefix + " ", merged)
+
+
 def join_by_prefix(prefix: str, name: str) -> None:
     """Merge repeated scatter meshes. They never animate apart, so paying a draw
     call each is waste; the brief budgets fewer than seventy on desktop."""
@@ -914,6 +1070,7 @@ def group_scene() -> None:
         ("Stage towers", ("Tower ",)),
         ("Stage core", ("Core ",)),
         ("Stage court", ("Court ",)),
+        ("Stage trim", ("Trim ",)),
         ("Stage nodes", ("Node ",)),
     ]
     stage_objects = {}
@@ -1031,6 +1188,7 @@ def main() -> None:
     build_wall_detail(limestone, brass, timber, glass)
     build_core_detail(limestone, timber, brass)
     build_court(limestone, limestone_light, plaster, timber, roof_mat, brass, glass)
+    build_articulation(limestone, timber, roof_mat, brass)
     build_nodes(brass, signal)
 
     group_scene()

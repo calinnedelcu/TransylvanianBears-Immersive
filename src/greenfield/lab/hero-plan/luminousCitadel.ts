@@ -87,6 +87,8 @@ export type BuildUniforms = {
   uEdge: { value: THREE.Color };
   /** 0 to 1 flare over the whole piece: its own snap, or the finished pulse. */
   uFlash: { value: number };
+  /** Per piece value shift, so a wall of one material is not one flat field. */
+  uTone: { value: number };
 };
 
 const BUILD_VERTEX_HEAD = 'varying float vBuildY;';
@@ -109,6 +111,7 @@ uniform float uRealRough;
 uniform float uRealMetal;
 uniform vec3 uEdge;
 uniform float uFlash;
+uniform float uTone;
 
 float hpHeight() {
   return clamp((vBuildY - uLow) / max(0.0001, uHigh - uLow), 0.0, 1.0);
@@ -156,7 +159,7 @@ function attachBuild(material: THREE.Material, build: BuildUniforms, kind: 'soli
           // Multiply, do not replace: by this point diffuseColor already holds
           // whatever the material produced - the palette texel, in this build -
           // and dropping a flat colour on top of it discards the whole palette.
-          vec3 hpReal = diffuseColor.rgb * uReal;
+          vec3 hpReal = diffuseColor.rgb * uReal * uTone;
           diffuseColor.rgb = mix(uGlass, hpReal, hpF);
           diffuseColor.a = max(mix(uGlassAlpha, 1.0, hpF), hpB * 0.55);`,
         )
@@ -274,6 +277,22 @@ export type LuminousParts = {
  */
 const authored = (object: THREE.Object3D) => object.name.replace(/_/g, ' ');
 
+/**
+ * A stable 0..1 per name, used to nudge one piece's value off its neighbour's.
+ *
+ * Eleven materials across two hundred pieces means large fields of exactly one
+ * colour, which is most of what makes untextured geometry read as moulded plastic
+ * rather than as stone cut by somebody. A few percent either way is enough.
+ */
+function toneJitter(name: string) {
+  let h = 2166136261;
+  for (let i = 0; i < name.length; i += 1) {
+    h ^= name.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return ((h >>> 0) % 1000) / 1000;
+}
+
 export function makeLuminous(root: THREE.Object3D, threshold = 32): LuminousParts {
   const lines: THREE.LineSegments[] = [];
   const glass: THREE.MeshStandardMaterial[] = [];
@@ -345,10 +364,24 @@ export function makeLuminous(root: THREE.Object3D, threshold = 32): LuminousPart
       // camera moves; the edges carry the form anyway.
       depthWrite: emissive,
       side: THREE.DoubleSide,
+      // Cast from the back faces only.
+      //
+      // A double sided material casts shadow from both, so every piece shadows its
+      // own front face at the depth-map's precision: on bevelled geometry that is
+      // a grey mottle over the whole building, which reads as haze rather than as
+      // the bug it is. Backside casting moves the comparison a whole wall
+      // thickness away from the surface being lit.
+      shadowSide: THREE.BackSide,
       clippingPlanes: [GROUND_CLIP],
     });
     solid.name = name;
     object.material = solid;
+    // Untextured low-poly architecture lives or dies on shadow. Flat-lit boxes
+    // read as toy bricks no matter how good the palette is: there is nothing
+    // else in an untextured plane to tell the eye which way a surface faces or
+    // how far it stands from the one behind it.
+    object.castShadow = true;
+    object.receiveShadow = true;
 
     let build: BuildUniforms | null = null;
     if (!emissive) {
@@ -386,14 +419,15 @@ export function makeLuminous(root: THREE.Object3D, threshold = 32): LuminousPart
         uRealMetal: { value: source.metalness },
         uEdge: { value: new THREE.Color(toneFor(name)[0]) },
         uFlash: { value: 0 },
+        // Deterministic, from the piece's own name: the same stone is the same
+        // shade on every reload, and no two neighbours are exactly equal.
+        uTone: { value: 0.9 + toneJitter(name) * 0.2 },
       };
       attachBuild(solid, build, 'solid');
       object.userData.build = build;
       object.userData.glass = solid;
       glass.push(solid);
     }
-    object.castShadow = false;
-    object.receiveShadow = false;
 
     // One outline per piece, deliberately not merged.
     //
@@ -456,13 +490,19 @@ export function makeLuminous(root: THREE.Object3D, threshold = 32): LuminousPart
 }
 
 /** Scatter keeps silhouette only: 260 outlined pines is noise, not drawing. */
-export function makeSilhouette(root: THREE.Object3D, color = '#0b1210') {
-  const material = new THREE.MeshBasicMaterial({ color: new THREE.Color(color) });
+export function makeSilhouette(root: THREE.Object3D, color = '#0b1210', takesShadow = false) {
+  // The ground has to take the building's shadow or the citadel floats on it, and
+  // an unlit material cannot: MeshBasic has no light to be occluded from. The
+  // scatter stays basic - two hundred and sixty pines are a silhouette, and
+  // shading them costs a lit pass to say nothing.
+  const material = takesShadow
+    ? new THREE.MeshLambertMaterial({ color: new THREE.Color(color) })
+    : new THREE.MeshBasicMaterial({ color: new THREE.Color(color) });
   root.traverse((object) => {
     if (object instanceof THREE.Mesh) {
       object.material = material;
       object.castShadow = false;
-      object.receiveShadow = false;
+      object.receiveShadow = takesShadow;
     }
   });
 }
