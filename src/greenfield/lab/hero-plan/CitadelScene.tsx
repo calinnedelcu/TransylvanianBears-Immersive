@@ -7,6 +7,7 @@ import { PlanLines } from './PlanLines';
 import { WorldTags } from './WorldTags';
 import type { BuildUniforms } from './luminousCitadel';
 import { GLASS_OPACITY, createBuildPulse, makeLuminous, makeSilhouette } from './luminousCitadel';
+import { onRing } from './citadelSpace';
 import { gateBeyond, gateThreshold } from './departures';
 import { NightSky } from './NightSky';
 import { SignalRoute } from './SignalRoute';
@@ -62,8 +63,8 @@ const MATERIAL_END = 0.94;
 /** How long the finished pulse takes, in seconds of real time. */
 const PULSE_SECONDS = 0.95;
 
-const GATE_START = 0.96;
-const GATE_END = 1;
+/** Just inside the threshold, at head height. */
+const GATE_LIGHT = onRing(CITADEL.gate.centerDeg, CITADEL.ring.innerRadius - 1.5, 3.4);
 const SETTLE_START = 0.3;
 /** The camera never drops below this, so it cannot end up under the terrain. */
 const GROUND_CLEARANCE = 1.6;
@@ -109,6 +110,7 @@ function nodeSlugFor(object: THREE.Object3D | null): string | null {
 
 function CitadelModel({
   progressRef,
+  handoffRef,
   activeSlug,
   visited,
   reducedMotion,
@@ -116,6 +118,7 @@ function CitadelModel({
   onSelect,
 }: {
   progressRef: MutableRefObject<number>;
+  handoffRef?: MutableRefObject<number>;
   activeSlug: string | null;
   visited: ReadonlySet<string>;
   reducedMotion: boolean;
@@ -139,6 +142,7 @@ function CitadelModel({
     }>
   >([]);
   const bladesRef = useRef<Array<{ object: THREE.Object3D; baseYaw: number; turn: number; delay: number }>>([]);
+  const gateLightRef = useRef<THREE.PointLight>(null);
   const pulseRef = useRef<THREE.Mesh>(null);
   /** When the last piece landed, in clock seconds; -1 while still building. */
   const completedAtRef = useRef(-1);
@@ -352,11 +356,25 @@ function CitadelModel({
     }
     // The aperture opens once the citadel stands. Nothing else moves at this point,
     // so the gate has the frame to itself.
+    // The gate opens for the reader, not before them.
+    //
+    // It used to swing at the tail of the build, which meant the citadel finished
+    // itself standing wide open and the walk up to it arrived at a doorway that
+    // had nothing left to do. The building seals itself instead, and the doors
+    // give way as the camera closes on them.
+    const gateOpen = smooth(range(handoffRef?.current ?? 0, 0.12, 0.74));
     bladesRef.current.forEach(({ object, baseYaw, turn, delay }) => {
-      const from = GATE_START + delay * (GATE_END - GATE_START) * 0.45;
-      const open = smooth(range(p, from, GATE_END));
-      object.rotation.y = baseYaw + open * turn;
+      const leafOpen = smooth(range(gateOpen, delay * 0.18, 1));
+      object.rotation.y = baseYaw + leafOpen * turn;
     });
+
+    // What is behind the doors arrives before the reader does. A gate opening on
+    // nothing is a gate opening on nothing; the light coming through the widening
+    // gap is the reason to walk in.
+    if (gateLightRef.current) {
+      gateLightRef.current.intensity = gateOpen * 210;
+      gateLightRef.current.visible = gateOpen > 0.002;
+    }
 
     // The ground is present the moment the sheet lands, otherwise the citadel
     // rises out of nothing and reads as a disc hanging in the dark.
@@ -415,6 +433,17 @@ function CitadelModel({
         <PlanLines progressRef={progressRef} fadeStart={DRAWING_FADE_START} fadeEnd={RISE_END} />
       </group>
       <group ref={worldRef} />
+      {/* Warm, low, just inside the threshold: the courtyard seen through a door
+          that is opening, rather than a lamp hung in the archway. */}
+      <pointLight
+        ref={gateLightRef}
+        position={GATE_LIGHT}
+        intensity={0}
+        distance={34}
+        decay={2}
+        color="#ffbe80"
+        visible={false}
+      />
       {/* The wave that leaves the walls when the last piece lands. */}
       <mesh ref={pulseRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.12, 0]} visible={false}>
         <planeGeometry args={[76, 76]} />
@@ -538,11 +567,21 @@ function CameraRig({
       target.lerp(threshold.target, arrive);
 
       if (handoff > 0.55) {
-        const through = smooth(range(handoff, 0.55, 1));
+        // Not a constant glide. Walking through a door is slow up to it, quick
+        // under it, and settled inside; an even lerp across the whole distance
+        // makes the doorway the least eventful part of the move.
+        const span = range(handoff, 0.55, 1);
+        const paced = span < 0.62
+          ? smooth(span / 0.62) * 0.78
+          : 0.78 + smooth((span - 0.62) / 0.38) * 0.22;
         const beyond = gateBeyond();
-        eye.lerp(beyond.eye, through);
-        target.lerp(beyond.target, through);
+        eye.lerp(beyond.eye, paced);
+        target.lerp(beyond.target, paced);
       }
+
+      // A duck under the lintel. Small enough that it registers as the head of
+      // someone walking rather than as the camera bouncing.
+      eye.y -= Math.sin(smooth(range(handoff, 0.58, 0.96)) * Math.PI) * 0.5;
     }
 
     // A short push under the arch, peaking where the camera actually crosses the
@@ -671,6 +710,7 @@ export function CitadelSequence({
 
       <CitadelModel
         progressRef={progressRef}
+        handoffRef={handoffRef}
         activeSlug={activeSlug}
         visited={visited}
         reducedMotion={reducedMotion}
