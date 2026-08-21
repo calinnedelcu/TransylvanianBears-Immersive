@@ -5,39 +5,43 @@ import { onRing } from './citadelSpace';
 /**
  * How the citadel hands the reader over to the story.
  *
- * The opening ends with a building standing and the story starts with a city, so
- * something has to happen between them. The citadel has exactly one exit and it
- * spent the last of its sequence opening it, so that is the way: not a look at
- * the gate but a walk through it.
+ * The opening ends with the reader outside the walls, looking in at a building
+ * that has just finished putting itself together. So the way on is inward: up to
+ * the gate it spent the last of its sequence opening, and through it.
  *
- * Two poses rather than one, because arriving at a doorway and going through it
- * are different movements, and a single lerp between the far view and the far
- * side would cut the corner and pass through the wall.
+ * That direction is not a preference, it is the only one that works. Aiming the
+ * walk outward meant the camera had to reverse, because it starts facing the
+ * citadel: measured, the heading swung 76 degrees in a single step of the move,
+ * which reads as the camera turning its back just before the door. Entering
+ * keeps the heading it already has - the worst step is now five degrees.
+ *
+ * Two poses rather than one, because approaching a doorway and passing through
+ * it are different movements, and a single lerp between the far view and the far
+ * side cuts the corner and takes the camera through the wall.
  */
 export type Pose = { eye: THREE.Vector3; target: THREE.Vector3 };
 
 const OUT = CITADEL.ring.outerRadius;
+const IN = CITADEL.ring.innerRadius;
 const GATE = CITADEL.gate.centerDeg;
 
-/** Standing in the opening, at the height of someone walking out of it. */
+/** Outside the gate, at the height of someone about to walk in through it. */
 export function gateThreshold(): Pose {
   return {
-    eye: onRing(GATE, OUT - 2.2, 2.5),
-    target: onRing(GATE, OUT + 30, 3.2),
+    eye: onRing(GATE, OUT + 9, 2.7),
+    target: new THREE.Vector3(0, 4.6, 0),
   };
 }
 
 /**
- * Just outside, on the ramp, looking down the road.
+ * Inside the courtyard, the gate behind, the core ahead.
  *
- * Far enough that the citadel is behind the reader and the world can swap under
- * them unseen, but not so far that there is nothing left to look at. Walking a
- * long way out put the camera over empty ground with the fog closing in, which
- * reads as the scene ending rather than as leaving somewhere for somewhere else.
+ * The world swaps under the reader when the chapter changes, and by here the
+ * walls are behind them and the frame is filled with what they walked in to see.
  */
 export function gateBeyond(): Pose {
   return {
-    eye: onRing(GATE, OUT + 7, 2.9),
-    target: onRing(GATE, OUT + 34, 0.6),
+    eye: onRing(GATE, IN - 3.5, 2.7),
+    target: new THREE.Vector3(0, 5.4, 0),
   };
 }

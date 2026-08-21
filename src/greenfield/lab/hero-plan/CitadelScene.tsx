@@ -545,12 +545,13 @@ function CameraRig({
       }
     }
 
-    // A short push under the arch. The frame widens as the reader passes through
-    // the opening and settles again outside, which reads as gathering pace
-    // without the camera actually being sped up.
+    // A short push under the arch, peaking where the camera actually crosses the
+    // wall rather than at the middle of the move: the frame widens going through
+    // the opening and settles inside, which reads as gathering pace without the
+    // camera being sped up.
     const perspective = camera as THREE.PerspectiveCamera;
     if (perspective.isPerspectiveCamera) {
-      const push = handoff > 0 ? Math.sin(smooth(handoff) * Math.PI) : 0;
+      const push = handoff > 0 ? Math.sin(smooth(range(handoff, 0.45, 1)) * Math.PI) : 0;
       const wanted = FOV + push * 13;
       if (Math.abs(perspective.fov - wanted) > 0.01) {
         perspective.fov = wanted;
