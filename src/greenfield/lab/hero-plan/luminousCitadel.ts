@@ -447,3 +447,160 @@ export function makeSilhouette(root: THREE.Object3D, color = '#0b1210') {
     }
   });
 }
+
+/**
+ * The light standing behind the doors, seen through the gap between them.
+ *
+ * It lives just inside the gateway plane, so the leaves occlude it while they are
+ * shut and reveal it as they swing: the widening slit is the light itself rather
+ * than a glow pasted over the opening. Brightest at the ground, because what is
+ * lit is a courtyard floor and not a bulb hung in the arch.
+ */
+export function createGateGlow() {
+  const uniforms = {
+    uOpen: { value: 0 },
+    uNear: { value: 0 },
+    uColor: { value: new THREE.Color('#ffcd94') },
+  };
+  const material = new THREE.ShaderMaterial({
+    uniforms,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    toneMapped: false,
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      varying vec2 vUv;
+      uniform float uOpen;
+      uniform float uNear;
+      uniform vec3 uColor;
+      void main() {
+        float x = abs(vUv.x - 0.5) * 2.0;
+        float w = mix(0.05, 1.0, uOpen);
+        float core = smoothstep(w, w * 0.12, x);
+        float bleed = smoothstep(min(1.0, w * 2.4), 0.0, x) * 0.32;
+        float up = smoothstep(1.0, 0.12, vUv.y);
+        float a = (core + bleed) * up * (0.13 + uNear * 0.42) * smoothstep(0.0, 0.1, uOpen);
+        if (a < 0.004) discard;
+        gl_FragColor = vec4(uColor, a);
+      }
+    `,
+  });
+  return { material, uniforms };
+}
+
+/**
+ * What the reader is briefly blinded by on the way through.
+ *
+ * It rides in front of the camera and peaks on the frame where the eye actually
+ * crosses the wall, which is also the frame the citadel hands the story over. A
+ * cut hidden inside a flare reads as going somewhere; the same cut in clear air
+ * reads as a scene ending.
+ */
+export function createCrossingFlash() {
+  const uniforms = {
+    uT: { value: 0 },
+    uColor: { value: new THREE.Color('#ffd2a0') },
+  };
+  const material = new THREE.ShaderMaterial({
+    uniforms,
+    transparent: true,
+    depthWrite: false,
+    depthTest: false,
+    blending: THREE.AdditiveBlending,
+    toneMapped: false,
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      varying vec2 vUv;
+      uniform float uT;
+      uniform vec3 uColor;
+      void main() {
+        float d = length(vUv - 0.5) * 2.0;
+        float wash = smoothstep(1.25, 0.0, d) * 0.5;
+        float hot = smoothstep(0.62, 0.0, d) * 0.8;
+        float a = (wash + hot) * uT;
+        if (a < 0.004) discard;
+        gl_FragColor = vec4(uColor, a);
+      }
+    `,
+  });
+  return { material, uniforms };
+}
+
+/**
+ * Grit shaken off the lintel when the leaves break loose.
+ *
+ * A door that opens in clean air is a door with no weight. The scatter is fixed
+ * rather than random so the same beat plays the same way on every reload.
+ */
+export function createGateDust(count = 190) {
+  const positions = new Float32Array(count * 3);
+  const seeds = new Float32Array(count);
+  for (let i = 0; i < count; i += 1) {
+    // Golden angle across the opening: even coverage without a random seed.
+    const t = (i * 0.6180339887) % 1;
+    const u = (i * 0.2749) % 1;
+    positions[i * 3] = (t - 0.5) * 2;
+    positions[i * 3 + 1] = 0.72 + u * 0.28;
+    positions[i * 3 + 2] = (u - 0.5) * 0.7;
+    seeds[i] = t * 0.5 + u * 0.5;
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1));
+  const uniforms = {
+    uT: { value: 0 },
+    uFall: { value: 1 },
+    uColor: { value: new THREE.Color('#e8cfa8') },
+  };
+  const material = new THREE.ShaderMaterial({
+    uniforms,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    toneMapped: false,
+    vertexShader: `
+      attribute float aSeed;
+      uniform float uT;
+      uniform float uFall;
+      varying float vA;
+      void main() {
+        float delay = fract(aSeed * 7.31) * 0.46;
+        float life = clamp((uT - delay) / 0.54, 0.0, 1.0);
+        vec3 p = position;
+        p.y -= life * life * uFall;
+        p.x += sin(aSeed * 31.0 + life * 3.4) * 0.09;
+        vA = sin(life * 3.14159265) * step(0.0001, life);
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        gl_PointSize = (2.6 + fract(aSeed * 13.0) * 3.4) * (14.0 / max(0.6, -mv.z));
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: `
+      varying float vA;
+      uniform vec3 uColor;
+      void main() {
+        float d = length(gl_PointCoord - 0.5) * 2.0;
+        float a = smoothstep(1.0, 0.0, d) * vA * 0.8;
+        if (a < 0.01) discard;
+        gl_FragColor = vec4(uColor, a);
+      }
+    `,
+  });
+  const points = new THREE.Points(geometry, material);
+  points.frustumCulled = false;
+  return { points, uniforms };
+}

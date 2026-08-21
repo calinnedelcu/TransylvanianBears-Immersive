@@ -377,28 +377,42 @@ def build_ring(limestone, plaster, roof_mat, timber, brass, glass) -> None:
         finish(cap, roof_mat, bevel=0.03)
 
 
-def build_gate(limestone, brass, timber, pivot_mat) -> None:
+def build_gate(limestone, brass, timber) -> None:
     ring = DEF["ring"]
     gate = DEF["gate"]
     half = gate["halfWidthDeg"]
     centre = gate["centerDeg"]
 
     # Two jambs framing the opening, taller than the wall: the threshold reads.
+    #
+    # Their offset is solved from their own width, not picked. It used to be
+    # `half + 2.6` degrees, which for a 2.15 radius tower on a ring of 13.7 put
+    # each jamb's inner face at 0.47 from the centre line: the two towers stood
+    # inside a 3.82m doorway and choked it to a 0.95m slot. Everything downstream
+    # inherited that - the doors opened behind the towers where nothing could see
+    # them, and the way in read as a crack in a wall rather than a gate.
+    jamb_radius = 2.15
+    mid = (ring["innerRadius"] + ring["outerRadius"]) / 2
+    opening = ring["outerRadius"] * math.sin(rad(half))
+    # A hexagon's flat side sits closer than its radius; that flat is what faces in.
+    jamb_inset = jamb_radius * math.cos(math.pi / 6)
+    jamb_offset = math.degrees(math.asin(min(0.9, (opening + jamb_inset + 0.14) / mid)))
     for sign in (-1, 1):
-        angle = centre + sign * (half + 2.6)
-        jx, jy = polar((ring["innerRadius"] + ring["outerRadius"]) / 2, angle)
+        angle = centre + sign * jamb_offset
+        jx, jy = polar(mid, angle)
         jamb = prism(
             f"Gate jamb {'L' if sign < 0 else 'R'}",
             (jx, jy, gate["towerHeight"] / 2),
-            2.15, gate["towerHeight"], 6, rad(angle),
+            jamb_radius, gate["towerHeight"], 6, rad(angle),
         )
         finish(jamb, limestone)
 
-    # Lintel across the opening, flat. A pointed arch here is the gothic tell.
-    lx, ly = polar((ring["innerRadius"] + ring["outerRadius"]) / 2, centre)
+    # Lintel across the opening, flat. A pointed arch here is the gothic tell. It
+    # has to reach the jambs wherever they ended up, so it spans to their centres.
+    lx, ly = polar(mid, centre)
     lintel = box(
         "Gate lintel", (lx, ly, gate["archHeight"] + 0.55),
-        (2 * (ring["outerRadius"] * math.sin(rad(half)) + 2.2), ring["outerRadius"] - ring["innerRadius"] + 0.6, 1.1),
+        (2 * (mid * math.sin(rad(jamb_offset)) + jamb_inset), ring["outerRadius"] - ring["innerRadius"] + 0.6, 1.1),
         rad(centre) + math.pi / 2,
     )
     finish(lintel, limestone)
@@ -453,10 +467,13 @@ def build_gate(limestone, brass, timber, pivot_mat) -> None:
             strap.parent = leaf
             strap.matrix_parent_inverse = leaf.matrix_world.inverted()
 
-    # The centre post the leaves close against.
-    px, py = polar(mid_radius, centre)
-    pivot = box("Gate post", (px, py, leaf_h / 2 + 0.09), (0.16, leaf_t + 0.1, leaf_h), rad(centre) + math.pi / 2)
-    finish(pivot, pivot_mat, bevel=0.02)
+    # No centre post. The leaves meet each other.
+    #
+    # There was one, and it was the reason the gate never read as opening: a column
+    # standing floor to lintel down the middle of the arch stays exactly where it is
+    # while the doors swing away from it, so the frame the reader walks into is a
+    # pillar with light either side of it. A pair of leaves that close against each
+    # other leaves the opening clear, which is the whole point of opening it.
 
 
 def build_core(limestone, plaster, timber, roof_mat, brass, pivot_mat) -> None:
@@ -870,7 +887,7 @@ def main() -> None:
     build_distance(ridge_mat, pine_mat)
     build_route(limestone_light)
     build_ring(limestone, plaster, roof_mat, timber, brass, glass)
-    build_gate(limestone, brass, timber, pivot_mat)
+    build_gate(limestone, brass, timber)
     build_core(limestone, plaster, timber, roof_mat, brass, pivot_mat)
     build_wall_detail(limestone, brass, timber, glass)
     build_core_detail(limestone, timber, brass)

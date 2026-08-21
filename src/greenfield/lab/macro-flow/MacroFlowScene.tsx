@@ -958,6 +958,30 @@ function BuriedTransitionLight({
   return <pointLight ref={lightRef} position={[0, 4, -120]} intensity={0} distance={28} color="#d88538" />;
 }
 
+/**
+ * Whether the reader has finished walking through the citadel gate.
+ *
+ * Read off the handoff, not off the chapter, because the two do not line up. The
+ * chapter triggers fire when a section's top passes 46% of the viewport, which for
+ * the first chapter is around 150px before the camera reaches the wall - so the
+ * citadel was being dropped, and the city put up in its place, in the middle of the
+ * crossing. The whole opening builds towards going through that gate and the going
+ * through was the part happening off screen.
+ */
+function useThresholdCrossed(
+  handoffRef: MutableRefObject<number>,
+  activeChapter: JourneyChapter,
+) {
+  const [crossed, setCrossed] = useState(() => handoffRef.current >= 0.999);
+  useFrame(() => {
+    const done = handoffRef.current >= 0.999;
+    setCrossed((was) => (was === done ? was : done));
+  });
+  // Past the first chapter the reader is through by definition, so a handoff
+  // trigger that never armed can never strand them in an empty citadel.
+  return crossed || (activeChapter !== 'threshold' && activeChapter !== 'field');
+}
+
 const NEXUS_CHAPTERS = new Set<JourneyChapter>(['field', 'lens', 'proof']);
 const SCHOOL_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
 const SCHOOL_CAMERA_CHAPTERS = new Set<JourneyChapter>(['passage', 'access', 'schoolmate', 'descent']);
@@ -1151,8 +1175,11 @@ function World({
   const compact = useThree((state) => state.size.width <= 820);
   const firstAct = useFirstActLifecycle(activeChapter);
   const mountThreshold = firstAct.presence.threshold;
-  const showThreshold = activeChapter === 'threshold';
-  const showNexus = NEXUS_CHAPTERS.has(activeChapter);
+  // The citadel holds the frame until the reader is through the gate, and the city
+  // waits until they are. Both hang off the crossing rather than off the chapter.
+  const crossed = useThresholdCrossed(heroHandoffRef, activeChapter);
+  const showThreshold = activeChapter === 'threshold' || (activeChapter === 'field' && !crossed);
+  const showNexus = NEXUS_CHAPTERS.has(activeChapter) && (activeChapter !== 'field' || crossed);
   const showSchool = SCHOOL_CHAPTERS.has(activeChapter);
   const showBuried = BURIED_CHAPTERS.has(activeChapter);
   const showHemisphere = !(showNexus && (compact || showThreshold));
