@@ -4417,3 +4417,35 @@ body.mf-lab-mode {
   color: #fff;
   animation-timing-function: steps(2, end);
 }
+
+/*
+ * The flare the story changes worlds inside.
+ *
+ * Fixed, above the chapter text and below the header, so the heading of the first
+ * chapter is uncovered by the light rather than already sitting there when it
+ * clears. Amber into brown at the corners rather than white: light bleeding in
+ * around the reader, not a cut to a blank frame.
+ */
+.mf-crossing {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  pointer-events: none;
+  opacity: calc(var(--mf-crossing, 0) * 0.94);
+  background: radial-gradient(
+    circle at 50% 47%,
+    rgb(255 241 219) 0%,
+    rgb(255 216 168) 26%,
+    rgb(247 176 111) 56%,
+    rgb(186 112 62) 84%,
+    rgb(92 52 30) 100%
+  );
+  /* It grows as it takes the frame, so the light arrives instead of fading up. */
+  transform: scale(calc(1 + var(--mf-crossing, 0) * 0.32));
+  will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The cross fade still covers the swap; the rush at the reader does not. */
+  .mf-crossing { transform: none; }
+}

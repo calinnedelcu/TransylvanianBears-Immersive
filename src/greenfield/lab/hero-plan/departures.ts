@@ -34,14 +34,19 @@ export function gateThreshold(): Pose {
 }
 
 /**
- * Inside the courtyard, the gate behind, the core ahead.
+ * Inside the courtyard, the gate behind and the keep filling the far half.
  *
- * The world swaps under the reader when the chapter changes, and by here the
- * walls are behind them and the frame is filled with what they walked in to see.
+ * Two wrong answers on the way to this one. Stopping three metres inside the wall
+ * left the reader at a standstill in an empty court at the exact moment the story
+ * changes worlds, and a cut taken from a standstill is a cut. Driving all the way
+ * onto the keep fixed the standstill and replaced the court with a featureless
+ * slab of wall, which is worse to look at and worse to leave. This ends still
+ * moving, with the keep across most of the frame and the ramparts either side of
+ * it, and lets the flare take the frame from there.
  */
 export function gateBeyond(): Pose {
   return {
-    eye: onRing(GATE, IN - 3.5, 2.7),
-    target: new THREE.Vector3(0, 5.4, 0),
+    eye: onRing(GATE, IN - 4.0, 2.7),
+    target: new THREE.Vector3(0, 6.2, 0),
   };
 }

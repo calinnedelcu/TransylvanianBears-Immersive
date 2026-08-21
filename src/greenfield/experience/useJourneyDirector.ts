@@ -311,6 +311,35 @@ export function useJourneyDirector({
         });
       }
 
+      // The swap itself.
+      //
+      // The citadel comes down and the city goes up between one frame and the next,
+      // at the moment the first chapter takes the frame. In clear air that reads as
+      // two scenes; inside a flare it reads as arriving somewhere. Deliberately
+      // asymmetric - the light gathers fast on the way in and lets go of the frame
+      // slowly on the way out, so the city is uncovered rather than cut to.
+      const crossingVeil = root.querySelector<HTMLElement>('.mf-crossing');
+      if (firstChapter && crossingVeil) {
+        // Where the swap sits inside the span: 14% of a viewport before the first
+        // chapter's top, 25% after, so the peak is on the frame the worlds change.
+        const BOUNDARY = 14 / 39;
+        ScrollTrigger.create({
+          id: 'journey-crossing',
+          trigger: firstChapter,
+          start: 'top 14%',
+          end: 'top top-=25%',
+          onUpdate: (self) => {
+            const p = self.progress;
+            const shaped = p < BOUNDARY
+              ? (p / BOUNDARY) ** 1.9
+              : (1 - (p - BOUNDARY) / (1 - BOUNDARY)) ** 1.25;
+            crossingVeil.style.setProperty('--mf-crossing', shaped.toFixed(4));
+          },
+          onLeave: () => crossingVeil.style.setProperty('--mf-crossing', '0'),
+          onLeaveBack: () => crossingVeil.style.setProperty('--mf-crossing', '0'),
+        });
+      }
+
       if (worldEnd) {
         ScrollTrigger.create({
           id: 'journey-world',

@@ -534,8 +534,18 @@ function CitadelModel({
     // flare reads as arriving somewhere, the same cut in clear air reads as a
     // scene stopping.
     if (flashRef.current) {
-      const cross = handoff <= 0 ? 0 : Math.sin(smooth(range(handoff, 0.62, 0.88)) * Math.PI);
-      const t = cross * cross * 0.3;
+      // Two things at once, and they have to read as one.
+      //
+      // A kiss of light as the lintel goes over, which belongs to the arch. Then a
+      // gather, from the far side of the courtyard to the moment the story changes
+      // worlds, which does not: the flare that actually covers the swap is a
+      // document layer, because nothing in this scene outlives the swap - see
+      // .mf-crossing. This is the part of it that happens in the scene, so the
+      // light is on the citadel before it is on the page, and the reader sees a
+      // courtyard filling with light rather than a filter fading in over one.
+      const arch = handoff <= 0 ? 0 : Math.sin(smooth(range(handoff, 0.62, 0.86)) * Math.PI);
+      const gather = smooth(range(handoff, 0.84, 1)) ** 1.7;
+      const t = Math.min(0.88, arch * arch * 0.22 + gather * 0.56);
       flashRef.current.visible = t > 0.004;
       flash.uniforms.uT.value = t;
       if (flashRef.current.visible) {

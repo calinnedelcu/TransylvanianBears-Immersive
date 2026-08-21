@@ -715,6 +715,11 @@ function MacroFlowExperience() {
         <div className="mf-world__grade" />
       </div>
 
+      {/* The flare the story changes worlds inside. It sits in the document, not in
+          the scene, because it has to be on screen while one world is torn down and
+          the next is built: anything living in either one goes away with it. */}
+      <div className="mf-crossing" aria-hidden="true" />
+
       <header className="mf-header">
         <ViewTransitionLink className="mf-brand" to="/" aria-label="Transylvanian Bears, start">
           <span>Transylvanian Bears</span>
