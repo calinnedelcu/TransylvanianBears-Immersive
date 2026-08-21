@@ -39,6 +39,7 @@ import {
 import { CitadelSequence } from '../hero-plan/CitadelScene';
 import type { HeroOpening } from '../hero-plan/useHeroOpening';
 import {
+  measureVerticalSliceCameraRanges,
   sampleVerticalSliceCamera,
   useVerticalSliceCameraCurves,
   type VerticalSliceCameraCurves,
@@ -203,6 +204,15 @@ function CameraDirector({
     const root = document.querySelector<HTMLElement>('.mf-lab');
     if (!root) return;
     root.dataset.cameraCurves = String(Object.keys(authoredCurves).length);
+    // The curves cover whatever slice of world progress their sections occupy, so
+    // the ranges are measured rather than written down - and re-measured whenever
+    // the layout can have moved under them.
+    const measure = () => {
+      root.dataset.cameraRanges = measureVerticalSliceCameraRanges() ? 'measured' : 'fallback';
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
   }, [authoredCurves]);
 
   useFrame(({ camera, clock, pointer, size }, delta) => {

@@ -27,16 +27,72 @@ const CAMERA_ASSETS: Record<VerticalSliceCameraChapter, Record<'desktop' | 'mobi
   proof: { desktop: 'proofCameraDesktop', mobile: 'proofCameraMobile' },
 };
 
-const CAMERA_RANGES: Array<{
-  chapter: VerticalSliceCameraChapter;
-  start: number;
-  end: number;
-}> = [
-  { chapter: 'threshold', start: 0, end: 0.064 },
-  { chapter: 'field', start: 0.064, end: 0.13 },
-  { chapter: 'lens', start: 0.13, end: 0.285 },
-  { chapter: 'proof', start: 0.285, end: 0.345 },
+type CameraRange = { chapter: VerticalSliceCameraChapter; start: number; end: number };
+
+/**
+ * Which slice of world progress each authored curve covers.
+ *
+ * These were hand written numbers, and they were wrong twice over. World progress
+ * is measured off the document, so every time a section changed height they drifted
+ * out from under the chapters they were cut for - and when world progress was
+ * re-anchored to the first chapter, `field` still began at 0.064, so arriving at
+ * the first chapter sampled the threshold curve instead: the reader came through
+ * the gate into an aerial establishing shot of a street they were supposed to be
+ * standing at the head of.
+ *
+ * They are measured from the sections now. A layout change carries; it cannot
+ * drift.
+ */
+const FALLBACK_RANGES: CameraRange[] = [
+  { chapter: 'field', start: 0, end: 0.074 },
+  { chapter: 'lens', start: 0.074, end: 0.249 },
+  { chapter: 'proof', start: 0.249, end: 0.317 },
 ];
+
+/** Sections the authored curves belong to, in document order. */
+const CHAPTER_SECTIONS: Array<{ chapter: VerticalSliceCameraChapter; id: string }> = [
+  { chapter: 'field', id: 'mf-field' },
+  { chapter: 'lens', id: 'mf-lens' },
+  { chapter: 'proof', id: 'mf-proof' },
+];
+
+let cameraRanges: CameraRange[] = FALLBACK_RANGES;
+
+/**
+ * Re-derive the ranges from where the sections actually are.
+ *
+ * `startId` and `endId` have to match whatever world progress is anchored to, or
+ * the curves land somewhere other than the chapters they were authored for.
+ * Returns false and leaves the fallback in place if the document is not ready.
+ */
+export function measureVerticalSliceCameraRanges(
+  startId = 'mf-field',
+  endId = 'mf-infect',
+): boolean {
+  if (typeof document === 'undefined') return false;
+  const topOf = (id: string) => document.getElementById(id)?.offsetTop ?? null;
+  const from = topOf(startId);
+  const to = topOf(endId);
+  if (from === null || to === null || to <= from) return false;
+
+  const tops = CHAPTER_SECTIONS.map(({ chapter, id }) => ({ chapter, top: topOf(id) }));
+  if (tops.some((entry) => entry.top === null)) return false;
+
+  const span = to - from;
+  cameraRanges = tops.map((entry, index) => ({
+    chapter: entry.chapter,
+    start: ((entry.top as number) - from) / span,
+    end: ((tops[index + 1]?.top as number | null) ?? to) - from >= 0
+      ? (((tops[index + 1]?.top as number | null) ?? to) - from) / span
+      : 1,
+  }));
+  return true;
+}
+
+/** What the sampler is currently using. Exposed so a probe can check it. */
+export function verticalSliceCameraRanges(): readonly CameraRange[] {
+  return cameraRanges;
+}
 
 const CAMERA_CHAPTERS = Object.keys(CAMERA_ASSETS) as VerticalSliceCameraChapter[];
 
@@ -167,7 +223,7 @@ export function sampleVerticalSliceCamera(
   position: THREE.Vector3,
   target: THREE.Vector3,
 ) {
-  const range = CAMERA_RANGES.find(({ start, end }) => worldProgress >= start && worldProgress <= end);
+  const range = cameraRanges.find(({ start, end }) => worldProgress >= start && worldProgress <= end);
   if (!range) return null;
   const curve = curves[range.chapter];
   if (!curve) return null;
