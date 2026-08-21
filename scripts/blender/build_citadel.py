@@ -600,9 +600,15 @@ def build_court(limestone, limestone_light, plaster, timber, roof_mat, brass, gl
     # at the far end. From across the courtyard it reads as a way in with something
     # on the other side; walking at it, the light grows because it is nearer, which
     # is the whole reason the white-out at the crossing means anything.
-    opening_w, opening_h = 2.6, 3.8
-    jamb_w, head_h = 0.34, 0.4
-    porch = 2.5
+    # Cathedral scale, not a garage door.
+    #
+    # 2.6 by 3.8 on a keep eleven metres tall is a service entrance: the reader
+    # crossed a courtyard and arrived at something they could have reached up and
+    # touched the top of, which is most of why the light at the end of it read as a
+    # lit panel rather than as somewhere to go.
+    opening_w, opening_h = 4.3, 6.8
+    jamb_w, head_h = 0.5, 0.62
+    porch = 3.6
     mouth = inradius + porch
     sill_z = plinth_h
 
@@ -624,8 +630,8 @@ def build_court(limestone, limestone_light, plaster, timber, roof_mat, brass, gl
 
     # The light at the end. Narrower than the mouth, so it reads as a way on.
     lx, ly = polar(inradius + 0.08, centre)
-    beacon = box("Court portal beacon", (lx, ly, sill_z + opening_h * 0.46),
-                 (opening_w * 0.62, 0.12, opening_h * 0.56), facing)
+    beacon = box("Court portal beacon", (lx, ly, sill_z + opening_h * 0.44),
+                 (opening_w * 0.66, 0.12, opening_h * 0.62), facing)
     finish(beacon, glass)
     # A dark surround, so the lit part is an opening and not a lit wall.
     back = box("Court portal back", (lx, ly, sill_z + opening_h / 2),

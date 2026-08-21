@@ -726,3 +726,62 @@ export function createGateDust(count = 190) {
   points.frustumCulled = false;
   return { points, uniforms };
 }
+
+/**
+ * The light coming out of the keep's doorway, as something in the air.
+ *
+ * A lit rectangle at the end of a passage is a lit rectangle. What makes light at
+ * the end of a tunnel worth walking towards is the part of it standing between the
+ * reader and the source: the beam, the haze on the floor, the soft edge where the
+ * opening bleeds into the dark around it. None of that is the lamp, and none of it
+ * is geometry either - it is air.
+ *
+ * Cheaply and correctly: a stack of soft additive cards square to the doorway
+ * axis, growing and fading as they come out of it. Seen down the axis they read as
+ * one cone of light; the reader never sees them from the side, because the walk
+ * arrives head on.
+ */
+export function createDoorGlow() {
+  const uniforms = {
+    uNear: { value: 0 },
+    uColor: { value: new THREE.Color('#ffd7a0') },
+  };
+  const material = new THREE.ShaderMaterial({
+    uniforms,
+    transparent: true,
+    depthWrite: false,
+    // Depth tested, so the jambs and the cheeks cut the beam the way they should.
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    toneMapped: false,
+    vertexShader: `
+      varying vec2 vUv;
+      varying float vCard;
+      attribute float aCard;
+      void main() {
+        vUv = uv;
+        vCard = aCard;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      varying vec2 vUv;
+      varying float vCard;
+      uniform float uNear;
+      uniform vec3 uColor;
+      void main() {
+        // Soft on every edge, so no card ever shows its own outline.
+        vec2 d = abs(vUv - 0.5) * 2.0;
+        float edge = smoothstep(1.0, 0.24, d.x) * smoothstep(1.0, 0.3, d.y);
+        // Thinner the further out of the doorway it stands.
+        float depth = mix(1.0, 0.16, vCard);
+        // Eight cards accumulate, so each one carries very little: the beam has to
+        // read as haze standing in the doorway, not as the doorway on fire.
+        float a = edge * depth * (0.02 + uNear * 0.17);
+        if (a < 0.003) discard;
+        gl_FragColor = vec4(uColor, a);
+      }
+    `,
+  });
+  return { material, uniforms };
+}

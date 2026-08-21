@@ -10,6 +10,7 @@ import {
   GLASS_OPACITY,
   createBuildPulse,
   createCrossingFlash,
+  createDoorGlow,
   createGateDust,
   createGateGlow,
   makeLuminous,
@@ -82,7 +83,19 @@ const GATE_LIGHT = onRing(CITADEL.gate.centerDeg, CITADEL.ring.innerRadius - 1.5
  */
 const KEEP_INRADIUS = CITADEL.core.radius * Math.cos(Math.PI / CITADEL.core.facets);
 /** Inside the keep's passage, level with the light at the end of it. */
-const KEEP_LIGHT = onRing(CITADEL.gate.centerDeg, KEEP_INRADIUS + 0.9, 2.4);
+/**
+ * Where the beam's cards stand, out of the keep's doorway and into the courtyard.
+ *
+ * Read off the portal the Blender build actually made, so a change to the opening
+ * carries here instead of drifting out of register with it.
+ */
+const DOOR_CARDS = 8;
+const DOOR_OPENING = { width: 4.3, height: 6.8, porch: 3.6, sill: CITADEL.core.plinthHeight };
+
+const KEEP_LIGHT = onRing(CITADEL.gate.centerDeg, KEEP_INRADIUS + 0.9, 3.0);
+/** The face of the keep, where the beam starts. */
+const KEEP_MOUTH = onRing(CITADEL.gate.centerDeg, KEEP_INRADIUS, 0);
+const KEEP_YAW = ((90 - CITADEL.gate.centerDeg) * Math.PI) / 180;
 
 /**
  * How far a leaf swings, in radians.
@@ -201,6 +214,7 @@ function CitadelModel({
   const glowRef = useRef<THREE.Mesh>(null);
   const dustRef = useRef<THREE.Points>(null);
   const flashRef = useRef<THREE.Mesh>(null);
+  const doorGlowRef = useRef<THREE.Group>(null);
   const pulseRef = useRef<THREE.Mesh>(null);
   /** When the last piece landed, in clock seconds; -1 while still building. */
   const completedAtRef = useRef(-1);
@@ -208,6 +222,8 @@ function CitadelModel({
   const glow = useMemo(() => createGateGlow(), []);
   const dust = useMemo(() => createGateDust(), []);
   const flash = useMemo(() => createCrossingFlash(), []);
+  const doorGlow = useMemo(() => createDoorGlow(), []);
+  const doorCards = useMemo(() => Array.from({ length: DOOR_CARDS }, (_, i) => i / (DOOR_CARDS - 1)), []);
   const citadelRef = useRef<THREE.Object3D | null>(null);
   const landscapeRef = useRef<THREE.Object3D | null>(null);
   const scatterRef = useRef<THREE.Object3D | null>(null);
@@ -512,7 +528,7 @@ function CitadelModel({
           const lit = smooth(built);
           // The light at the end of the keep's passage is the one the reader is
           // walking at, so it gains as they close on it. Everything else holds.
-          const approach = authoredName(object) === 'Court portal beacon' ? 1 + near * 2.6 : 1;
+          const approach = authoredName(object) === 'Court portal beacon' ? 1 + near * 1.1 : 1;
           lamp.material.emissiveIntensity = lamp.base * lit * approach;
           lamp.material.color.copy(GLASS_COLOR).lerp(lamp.tint, lit);
         }
@@ -571,8 +587,15 @@ function CitadelModel({
     // so the courtyard the reader walks into has a far side.
     if (keepLightRef.current) {
       const lit = smooth(range(p, MATERIAL_END - 0.08, MATERIAL_END));
-      keepLightRef.current.intensity = lit * (13 + near * 26);
+      keepLightRef.current.intensity = lit * (9 + near * 14);
       keepLightRef.current.visible = lit > 0.002;
+    }
+    // The beam out of the keep's doorway shows up only once the citadel is standing
+    // and gains with the approach, like the light making it.
+    if (doorGlowRef.current) {
+      const lit = smooth(range(p, MATERIAL_END - 0.08, MATERIAL_END));
+      doorGlowRef.current.visible = lit > 0.004;
+      doorGlow.uniforms.uNear.value = lit * (0.2 + near * 0.8);
     }
     if (glowRef.current) {
       glowRef.current.visible = opened > 0.002;
@@ -655,6 +678,30 @@ function CitadelModel({
         color="#ffbe80"
         visible={false}
       />
+      {/* Light standing in the air out of the keep's doorway: cards square to the
+          walk, each one further out, larger and thinner than the last. */}
+      <group
+        ref={doorGlowRef}
+        position={[KEEP_MOUTH.x, 0, KEEP_MOUTH.z]}
+        rotation={[0, KEEP_YAW, 0]}
+        visible={false}
+        renderOrder={5}
+      >
+        {doorCards.map((t) => (
+          <mesh
+            key={t}
+            position={[0, DOOR_OPENING.sill + DOOR_OPENING.height * 0.46, DOOR_OPENING.porch * 0.1 + t * 5.4]}
+            raycast={() => {}}
+          >
+            <planeGeometry args={[DOOR_OPENING.width * (0.86 + t * 1.5), DOOR_OPENING.height * (0.88 + t * 1.1)]} />
+            <primitive object={doorGlow.material} attach="material" />
+            <bufferAttribute
+              attach="geometry-attributes-aCard"
+              args={[new Float32Array(Array.from({ length: 4 }, () => t)), 1]}
+            />
+          </mesh>
+        ))}
+      </group>
       {/* The keep's doorway, seen from the arch and walked towards. */}
       <pointLight
         ref={keepLightRef}
