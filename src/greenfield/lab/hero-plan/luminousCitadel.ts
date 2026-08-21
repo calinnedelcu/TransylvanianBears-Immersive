@@ -153,7 +153,11 @@ function attachBuild(material: THREE.Material, build: BuildUniforms, kind: 'soli
           float hpH = hpHeight();
           float hpF = hpFill(hpH);
           float hpB = hpBand(hpH);
-          diffuseColor.rgb = mix(uGlass, uReal, hpF);
+          // Multiply, do not replace: by this point diffuseColor already holds
+          // whatever the material produced - the palette texel, in this build -
+          // and dropping a flat colour on top of it discards the whole palette.
+          vec3 hpReal = diffuseColor.rgb * uReal;
+          diffuseColor.rgb = mix(uGlass, hpReal, hpF);
           diffuseColor.a = max(mix(uGlassAlpha, 1.0, hpF), hpB * 0.55);`,
         )
         // Glass is uniformly matte; the authored surface only applies where the
@@ -161,12 +165,12 @@ function attachBuild(material: THREE.Material, build: BuildUniforms, kind: 'soli
         .replace(
           '#include <roughnessmap_fragment>',
           `#include <roughnessmap_fragment>
-          roughnessFactor = mix(0.95, uRealRough, hpF);`,
+          roughnessFactor = mix(0.95, roughnessFactor * uRealRough, hpF);`,
         )
         .replace(
           '#include <metalnessmap_fragment>',
           `#include <metalnessmap_fragment>
-          metalnessFactor = mix(0.0, uRealMetal, hpF);`,
+          metalnessFactor = mix(0.0, metalnessFactor * uRealMetal, hpF);`,
         )
         .replace(
           '#include <emissivemap_fragment>',
@@ -315,8 +319,23 @@ export function makeLuminous(root: THREE.Object3D, threshold = 32): LuminousPart
     // the pieces stays legible through the ones covering it, which is what makes
     // the whole thing read as stacked plates instead of a solid mass.
     const solid = new THREE.MeshStandardMaterial({
-      color: emissive ? source.color.clone() : GLASS_COLOR,
-      roughness: 0.95,
+      // White, with the authored maps carried across, and the glass tint applied
+      // in the shader instead of baked into the colour.
+      //
+      // This material used to be built from nothing but `source.color`, which is
+      // how the finished citadel ended up one flat cream. The export merges eleven
+      // materials - limestone, plaster, timber, roof, brass, glass - into a single
+      // palette texture, so every one of them arrives with `color` white and its
+      // real colour in the map. Rebuilding the material without the map threw all
+      // eleven away, and the shader then overwrote what was left.
+      //
+      // Roughness and metalness are 1 so the packed map lands unscaled; the
+      // authored scalars ride in the uniforms for the pieces that have no map.
+      color: emissive ? source.color.clone() : 0xffffff,
+      map: emissive ? null : source.map ?? null,
+      roughnessMap: emissive ? null : source.roughnessMap ?? null,
+      metalnessMap: emissive ? null : source.metalnessMap ?? null,
+      roughness: emissive ? 0.95 : 1,
       metalness: 0,
       emissive: emissive ? source.emissive.clone() : new THREE.Color('#000000'),
       emissiveIntensity: emissive ? 2.6 : 0,
