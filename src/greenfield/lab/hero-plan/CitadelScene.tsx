@@ -7,7 +7,7 @@ import { PlanLines } from './PlanLines';
 import { WorldTags } from './WorldTags';
 import type { BuildUniforms } from './luminousCitadel';
 import { GLASS_OPACITY, createBuildPulse, makeLuminous, makeSilhouette } from './luminousCitadel';
-import { gatePose } from './departures';
+import { gateBeyond, gateThreshold } from './departures';
 import { NightSky } from './NightSky';
 import { SignalRoute } from './SignalRoute';
 
@@ -245,12 +245,13 @@ function CitadelModel({
       });
     });
 
-    // Six blades of the aperture. They are the mark at building scale, so they
-    // turn edge on in sequence rather than swinging as one slab.
+    // The two leaves of the gate. Their origins sit on their hinges in the model,
+    // so turning them about Y swings them the way a door swings rather than
+    // spinning them through their own middles and through the jambs.
     bladesRef.current = [];
     const blades: THREE.Object3D[] = [];
     citadel?.traverse((object) => {
-      if (/^Gate blade /.test(authoredName(object))) blades.push(object);
+      if (/^Gate leaf /.test(authoredName(object))) blades.push(object);
     });
     blades
       .sort((a, b) => authoredName(a).localeCompare(authoredName(b)))
@@ -259,8 +260,8 @@ function CitadelModel({
         const baseYaw = stored ?? object.rotation.y;
         object.userData.baseYaw = baseYaw;
         const middle = (all.length - 1) / 2;
-        // Outer blades swing further, so the opening reads from the centre out.
-        const turn = (index <= middle ? -1 : 1) * (0.85 + Math.abs(index - middle) * 0.12);
+        // Each leaf swings away from the centre post it closes against.
+        const turn = (index <= middle ? 1 : -1) * 1.15;
         bladesRef.current.push({ object, baseYaw, turn, delay: Math.abs(index - middle) / all.length });
       });
 
@@ -523,15 +524,38 @@ function CameraRig({
       target.lerp(pose.target, inspectRef.current);
     }
 
-    // Out through the gate. The citadel opened it at the end of its own sequence
-    // and then had nowhere to put the reader; this is where they go. It runs on
-    // its own scroll rather than on the opening's, because the opening is over.
+    // Out through the gate.
+    //
+    // Two stages, because arriving at a doorway and going through it are
+    // different movements: the first walks up to the opening, the second carries
+    // on out and leaves the citadel behind. A single lerp from the far view to
+    // the far side would cut the corner and take the camera through the wall.
     const handoff = handoffRef?.current ?? 0;
     if (handoff > 0) {
-      const away = smooth(handoff);
-      const leaving = gatePose();
-      eye.lerp(leaving.eye, away);
-      target.lerp(leaving.target, away);
+      const arrive = smooth(range(handoff, 0, 0.55));
+      const threshold = gateThreshold();
+      eye.lerp(threshold.eye, arrive);
+      target.lerp(threshold.target, arrive);
+
+      if (handoff > 0.55) {
+        const through = smooth(range(handoff, 0.55, 1));
+        const beyond = gateBeyond();
+        eye.lerp(beyond.eye, through);
+        target.lerp(beyond.target, through);
+      }
+    }
+
+    // A short push under the arch. The frame widens as the reader passes through
+    // the opening and settles again outside, which reads as gathering pace
+    // without the camera actually being sped up.
+    const perspective = camera as THREE.PerspectiveCamera;
+    if (perspective.isPerspectiveCamera) {
+      const push = handoff > 0 ? Math.sin(smooth(handoff) * Math.PI) : 0;
+      const wanted = FOV + push * 13;
+      if (Math.abs(perspective.fov - wanted) > 0.01) {
+        perspective.fov = wanted;
+        perspective.updateProjectionMatrix();
+      }
     }
 
     camera.position.copy(eye);

@@ -403,20 +403,59 @@ def build_gate(limestone, brass, timber, pivot_mat) -> None:
     )
     finish(lintel, limestone)
 
-    # Six blades of the aperture, folded back into the jambs at rest.
-    for index in range(gate["blades"]):
-        spread = (index - (gate["blades"] - 1) / 2) / gate["blades"]
-        angle = centre + spread * half * 1.75
-        bx, by = polar((ring["innerRadius"] + ring["outerRadius"]) / 2, angle)
-        blade = box(
-            f"Gate blade {index:02d}", (bx, by, gate["archHeight"] / 2 + 0.2),
-            (0.34, ring["outerRadius"] - ring["innerRadius"] - 0.35, gate["archHeight"] - 0.3),
-            rad(angle) + math.pi / 2,
-        )
-        finish(blade, timber if index % 2 else brass, bevel=0.02)
+    # Two leaves, hung on the jambs.
+    #
+    # This was six thin slats of timber and brass folding back into the wall like
+    # a camera aperture. That is a mechanism from a different century and a
+    # different material: a limestone gatehouse with a flat lintel gets doors.
+    #
+    # The origin of each leaf is moved onto its hinge, because a door turns about
+    # its edge and a box turns about its middle. Without that they would pivot
+    # through their own centres and pass through the jambs on the way open.
+    mid_radius = (ring["innerRadius"] + ring["outerRadius"]) / 2
+    opening = ring["outerRadius"] * math.sin(rad(half))
+    leaf_w = opening - 0.06
+    leaf_h = gate["archHeight"] - 0.18
+    leaf_t = 0.26
 
-    px, py = polar((ring["innerRadius"] + ring["outerRadius"]) / 2, centre)
-    pivot = prism("Gate pivot", (px, py, gate["archHeight"] / 2 + 0.2), 0.28, 0.5, 6)
+    for index in range(2):
+        side = -1 if index == 0 else 1
+        # Centre of the leaf: half its width out from the middle of the opening.
+        angle = centre + side * math.degrees(math.asin((leaf_w / 2) / mid_radius))
+        cx, cy = polar(mid_radius, angle)
+        leaf = box(
+            f"Gate leaf {index:02d}", (cx, cy, leaf_h / 2 + 0.09),
+            (leaf_w, leaf_t, leaf_h),
+            rad(centre) + math.pi / 2,
+        )
+        finish(leaf, timber, bevel=0.03)
+
+        # Origin onto the hinge, at the jamb end of the leaf.
+        hinge_angle = centre + side * math.degrees(math.asin(leaf_w / mid_radius))
+        hx, hy = polar(mid_radius, hinge_angle)
+        bpy.context.scene.cursor.location = (hx, hy, leaf_h / 2 + 0.09)
+        bpy.context.view_layer.objects.active = leaf
+        leaf.select_set(True)
+        bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
+        leaf.select_set(False)
+        bpy.context.scene.cursor.location = (0.0, 0.0, 0.0)
+
+        # Two brass straps per leaf, which is what actually holds a door this size
+        # together and the only ornament it needs.
+        for band in range(2):
+            bz = leaf_h * (0.28 + band * 0.42) + 0.09
+            strap = box(
+                f"Gate strap {index:02d}{band}", (cx, cy, bz),
+                (leaf_w * 0.92, leaf_t + 0.05, 0.16),
+                rad(centre) + math.pi / 2,
+            )
+            finish(strap, brass, bevel=0.02)
+            strap.parent = leaf
+            strap.matrix_parent_inverse = leaf.matrix_world.inverted()
+
+    # The centre post the leaves close against.
+    px, py = polar(mid_radius, centre)
+    pivot = box("Gate post", (px, py, leaf_h / 2 + 0.09), (0.16, leaf_t + 0.1, leaf_h), rad(centre) + math.pi / 2)
     finish(pivot, pivot_mat, bevel=0.02)
 
 
