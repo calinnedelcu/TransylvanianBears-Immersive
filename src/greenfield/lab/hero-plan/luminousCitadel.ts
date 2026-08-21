@@ -91,13 +91,14 @@ export type BuildUniforms = {
   uTone: { value: number };
 };
 
-const BUILD_VERTEX_HEAD = 'varying float vBuildY;';
+const BUILD_VERTEX_HEAD = 'varying float vBuildY;\nvarying vec3 vBuildPos;';
 /** transformed is still object space here, and the piece never tips, so its world
  *  height is all the fragment stage needs to know. */
-const BUILD_VERTEX_BODY = 'vBuildY = (modelMatrix * vec4(transformed, 1.0)).y;';
+const BUILD_VERTEX_BODY = 'vBuildPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvBuildY = vBuildPos.y;';
 
 const BUILD_FRAGMENT_HEAD = `
 varying float vBuildY;
+varying vec3 vBuildPos;
 uniform float uBuild;
 uniform float uLow;
 uniform float uHigh;
@@ -115,6 +116,38 @@ uniform float uTone;
 
 float hpHeight() {
   return clamp((vBuildY - uLow) / max(0.0001, uHigh - uLow), 0.0, 1.0);
+}
+
+/**
+ * Surface, which untextured geometry has none of.
+ *
+ * A perfectly even field of one colour is the last thing separating this from
+ * moulded plastic - the geometry now steps mass to moulding to joint, but every
+ * face inside those steps is still mathematically flat. Three octaves of world
+ * space value noise give the stone a grain that does not repeat around the
+ * enclosure and does not need a UV, which this model has none of outside the
+ * palette lookup.
+ */
+float hpHash(vec3 p) {
+  p = fract(p * 0.3183099 + vec3(0.71, 0.113, 0.419));
+  p *= 17.0;
+  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+float hpNoise(vec3 x) {
+  vec3 i = floor(x);
+  vec3 f = fract(x);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(mix(hpHash(i), hpHash(i + vec3(1.0, 0.0, 0.0)), f.x),
+        mix(hpHash(i + vec3(0.0, 1.0, 0.0)), hpHash(i + vec3(1.0, 1.0, 0.0)), f.x), f.y),
+    mix(mix(hpHash(i + vec3(0.0, 0.0, 1.0)), hpHash(i + vec3(1.0, 0.0, 1.0)), f.x),
+        mix(hpHash(i + vec3(0.0, 1.0, 1.0)), hpHash(i + vec3(1.0, 1.0, 1.0)), f.x), f.y),
+    f.z);
+}
+float hpGrain() {
+  return hpNoise(vBuildPos * 1.7) * 0.55
+       + hpNoise(vBuildPos * 6.4) * 0.30
+       + hpNoise(vBuildPos * 21.0) * 0.15;
 }
 /** 1 where the material has arrived, 0 where the piece is still a drawing. */
 float hpFill(float h) {
@@ -159,7 +192,15 @@ function attachBuild(material: THREE.Material, build: BuildUniforms, kind: 'soli
           // Multiply, do not replace: by this point diffuseColor already holds
           // whatever the material produced - the palette texel, in this build -
           // and dropping a flat colour on top of it discards the whole palette.
-          vec3 hpReal = diffuseColor.rgb * uReal * uTone;
+          // Grain, and weather off the ground. Stone that has stood outside is
+          // darker and dirtier where the rain runs off it and where it meets the
+          // earth, and the difference is what tells the eye it is stone at all.
+          float hpG = hpGrain();
+          // Dirt collects at the foot of a wall, not at the top of it. The first
+          // pass had this the wrong way up and darkened the parapets instead.
+          float hpDirt = 1.0 - (1.0 - smoothstep(0.0, 2.8, vBuildY)) * 0.2;
+          float hpRun = 0.92 + hpNoise(vec3(vBuildPos.xz * 2.2, vBuildY * 0.26)) * 0.16;
+          vec3 hpReal = diffuseColor.rgb * uReal * uTone * (0.78 + hpG * 0.42) * hpDirt * hpRun;
           diffuseColor.rgb = mix(uGlass, hpReal, hpF);
           diffuseColor.a = max(mix(uGlassAlpha, 1.0, hpF), hpB * 0.55);`,
         )
@@ -168,7 +209,7 @@ function attachBuild(material: THREE.Material, build: BuildUniforms, kind: 'soli
         .replace(
           '#include <roughnessmap_fragment>',
           `#include <roughnessmap_fragment>
-          roughnessFactor = mix(0.95, roughnessFactor * uRealRough, hpF);`,
+          roughnessFactor = mix(0.95, clamp(roughnessFactor * uRealRough * (0.88 + hpGrain() * 0.26), 0.04, 1.0), hpF);`,
         )
         .replace(
           '#include <metalnessmap_fragment>',

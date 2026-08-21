@@ -296,6 +296,9 @@ function CitadelModel({
       'Stage court': 0.85,
       // Mouldings arrive with the mass they sit on, a beat behind it.
       'Stage trim': 0.88,
+      // Everything people left lying about arrives last, once there is a
+      // building for it to be lying about in.
+      'Stage life': 0.92,
       'Stage nodes': 0.95,
     };
 

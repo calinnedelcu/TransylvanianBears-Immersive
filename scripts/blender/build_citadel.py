@@ -556,6 +556,24 @@ def build_court(limestone, limestone_light, plaster, timber, roof_mat, brass, gl
     # Facets sit at 30 + k*60, so one of them looks straight down the gate axis.
     facing = rad(centre) + math.pi / 2
 
+    # --- the floor ------------------------------------------------------------
+    # The courtyard was standing on the terrain, which is near black by design: the
+    # ground outside has to read as night. Inside the walls that made everything
+    # anybody put in the yard - barrels, a cart, a well - disappear into a void, and
+    # the lamps had nothing to fall on. Paved, the yard reads and the clutter on it
+    # reads with it.
+    yard = annulus("Court paving", plinth_r + 0.15, ring["innerRadius"] - 0.05,
+                   0, 360, 0.0, 0.09, ring["segments"])
+    finish(yard, limestone_light, bevel=0)
+
+    # Radial joints, so it is paving and not a disc.
+    for index in range(16):
+        deg = index * 22.5
+        jx, jy = polar((plinth_r + ring["innerRadius"]) / 2, deg)
+        joint = box(f"Court joint {index:02d}", (jx, jy, 0.1),
+                    (0.09, ring["innerRadius"] - plinth_r - 0.4, 0.03), rad(deg) + math.pi / 2)
+        finish(joint, limestone, bevel=0)
+
     # --- the approach ---------------------------------------------------------
     # One slab from the inside of the gate to the foot of the keep steps, so the
     # walk has a floor under it instead of open ground.
@@ -1011,6 +1029,8 @@ def build_articulation(limestone, timber, roof_mat, brass) -> None:
         finish(nosing, brass, bevel=0.01)
 
     # Merge per family. Three hundred blocks, about ten draw calls.
+    join_by_prefix("Court joint ", "Court joints")
+
     for prefix, merged in (
         ("Trim corbel", "Trim corbels"),
         ("Trim cap", "Trim caps"),
@@ -1025,6 +1045,151 @@ def build_articulation(limestone, timber, roof_mat, brass) -> None:
         ("Trim nosing", "Trim nosings"),
     ):
         join_by_prefix(prefix + " ", merged)
+
+
+def build_occupation(limestone, limestone_light, plaster, timber, roof_mat, brass, glass) -> None:
+    """What a working citadel has in it that an architectural model does not.
+
+    Roof planes were the flattest thing left in the silhouette and the courtyard was
+    a paved circle with a keep in it. Neither is wrong, both are empty: a building
+    reads as inhabited from the things people leave lying about at their own scale,
+    and roofs read as roofs from courses, ridges and the chimneys coming through
+    them. Everything here is at or under a metre, and everything merges per family.
+    """
+    ring = DEF["ring"]
+    bays = DEF["bays"]
+    centre = DEF["gate"]["centerDeg"]
+    inner = ring["innerRadius"]
+
+    # --- tile courses on the bay roofs ---------------------------------------
+    for index in range(bays["count"]):
+        angle = bays["startDeg"] + index * bays["stepDeg"]
+        half = bays["widthDeg"] / 2 + 0.7
+        outer = ring["outerRadius"] + bays["projection"] + 0.34
+        for course in range(4):
+            r_in = ring["outerRadius"] - 0.62 + (outer - ring["outerRadius"] + 0.62) * (course / 4)
+            band = annulus(f"Roof course {index}{course}", r_in, r_in + 0.1,
+                           angle - half, angle + half,
+                           bays["height"] + bays["roofHeight"] + 0.005, 0.07, 8)
+            finish(band, timber, bevel=0.01)
+
+        # Chimney through the roof, off centre, with a brass cap.
+        cx, cy = polar(ring["outerRadius"] + 0.5, angle + half * 0.45)
+        stack = box(f"Roof stack {index:02d}",
+                    (cx, cy, bays["height"] + bays["roofHeight"] + 0.72),
+                    (0.54, 0.54, 1.7), rad(angle) + math.pi / 2)
+        finish(stack, limestone, bevel=0.02)
+        cap = box(f"Roof cap {index:02d}",
+                  (cx, cy, bays["height"] + bays["roofHeight"] + 1.62),
+                  (0.72, 0.72, 0.12), rad(angle) + math.pi / 2)
+        finish(cap, brass, bevel=0.02)
+
+    # --- banners between the merlons -----------------------------------------
+    # Cloth is the one soft thing on a building made of stone, and hanging it off
+    # the wall head breaks a horizon that is otherwise all one line.
+    # Hung clear of the cornice, not behind it. The first pass put them at the wall
+    # face, which is half a metre inside the corbel course that runs over it: six
+    # banners rendered, none of them visible from anywhere.
+    hang_r = ring["outerRadius"] + 0.66
+    for index, offset in enumerate((-118, -74, -34, 34, 74, 118)):
+        angle = centre + offset
+        bx, by = polar(hang_r, angle)
+        banner = box(f"Banner {index:02d}", (bx, by, ring["height"] - 2.15),
+                     (1.35, 0.07, 2.9), rad(angle) + math.pi / 2)
+        finish(banner, plaster if index % 2 else timber, bevel=0.01)
+        rail = box(f"Banner rail {index:02d}", (bx, by, ring["height"] - 0.62),
+                   (1.6, 0.12, 0.12), rad(angle) + math.pi / 2)
+        finish(rail, brass, bevel=0.01)
+
+    # --- things left in the courtyard ----------------------------------------
+    # Barrels, crates, stacked timber, a cart and a well. All of it at human scale,
+    # which is the scale the model had nothing at.
+    for index, (deg, radius) in enumerate((
+        (centre + 26, inner - 3.4), (centre + 30, inner - 4.1), (centre - 24, inner - 3.6),
+        (centre + 70, inner - 3.2), (centre - 70, inner - 3.9), (centre + 112, inner - 3.5),
+        (centre - 112, inner - 3.3), (centre + 160, inner - 3.7),
+    )):
+        bx, by = polar(radius, deg)
+        yaw = rad(deg) + math.pi / 2
+        barrel = prism(f"Yard barrel {index:02d}", (bx, by, 0.44), 0.34, 0.88, 10, yaw)
+        finish(barrel, timber, bevel=0.02)
+        hoop = prism(f"Yard hoop {index:02d}", (bx, by, 0.62), 0.36, 0.07, 10, yaw)
+        finish(hoop, brass, bevel=0.01)
+
+    for index, (deg, radius, size, height) in enumerate((
+        (centre + 40, inner - 2.8, 0.9, 0.62), (centre + 44, inner - 2.6, 0.7, 0.5),
+        (centre - 38, inner - 2.9, 0.86, 0.66), (centre - 96, inner - 2.7, 0.8, 0.58),
+        (centre + 134, inner - 2.8, 0.94, 0.7), (centre - 134, inner - 3.1, 0.72, 0.52),
+    )):
+        cx, cy = polar(radius, deg)
+        crate = box(f"Yard crate {index:02d}", (cx, cy, height / 2), (size, size * 0.8, height),
+                    rad(deg) + math.pi / 4)
+        finish(crate, timber, bevel=0.02)
+
+    # Stacked firewood against the stores.
+    for index, deg in enumerate((centre + 60, centre - 60, centre + 178)):
+        for row in range(3):
+            wx, wy = polar(inner - 2.5, deg)
+            log_row = box(f"Yard wood {index}{row}", (wx, wy, 0.16 + row * 0.3),
+                          (2.2, 0.62, 0.28), rad(deg) + math.pi / 2)
+            finish(log_row, timber, bevel=0.06)
+
+    # A well, off the gate axis, with a brass winding beam.
+    wx, wy = polar(inner - 5.4, centre + 52)
+    curb = prism("Yard well curb", (wx, wy, 0.42), 1.0, 0.84, 12)
+    finish(curb, limestone_light, bevel=0.03)
+    for side in (-1, 1):
+        post = box(f"Yard well post {side + 1}", (wx + side * 0.86, wy, 1.3),
+                   (0.16, 0.16, 1.9), 0.0)
+        finish(post, timber, bevel=0.02)
+    beam = box("Yard well beam", (wx, wy, 2.22), (2.1, 0.18, 0.18), 0.0)
+    finish(beam, brass, bevel=0.02)
+
+    # A cart, parked, because a courtyard with nothing on wheels is a diagram.
+    cx, cy = polar(inner - 4.6, centre - 44)
+    yaw = rad(centre - 44) + math.pi / 2
+    bed = box("Yard cart bed", (cx, cy, 0.78), (2.6, 1.3, 0.24), yaw)
+    finish(bed, timber, bevel=0.02)
+    for side in (-1, 1):
+        for end in (-1, 1):
+            ox = end * 0.85
+            oy = side * 0.72
+            wheel = prism(f"Yard cart wheel {side + 1}{end + 1}",
+                          (cx + ox * math.cos(yaw) - oy * math.sin(yaw),
+                           cy + ox * math.sin(yaw) + oy * math.cos(yaw), 0.62),
+                          0.62, 0.14, 12, yaw + math.pi / 2)
+            wheel.rotation_euler = (math.pi / 2, 0.0, yaw)
+            finish(wheel, timber, bevel=0.02)
+    shaft = box("Yard cart shaft", (cx, cy, 0.58), (3.6, 0.14, 0.14), yaw)
+    finish(shaft, timber, bevel=0.02)
+
+    # Braziers: light at ground level, which the courtyard had none of.
+    for index, deg in enumerate((centre + 34, centre - 34)):
+        bx, by = polar(inner - 6.2, deg)
+        bowl = prism(f"Yard brazier {index:02d}", (bx, by, 0.95), 0.42, 0.34, 8)
+        finish(bowl, brass, bevel=0.03)
+        leg = box(f"Yard brazier leg {index:02d}", (bx, by, 0.4), (0.14, 0.14, 0.82), 0.0)
+        finish(leg, timber, bevel=0.01)
+        coals = prism(f"Yard coals {index:02d}", (bx, by, 1.08), 0.3, 0.12, 8)
+        finish(coals, glass)
+
+    for prefix, merged in (
+        ("Roof course", "Roof courses"),
+        ("Roof stack", "Roof stacks"),
+        ("Roof cap", "Roof caps"),
+        ("Banner rail", "Banner rails"),
+        ("Banner", "Banners"),
+        ("Yard barrel", "Yard barrels"),
+        ("Yard hoop", "Yard hoops"),
+        ("Yard crate", "Yard crates"),
+        ("Yard wood", "Yard woodpile"),
+        ("Yard well post", "Yard well posts"),
+        ("Yard cart wheel", "Yard cart wheels"),
+        ("Yard brazier leg", "Yard brazier legs"),
+        ("Yard brazier ", "Yard braziers"),
+        ("Yard coals", "Yard coalbeds"),
+    ):
+        join_by_prefix(prefix + " " if not prefix.endswith(" ") else prefix, merged)
 
 
 def join_by_prefix(prefix: str, name: str) -> None:
@@ -1071,6 +1236,7 @@ def group_scene() -> None:
         ("Stage core", ("Core ",)),
         ("Stage court", ("Court ",)),
         ("Stage trim", ("Trim ",)),
+        ("Stage life", ("Yard ", "Roof ", "Banner")),
         ("Stage nodes", ("Node ",)),
     ]
     stage_objects = {}
@@ -1189,6 +1355,7 @@ def main() -> None:
     build_core_detail(limestone, timber, brass)
     build_court(limestone, limestone_light, plaster, timber, roof_mat, brass, glass)
     build_articulation(limestone, timber, roof_mat, brass)
+    build_occupation(limestone, limestone_light, plaster, timber, roof_mat, brass, glass)
     build_nodes(brass, signal)
 
     group_scene()
