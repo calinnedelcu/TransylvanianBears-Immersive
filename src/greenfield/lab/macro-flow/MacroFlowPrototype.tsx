@@ -777,6 +777,19 @@ function MacroFlowExperience() {
         <p className="hp-scroll-cue" aria-hidden="true">
           <i /> Derulează &middot; cetatea se ridică
         </p>
+        {/* What the reader is told on the way in. Two beats, both inside the
+            threshold: the gate opening, and being through it. The first chapter's
+            own text used to land here instead, which announced a project while the
+            doors were still swinging. */}
+        <p className="hp-passage" data-passage="gate" aria-hidden="true">
+          <b>Pragul</b>
+          <span>Poarta se deschide o singură dată.</span>
+        </p>
+        <p className="hp-passage" data-passage="inside">
+          <b>Înăuntru</b>
+          <span>Șapte sisteme, construite de șase elevi.</span>
+          <i>Fiecare are lumea lui. Drumul trece prin toate.</i>
+        </p>
       </section>
 
       <section id="mf-field" className="mf-beat mf-beat--field" data-chapter="field">

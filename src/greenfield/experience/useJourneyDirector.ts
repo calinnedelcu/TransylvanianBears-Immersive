@@ -289,7 +289,9 @@ export function useJourneyDirector({
           id: 'journey-hero',
           trigger: heroBeat,
           start: 'top top',
-          end: 'bottom bottom',
+          // A screen short of the beat's bottom: the last two screens of the
+          // section are the walk in, not the build.
+          end: 'bottom bottom+=100%',
           onUpdate: (self) => publishHero(self.progress),
         });
         publishHero(0);
@@ -302,12 +304,51 @@ export function useJourneyDirector({
         ScrollTrigger.create({
           id: 'journey-hero-handoff',
           trigger: heroBeat,
-          start: 'bottom bottom',
+          start: 'bottom bottom+=100%',
           endTrigger: firstChapter,
           end: 'top top',
           onUpdate: (self) => {
             heroHandoffRef.current = self.progress;
           },
+        });
+      }
+
+      // The two lines on the way in, keyed to the walk rather than to the page.
+      //
+      // The gate line holds while the doors are actually swinging and is gone
+      // before the camera reaches the wall; the second arrives once the reader is
+      // through and hands over to the first chapter. Both fade at both ends, so
+      // neither one cuts.
+      const passages = root.querySelectorAll<HTMLElement>('.hp-passage');
+      if (heroBeat && firstChapter && passages.length) {
+        const WINDOWS: Record<string, [number, number, number, number]> = {
+          // in, held from, held to, out
+          gate: [0.30, 0.40, 0.60, 0.70],
+          inside: [0.80, 0.88, 1.00, 1.00],
+        };
+        const show = (value: number) => {
+          passages.forEach((element) => {
+            const win = WINDOWS[element.dataset.passage ?? ''];
+            if (!win) return;
+            const [inAt, held, until, outAt] = win;
+            const rising = (value - inAt) / Math.max(0.0001, held - inAt);
+            const falling = outAt > until ? (outAt - value) / Math.max(0.0001, outAt - until) : 1;
+            const alpha = Math.max(0, Math.min(1, Math.min(rising, falling)));
+            element.style.opacity = (alpha * alpha * (3 - 2 * alpha)).toFixed(3);
+            // Rises a little as it arrives, so it reads as coming with the reader.
+            element.style.transform = `translateY(${((1 - alpha) * 16).toFixed(1)}px)`;
+          });
+        };
+        show(heroHandoffRef.current);
+        ScrollTrigger.create({
+          id: 'journey-passage',
+          trigger: heroBeat,
+          start: 'bottom bottom+=100%',
+          endTrigger: firstChapter,
+          end: 'top top',
+          onUpdate: (self) => show(self.progress),
+          onLeave: () => show(1),
+          onLeaveBack: () => show(0),
         });
       }
 

@@ -628,11 +628,72 @@ body.mf-lab-mode {
  * 280 gives the opening 180 and leaves the gate its screen.
  */
 .mf-beat--threshold {
-  min-height: 280dvh;
+  /* Two screens of build, then two of going in.
+     The walk used to get one screen, which is why the gate opened and the citadel
+     was behind you before the doors had finished swinging - the most worked-on
+     moment in the opening was also the shortest. */
+  min-height: 380dvh;
+}
+
+/*
+ * The two lines the reader gets on the way in.
+ *
+ * They live in the threshold section, driven from the handoff rather than from
+ * their own position, because the walk they belong to is a camera move and not a
+ * scroll through a document: nothing here moves up the page as the reader goes.
+ */
+.hp-passage {
+  position: fixed;
+  z-index: 26;
+  inset: auto 0 clamp(9vh, 14vh, 18vh);
+  display: grid;
+  justify-items: center;
+  gap: 0.9rem;
+  padding: 0 6vw;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.hp-passage b {
+  font: 500 0.72rem/1 var(--mf-mono, ui-monospace, monospace);
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: rgb(255 214 168 / 0.82);
+}
+
+.hp-passage span {
+  max-width: 22ch;
+  font-family: var(--mf-serif, Georgia, serif);
+  font-size: clamp(1.5rem, 3.6vw, 2.7rem);
+  line-height: 1.14;
+  color: rgb(247 243 236 / 0.96);
+  text-wrap: balance;
+  text-shadow: 0 2px 26px rgb(8 6 4 / 0.72);
+}
+
+.hp-passage i {
+  max-width: 34ch;
+  font-style: normal;
+  font-size: clamp(0.85rem, 1.5vw, 1rem);
+  line-height: 1.5;
+  color: rgb(233 224 210 / 0.72);
+  text-shadow: 0 2px 20px rgb(8 6 4 / 0.7);
 }
 
 .mf-beat--field {
-  min-height: 170dvh;
+  /*
+   * The first chapter keeps its head down until the reader is through the gate.
+   *
+   * Its copy used to sit at the top of the section, and the section's top is where
+   * the walk ends - so the heading announcing a project was already on screen while
+   * the doors were still swinging, over a citadel the reader had not entered yet.
+   * Three quarters of a screen of lead-in puts it below the fold until the crossing
+   * is done. The section's own top has not moved, so neither the handoff nor the
+   * chapter change is affected: only the words are later.
+   */
+  padding-top: 75vh;
+  min-height: 245dvh;
 }
 
 .mf-beat--lens {

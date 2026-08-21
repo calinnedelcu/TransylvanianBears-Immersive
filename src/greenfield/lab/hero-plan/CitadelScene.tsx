@@ -293,49 +293,6 @@ function CitadelModel({
       return ((h >>> 0) % 10000) / 10000;
     };
 
-    piecesRef.current = [];
-    const box = new THREE.Box3();
-    citadel?.children.forEach((stage) => {
-      const weight = STAGE_WEIGHT[authoredName(stage)];
-      if (weight === undefined) return;
-      // traverse, not children.
-      //
-      // A merged family with two materials in it comes back from the exporter as a
-      // mesh with a mesh inside it - the second primitive - and reading only the
-      // stage's direct children missed every one of those. They still got the glass
-      // material and a lamp record from makeLuminous, and then nothing to drive
-      // either: four tower window sets stayed dark for good while the panes beside
-      // them lit. It also missed the gate leaves once they were rehung on pivots.
-      stage.traverse((object) => {
-        if (!(object as THREE.Mesh).isMesh) return;
-        // Carried pieces are moved by their parent. Driving their position too
-        // would drop them twice as far as the piece they belong to.
-        const parent = object.parent;
-        const carried = parent !== stage && Boolean((parent as THREE.Mesh | null)?.isMesh);
-        const baseY = (object.userData.baseY as number | undefined) ?? object.position.y;
-        object.userData.baseY = baseY;
-        box.setFromObject(object);
-        const height = Number.isFinite(box.max.y) ? Math.max(1.5, box.max.y - box.min.y) : 8;
-        // Mostly scattered, lightly weighted so structure still tends to lead. A
-        // carried piece takes its parent's schedule, or the two halves of one
-        // merged family pour at different moments.
-        const order = scatterOrder(carried && parent ? parent.name : object.name);
-        const delay = Math.min(0.999, weight * 0.25 + order * 0.75);
-        piecesRef.current.push({
-          object,
-          baseY,
-          drop: carried ? 0 : height + Math.max(2, box.max.y),
-          delay,
-          // A second, independent scatter: the order pieces turn to stone is not
-          // the order they arrived in, so the citadel keeps changing after it is up.
-          settle: scatterOrder(`${carried && parent ? parent.name : object.name}-settle`),
-          build: (object.userData.build as BuildUniforms | undefined) ?? null,
-          solid: (object.userData.glass as THREE.MeshStandardMaterial | undefined) ?? null,
-          lamp: (object.userData.lamp as Lamp | undefined) ?? null,
-        });
-      });
-    });
-
     // The two leaves of the gate, each on its own hinge.
     //
     // The hinge is built here rather than read off the model, because the model
@@ -407,6 +364,21 @@ function CitadelModel({
         // Velocity of the free edge for a positive turn about Y, at rest.
         const sweep = new THREE.Vector3(arm.z, 0, -arm.x);
         const towardsReader = sweep.dot(outward) > 0 ? 1 : -1;
+        // The brass straps belong to the leaf and the exporter did not keep them
+        // there: Blender parents them, glTF comes back with all six hung off the
+        // stage as siblings. So the doors swung and four straps stayed exactly
+        // where they were, floating across the open gateway. `attach` keeps their
+        // world transform while moving them under the leaf that carries them.
+        const leafIndex = /(\d+)$/.exec(authoredName(leaf))?.[1] ?? '';
+        const wanted = new RegExp(`^Gate strap ${leafIndex}\\d$`);
+        const straps: THREE.Object3D[] = [];
+        // traverse, not children: the straps hang off the stage, and the citadel's
+        // own children are the stages themselves.
+        citadel?.traverse((object) => {
+          if (wanted.test(authoredName(object))) straps.push(object);
+        });
+        straps.forEach((strap) => leaf.attach(strap));
+
         bladesRef.current.push({
           pivot,
           baseYaw: pivot.rotation.y,
@@ -414,6 +386,49 @@ function CitadelModel({
           phase: index * 2.3,
         });
       });
+
+    piecesRef.current = [];
+    const box = new THREE.Box3();
+    citadel?.children.forEach((stage) => {
+      const weight = STAGE_WEIGHT[authoredName(stage)];
+      if (weight === undefined) return;
+      // traverse, not children.
+      //
+      // A merged family with two materials in it comes back from the exporter as a
+      // mesh with a mesh inside it - the second primitive - and reading only the
+      // stage's direct children missed every one of those. They still got the glass
+      // material and a lamp record from makeLuminous, and then nothing to drive
+      // either: four tower window sets stayed dark for good while the panes beside
+      // them lit. It also missed the gate leaves once they were rehung on pivots.
+      stage.traverse((object) => {
+        if (!(object as THREE.Mesh).isMesh) return;
+        // Carried pieces are moved by their parent. Driving their position too
+        // would drop them twice as far as the piece they belong to.
+        const parent = object.parent;
+        const carried = parent !== stage && Boolean((parent as THREE.Mesh | null)?.isMesh);
+        const baseY = (object.userData.baseY as number | undefined) ?? object.position.y;
+        object.userData.baseY = baseY;
+        box.setFromObject(object);
+        const height = Number.isFinite(box.max.y) ? Math.max(1.5, box.max.y - box.min.y) : 8;
+        // Mostly scattered, lightly weighted so structure still tends to lead. A
+        // carried piece takes its parent's schedule, or the two halves of one
+        // merged family pour at different moments.
+        const order = scatterOrder(carried && parent ? parent.name : object.name);
+        const delay = Math.min(0.999, weight * 0.25 + order * 0.75);
+        piecesRef.current.push({
+          object,
+          baseY,
+          drop: carried ? 0 : height + Math.max(2, box.max.y),
+          delay,
+          // A second, independent scatter: the order pieces turn to stone is not
+          // the order they arrived in, so the citadel keeps changing after it is up.
+          settle: scatterOrder(`${carried && parent ? parent.name : object.name}-settle`),
+          build: (object.userData.build as BuildUniforms | undefined) ?? null,
+          solid: (object.userData.glass as THREE.MeshStandardMaterial | undefined) ?? null,
+          lamp: (object.userData.lamp as Lamp | undefined) ?? null,
+        });
+      });
+    });
 
     // Nothing is solid while the sheet is still a drawing: the citadel is simply
     // absent. It no longer gets flattened, because the stages now rise by moving
