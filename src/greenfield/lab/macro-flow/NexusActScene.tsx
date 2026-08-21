@@ -36,7 +36,25 @@ const LENS_ACCENTS: Record<MacroLensMode, string> = {
   detection: '#df6553',
 };
 
-const CITY_BLOCKS: CityBlock[] = Array.from({ length: 38 }, (_, index) => {
+/**
+ * How far the street runs, and where its middle is.
+ *
+ * The camera flies +15 to -62 through this act. The street ran +9 to -49 and the
+ * buildings +4 to -49, so Project Nexus opened on a black screen - the first frame
+ * of it measured 100% near-black - and spent its last third flying past the end of
+ * the city into nothing, 84% black at the end of the lens chapter and 97% in the
+ * one after. Everything below is derived from these two numbers so the road, its
+ * kerbs, its markings, its lamps and the blocks either side cannot come apart.
+ */
+const STREET_CENTRE = -29;
+const STREET_LENGTH = 98;
+const STREET_FRONT = STREET_CENTRE + STREET_LENGTH / 2;
+const DRAIN_COUNT = 30;
+
+const CITY_ROWS = 33;
+const CITY_ROW_GAP = 2.95;
+
+const CITY_BLOCKS: CityBlock[] = Array.from({ length: CITY_ROWS * 2 }, (_, index) => {
   const side = (index % 2 === 0 ? -1 : 1) as -1 | 1;
   const row = Math.floor(index / 2);
   const width = 1.75 + ((index * 7) % 5) * 0.42;
@@ -44,7 +62,7 @@ const CITY_BLOCKS: CityBlock[] = Array.from({ length: 38 }, (_, index) => {
   const depth = 1.65 + ((index * 5) % 4) * 0.36;
 
   return {
-    position: [side * (5.35 + ((index * 3) % 3) * 1.12 + (row % 4) * 0.08), 0, 4 - row * 2.95],
+    position: [side * (5.35 + ((index * 3) % 3) * 1.12 + (row % 4) * 0.08), 0, STREET_FRONT - 2 - row * CITY_ROW_GAP],
     scale: [width, height, depth],
     segment: index % 3,
     side,
@@ -1057,7 +1075,7 @@ function StreetFurniture({
   const scratchColor = useMemo(() => new THREE.Color(), []);
   const rockCount = qualityTier === 'cinematic' ? 16 : 9;
   const shrubCount = qualityTier === 'cinematic' ? 8 : 5;
-  const markingCount = 34;
+  const markingCount = 60;
   const cableGeometry = useMemo(createSurveyCableGeometry, []);
   const geometries = useMemo(() => ({
     box: new THREE.BoxGeometry(1, 1, 1),
@@ -1101,17 +1119,17 @@ function StreetFurniture({
 
   useLayoutEffect(() => {
     [-5.05, 5.05].forEach((x, index) => {
-      setInstanceTransform(sidewalkRef.current, index, scratch, x, 0.07, -20, 2.58, 0.14, 58);
+      setInstanceTransform(sidewalkRef.current, index, scratch, x, 0.07, STREET_CENTRE, 2.58, 0.14, STREET_LENGTH);
       setInstanceTransform(
         curbRef.current,
         index,
         scratch,
         x + (x < 0 ? 1.29 : -1.29),
         0.15,
-        -20,
+        STREET_CENTRE,
         0.14,
         0.3,
-        58,
+        STREET_LENGTH,
       );
       setInstanceTransform(
         curbRef.current,
@@ -1119,10 +1137,10 @@ function StreetFurniture({
         scratch,
         x + (x < 0 ? -1.22 : 1.22),
         0.1,
-        -20,
+        STREET_CENTRE,
         0.1,
         0.2,
-        58,
+        STREET_LENGTH,
       );
       setInstanceTransform(
         gutterRef.current,
@@ -1130,10 +1148,10 @@ function StreetFurniture({
         scratch,
         x + (x < 0 ? 1.48 : -1.48),
         0.018,
-        -20,
+        STREET_CENTRE,
         0.42,
         0.035,
-        58,
+        STREET_LENGTH,
       );
     });
 
@@ -1145,22 +1163,22 @@ function StreetFurniture({
         scratch,
         x,
         0.025,
-        -20,
+        STREET_CENTRE,
         0.032,
-        56,
+        STREET_LENGTH - 2,
         1,
         -Math.PI / 2,
       );
       markingIndex += 1;
     });
-    for (let index = 0; index < 14; index += 1) {
+    for (let index = 0; index < 26; index += 1) {
       setInstanceTransform(
         markingRef.current,
         markingIndex,
         scratch,
         0,
         0.028,
-        4 - index * 3.9,
+        STREET_FRONT - 2 - index * 3.9,
         0.065,
         1.85,
         1,
@@ -1168,7 +1186,7 @@ function StreetFurniture({
       );
       markingIndex += 1;
     }
-    [-9, -29].forEach((crossingZ) => {
+    [-9, -29, -52].forEach((crossingZ) => {
       for (let index = 0; index < 7; index += 1) {
         setInstanceTransform(
           markingRef.current,
@@ -1201,9 +1219,9 @@ function StreetFurniture({
       markingIndex += 1;
     });
 
-    for (let index = 0; index < 12; index += 1) {
+    for (let index = 0; index < LAMP_COUNT; index += 1) {
       const side = index % 2 === 0 ? -1 : 1;
-      const z = 2 - Math.floor(index / 2) * 8.8;
+      const z = lampPlacement(index).z;
       setInstanceTransform(
         streetFrameRef.current,
         index * 2,
@@ -1232,9 +1250,9 @@ function StreetFurniture({
       setInstanceTransform(lampHeadRef.current, index, scratch, side * 3.63, 3.06, z, 0.34, 0.13, 0.22);
     }
 
-    for (let index = 0; index < 18; index += 1) {
+    for (let index = 0; index < DRAIN_COUNT; index += 1) {
       const side = index % 2 === 0 ? -1 : 1;
-      const z = 3 - Math.floor(index / 2) * 6.1;
+      const z = STREET_FRONT - 5 - Math.floor(index / 2) * 6.1;
       setInstanceTransform(drainRef.current, index, scratch, side * 3.55, 0.055, z, 0.34, 0.055, 0.62);
     }
 
@@ -1333,17 +1351,17 @@ function StreetFurniture({
 
   return (
     <>
-      <mesh position={[0, -0.045, -20]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[7.4, 58]} />
+      <mesh position={[0, -0.045, STREET_CENTRE]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[7.4, STREET_LENGTH]} />
         <primitive object={semanticMaterials.road} attach="material" />
       </mesh>
       <instancedMesh ref={sidewalkRef} args={[geometries.box, semanticMaterials.sidewalk, 2]} frustumCulled={false} />
       <instancedMesh ref={curbRef} args={[geometries.box, semanticMaterials.curb, 4]} frustumCulled={false} />
       <instancedMesh ref={gutterRef} args={[geometries.box, materials.gutter, 2]} frustumCulled={false} />
       <instancedMesh ref={markingRef} args={[geometries.plane, semanticMaterials.marking, markingCount]} frustumCulled={false} />
-      <instancedMesh ref={drainRef} args={[geometries.box, materials.drain, 18]} frustumCulled={false} />
-      <instancedMesh ref={streetFrameRef} args={[geometries.box, materials.streetFrame, 24]} frustumCulled={false} />
-      <instancedMesh ref={lampHeadRef} args={[geometries.box, materials.lampHead, 12]} frustumCulled={false} />
+      <instancedMesh ref={drainRef} args={[geometries.box, materials.drain, DRAIN_COUNT]} frustumCulled={false} />
+      <instancedMesh ref={streetFrameRef} args={[geometries.box, materials.streetFrame, LAMP_COUNT * 2]} frustumCulled={false} />
+      <instancedMesh ref={lampHeadRef} args={[geometries.box, materials.lampHead, LAMP_COUNT]} frustumCulled={false} />
       <instancedMesh ref={surveyPostRef} args={[geometries.box, materials.streetFrame, 12]} frustumCulled={false} />
       <instancedMesh ref={rockRef} args={[geometries.rock, semanticMaterials.mineral, rockCount]} frustumCulled={false} />
       <instancedMesh ref={shrubRef} args={[geometries.shrub, semanticMaterials.mineral, shrubCount]} frustumCulled={false} />
@@ -2518,12 +2536,12 @@ function CompactNexusCity({
  * Steady, and matched to the lamps' own colour. This is a capture volume and the
  * brief for it is that every frame matches, so nothing here flickers.
  */
-const LAMP_COUNT = 12;
+const LAMP_COUNT = 22;
 const LAMP_COLOR = '#e8c98a';
 
 function lampPlacement(index: number) {
   const side = index % 2 === 0 ? -1 : 1;
-  return { x: side * 3.63, z: 2 - Math.floor(index / 2) * 8.8 };
+  return { x: side * 3.63, z: STREET_FRONT - 6 - Math.floor(index / 2) * 8.8 };
 }
 
 function StreetLamplight({ qualityTier }: Pick<NexusActSceneProps, 'qualityTier'>) {
@@ -2561,7 +2579,9 @@ function StreetLamplight({ qualityTier }: Pick<NexusActSceneProps, 'qualityTier'
     fragmentShader: `varying vec2 vUv; uniform vec3 uColor;
       void main() {
         // Densest at the head, gone before it reaches the road.
-        float a = smoothstep(0.0, 0.85, vUv.y) * 0.14;
+        // Twenty-two of these overlap down a street. At 0.14 each they stopped
+        // being air and became solid wedges hanging off every lamp.
+        float a = smoothstep(0.0, 0.9, vUv.y) * 0.042;
         if (a < 0.004) discard;
         gl_FragColor = vec4(uColor, a);
       }`,
@@ -2599,7 +2619,7 @@ function StreetLamplight({ qualityTier }: Pick<NexusActSceneProps, 'qualityTier'
       </instancedMesh>
       {qualityTier === 'cinematic' ? (
         <instancedMesh ref={coneRef} args={[undefined, undefined, LAMP_COUNT]} frustumCulled={false} raycast={() => {}}>
-          <cylinderGeometry args={[0.34, 2.5, 3.0, 10, 1, true]} />
+          <cylinderGeometry args={[0.3, 1.85, 3.0, 10, 1, true]} />
           <primitive object={cone} attach="material" />
         </instancedMesh>
       ) : null}
