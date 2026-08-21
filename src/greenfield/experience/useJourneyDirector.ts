@@ -385,10 +385,18 @@ export function useJourneyDirector({
         });
       }
 
-      if (worldEnd) {
+      if (worldEnd && firstChapter) {
+        // The world starts where the world starts.
+        //
+        // This ran from the top of the document, so the opening was spending world
+        // progress: by the time the reader came through the gate the camera was
+        // already a seventh of the way down the authored curve, and the first
+        // chapter began most of the way along its own street. The taller the
+        // threshold got, the further in they landed. Anchored to the first chapter,
+        // the citadel costs it nothing and the street starts at its beginning.
         ScrollTrigger.create({
           id: 'journey-world',
-          trigger: root,
+          trigger: firstChapter,
           start: 'top top',
           endTrigger: worldEnd,
           end: 'top top',
