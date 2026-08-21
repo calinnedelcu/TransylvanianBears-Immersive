@@ -326,20 +326,41 @@ function createCityMaterial(raw: string, segment: string) {
  */
 let LENS_WINDOW = { inFrom: 0.13, inTo: 0.16, outFrom: 0.285, outTo: 0.318 };
 
+/**
+ * Where a section sits in world progress.
+ *
+ * Not in the document. This act is driven by `journey-world`, which runs from the
+ * first chapter to the breach rather than from the top of the page - and measuring
+ * these windows as fractions of the whole document instead put every one of them
+ * about twenty percent late. That is why the sensor did nothing until halfway
+ * through its own chapter even after the window was being measured: the numbers
+ * were right, against the wrong ruler.
+ */
+function worldFraction(top: number, from: number, to: number) {
+  return (top - from) / Math.max(1, to - from);
+}
+
+function worldAnchors() {
+  if (typeof document === 'undefined') return null;
+  const field = document.getElementById('mf-field');
+  const infect = document.getElementById('mf-infect');
+  if (!field || !infect || infect.offsetTop <= field.offsetTop) return null;
+  return { from: field.offsetTop, to: infect.offsetTop };
+}
+
 export function measureNexusLensWindow(): boolean {
-  if (typeof document === 'undefined') return false;
+  const anchors = worldAnchors();
   const lens = document.getElementById('mf-lens');
   const proof = document.getElementById('mf-proof');
-  const scrollable = document.documentElement.scrollHeight - window.innerHeight;
-  if (!lens || !proof || scrollable <= 0 || proof.offsetTop <= lens.offsetTop) return false;
-  const start = lens.offsetTop / scrollable;
-  const end = proof.offsetTop / scrollable;
+  if (!anchors || !lens || !proof || proof.offsetTop <= lens.offsetTop) return false;
+  const start = worldFraction(lens.offsetTop, anchors.from, anchors.to);
+  const end = worldFraction(proof.offsetTop, anchors.from, anchors.to);
   const span = Math.max(1e-4, end - start);
-  // Reaching in before the section and letting go after it, so the lens is already
-  // there when the reader arrives and does not snap off at the boundary.
+  // Fully up by the time the reader is in the chapter - they reach for the sensor
+  // straight away - and letting go after it rather than snapping off at the edge.
   LENS_WINDOW = {
-    inFrom: start - span * 0.4,
-    inTo: start + span * 0.14,
+    inFrom: start - span * 0.45,
+    inTo: start + span * 0.04,
     outFrom: end - span * 0.1,
     outTo: end + span * 0.3,
   };
@@ -368,17 +389,13 @@ export function nexusLensWindow() {
 let CITY_REVEAL = { from: 0.045, to: 0.091 };
 
 export function measureNexusCityReveal(): boolean {
-  if (typeof document === 'undefined') return false;
-  const field = document.getElementById('mf-field');
+  const anchors = worldAnchors();
   const lens = document.getElementById('mf-lens');
-  const scrollable = document.documentElement.scrollHeight - window.innerHeight;
-  if (!field || !lens || scrollable <= 0 || lens.offsetTop <= field.offsetTop) return false;
-  const start = field.offsetTop / scrollable;
-  const end = lens.offsetTop / scrollable;
-  const span = Math.max(1e-4, end - start);
-  // Already going up as the reader comes through the gate, all of it standing a
-  // third of the way down the street.
-  CITY_REVEAL = { from: start - span * 0.14, to: start + span * 0.36 };
+  if (!anchors || !lens) return false;
+  // The first chapter's top is world zero, which is where the reader arrives.
+  const end = worldFraction(lens.offsetTop, anchors.from, anchors.to);
+  const span = Math.max(1e-4, end);
+  CITY_REVEAL = { from: -span * 0.14, to: span * 0.34 };
   return true;
 }
 
