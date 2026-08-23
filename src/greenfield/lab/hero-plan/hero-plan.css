@@ -1729,7 +1729,12 @@ body.hp-lab-mode {
 /* Pe mobil nu există hover, iar spațiul vertical e deja disputat:
    informația nodurilor trăiește în lista de sisteme de mai jos. */
 @media (max-width: 900px) {
-  .hp-preview {
+  /* Selectorul trebuie să bată `.hp-preview[data-empty]`, care e `display: flex`
+     și are specificitate mai mare decât un `.hp-preview` singur — media query-ul
+     nu adaugă specificitate. Fără atributul de aici, starea goală a panoului
+     rămânea vizibilă pe mobil și cădea peste banda de dovezi. */
+  .hp-preview,
+  .hp-preview[data-empty] {
     display: none;
   }
 }
