@@ -14,6 +14,7 @@ import {
 import { effectiveQuality } from '../../experience/experienceMachine';
 import { useExperienceSelector } from '../../experience/useExperience';
 import { usePrefersReducedMotion } from '../../../hooks/usePrefersReducedMotion';
+import { ChapterImage } from './ChapterImage';
 import './research-crossing.css';
 
 const ResearchActScene = lazy(() => import('./research-act/ResearchActScene'));
@@ -334,15 +335,15 @@ export default function ResearchCrossing() {
             </div>
 
             <figure className="rc-projection rc-projection--economy-timeline">
-              <div><img src="/assets/projects/research-crossing/economy-event-timeline.webp" alt="" width="2374" height="1091" loading="lazy" decoding="async" /></div>
+              <div><ChapterImage chapter="research" alt="" width="2374" height="1091" src="/assets/projects/research-crossing/economy-event-timeline.webp" /></div>
               <figcaption>Verified figure / event arrival field</figcaption>
             </figure>
             <figure className="rc-projection rc-projection--economy-drift">
-              <div><img src="/assets/projects/research-crossing/economy-pre-post-drift.webp" alt="" width="2462" height="1136" loading="lazy" decoding="async" /></div>
+              <div><ChapterImage chapter="research" alt="" width="2462" height="1136" src="/assets/projects/research-crossing/economy-pre-post-drift.webp" /></div>
               <figcaption>Critical check / pre-event versus post-event</figcaption>
             </figure>
             <figure className="rc-projection rc-projection--automation-shap">
-              <div><img src="/assets/projects/research-crossing/automation-shap.webp" alt="" width="1130" height="509" loading="lazy" decoding="async" /></div>
+              <div><ChapterImage chapter="research" alt="" width="1130" height="509" src="/assets/projects/research-crossing/automation-shap.webp" /></div>
               <figcaption>Verified figure / SHAP impact distribution</figcaption>
             </figure>
             <div className="rc-projection rc-projection--automation-risk">
@@ -434,11 +435,11 @@ export default function ResearchCrossing() {
           </div>
           <div className="rc-paper__media">
             <figure>
-              <img src="/assets/projects/research-crossing/economy-event-timeline.webp" alt="Rata zilnică a celor 2.449 evenimente financiare pe categorii între martie 2025 și mai 2026" width="2374" height="1091" loading="lazy" decoding="async" />
+              <ChapterImage chapter="research" alt="Rata zilnică a celor 2.449 evenimente financiare pe categorii între martie 2025 și mai 2026" width="2374" height="1091" src="/assets/projects/research-crossing/economy-event-timeline.webp" />
               <figcaption>Authentic figure / gold event arrival rate</figcaption>
             </figure>
             <figure>
-              <img src="/assets/projects/research-crossing/economy-pre-post-drift.webp" alt="Comparația mișcării absolute înainte și după timestamp pentru EUR/USD și Nasdaq-100" width="2462" height="1136" loading="lazy" decoding="async" />
+              <ChapterImage chapter="research" alt="Comparația mișcării absolute înainte și după timestamp pentru EUR/USD și Nasdaq-100" width="2462" height="1136" src="/assets/projects/research-crossing/economy-pre-post-drift.webp" />
               <figcaption>Authentic figure / pre-event versus post-event drift</figcaption>
             </figure>
           </div>
@@ -467,7 +468,7 @@ export default function ResearchCrossing() {
           </div>
           <div className="rc-paper__media">
             <figure>
-              <img src="/assets/projects/research-crossing/automation-shap.webp" alt="Distribuția impactului SHAP pentru caracteristicile modelului de automatizare" width="1130" height="509" loading="lazy" decoding="async" />
+              <ChapterImage chapter="research" alt="Distribuția impactului SHAP pentru caracteristicile modelului de automatizare" width="1130" height="509" src="/assets/projects/research-crossing/automation-shap.webp" />
               <figcaption>Authentic figure / SHAP impact distribution</figcaption>
             </figure>
             <div className="rc-risk-split" aria-label="Distribuția celor 654 ocupații COR mapate">

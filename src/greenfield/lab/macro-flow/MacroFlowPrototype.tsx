@@ -881,6 +881,12 @@ function MacroFlowExperience() {
       </section>
 
             <section id="mf-proof" className="mf-clearing" data-chapter="proof">
+        {/*
+          Cele două imagini stau într-un strat `position: fixed`, deci pentru
+          browser sunt mereu în viewport, oricât de jos ar fi capitolul lor: fără
+          `loading="lazy"` se descărcau amândouă la primul render al paginii de
+          start — 216KB pentru un capitol aflat la câteva ecrane distanță.
+        */}
         <div className="mf-proof-handoff" aria-hidden="true">
           <div className="mf-proof-handoff__paper">
             <img
@@ -889,6 +895,7 @@ function MacroFlowExperience() {
               alt=""
               width="1280"
               height="960"
+              loading="lazy"
               decoding="async"
             />
             <img
@@ -897,6 +904,7 @@ function MacroFlowExperience() {
               alt=""
               width="1200"
               height="900"
+              loading="lazy"
               decoding="async"
             />
             <div className="mf-proof-handoff__labels">

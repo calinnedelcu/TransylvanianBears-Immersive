@@ -8,6 +8,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import type { CSSProperties } from 'react';
+import { ChapterImage } from '../ChapterImage';
 import './school-act.css';
 
 export interface SchoolActOverlayProps {
@@ -311,13 +312,12 @@ export function SchoolActOverlay({
             </header>
 
             <figure className="sa-product__media sa-product__media--aegis">
-              <img
+              <ChapterImage
+                chapter="schoolmate"
                 src="/assets/projects/aegis.webp"
                 alt="Colaj proxy cu interfața QR pentru elev și identitatea Aegis"
                 width="851"
                 height="656"
-                loading="lazy"
-                decoding="async"
               />
               <figcaption>
                 <span>Proxy media / nu este captura finală</span>
@@ -367,13 +367,12 @@ export function SchoolActOverlay({
             </header>
 
             <figure className="sa-product__media sa-product__media--schoolmate">
-              <img
+              <ChapterImage
+                chapter="schoolmate"
                 src="/assets/projects/schoolmate.webp"
                 alt="Captură proxy a portalului SchoolMate pentru secretariat, cu lista de anunțuri"
                 width="1519"
                 height="890"
-                loading="lazy"
-                decoding="async"
               />
               <figcaption>
                 <span>Proxy media / captură existentă</span>
@@ -394,13 +393,12 @@ export function SchoolActOverlay({
           </article>
 
           <figure className="sa-award-evidence">
-            <img
-              src="/assets/achievements/aegis-skills-future-2026.webp"
+            <ChapterImage
+              chapter="schoolmate"
+                src="/assets/achievements/aegis-skills-future-2026.webp"
               alt="Fotografie de grup de la finala Skills for the Future 2026"
               width="1600"
               height="1200"
-              loading="lazy"
-              decoding="async"
             />
             <figcaption>
               <span>Evidence proxy / Aegis</span>
