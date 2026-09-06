@@ -1077,7 +1077,7 @@ function MacroFlowExperience() {
               {BURIED_RULES.map((rule, index) => {
                 const Icon = rule.icon;
                 return (
-                  <li key={rule.id} data-active={activeBuriedRule === rule.id || undefined}>
+                  <li key={rule.id} data-active={activeBuriedRule === rule.id || undefined} aria-current={activeBuriedRule === rule.id ? 'step' : undefined}>
                     <span>0{index + 1}</span>
                     <Icon aria-hidden="true" />
                     <strong>{rule.short}</strong>
@@ -1087,11 +1087,11 @@ function MacroFlowExperience() {
             </ol>
           </div>
 
-          <aside className="mf-rule-readout" aria-live="polite">
+          <aside className="mf-rule-readout" aria-live="polite" aria-atomic="true" aria-label="Mecanismul urmărit">
             {BURIED_RULES.map((rule, index) => {
               return (
                 <div key={rule.id} hidden={activeBuriedRule !== rule.id}>
-                  <span>0{index + 1} / sistem observat</span>
+                  <span>0{index + 1} / 03 · În lumina lămpii</span>
                   <strong>{rule.label}</strong>
                   <p>{rule.detail}</p>
                 </div>
