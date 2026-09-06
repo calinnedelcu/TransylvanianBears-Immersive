@@ -71,10 +71,10 @@ export function SchoolActOverlay({
   const progressStyle = { '--sa-trace-progress': progress } as CSSProperties;
 
   const scanLabel = traceOutcome === 'allowed'
-    ? 'Acces validat'
+    ? 'Reia demonstrația'
     : traceOutcome === 'running'
       ? 'Validare în curs'
-      : 'Scanează accesul';
+      : 'Încearcă scanarea';
 
   const liveMessage = traceOutcome === 'allowed'
     ? 'ALLOW. Token consumat o singură dată, iar evenimentul a fost trimis în audit.'
@@ -98,11 +98,11 @@ export function SchoolActOverlay({
         </div>
 
         <div className="sa-passage__copy">
-          <p className="sa-kicker">05 / Passage · Nexus → Aegis</p>
-          <h2 id="sa-passage-title">Detecția capătă greutate.</h2>
+          <p className="sa-kicker">04 / SchoolMate · Aegis</p>
+          <h2 id="sa-passage-title">Orașul rămâne în urmă. Școala se deschide.</h2>
           <p>
-            Ultimul contur din Project Nexus se îngroașă în alamă și piatră. Nu schimbăm
-            lumea: urmărim aceeași regulă până când devine o poartă reală.
+            Intră în SchoolMate, unde telefonul elevului devine cheia de acces.
+            La poartă, Aegis verifică un cod temporar și înregistrează trecerea.
           </p>
           <div className="sa-passage__handoff">
             <span>Semnal detectat</span>
@@ -112,8 +112,8 @@ export function SchoolActOverlay({
         </div>
 
         <aside className="sa-passage__note" aria-label="Continuitatea dintre proiecte">
-          <small>Continuitate materială</small>
-          <p>Bounding box → ramă de alamă → arc de piatră → cititor Aegis</p>
+          <small>Urmează o interacțiune</small>
+          <p>Telefon → cititor → verificare → acces</p>
         </aside>
       </section>
 
@@ -127,24 +127,28 @@ export function SchoolActOverlay({
       >
         <div className="sa-access__stage">
           <header className="sa-access__intro">
-            <p className="sa-kicker">06 / Access · Aegis transaction</p>
+            <p className="sa-kicker">05 / Aegis · Demonstrație interactivă</p>
             <h2 id="sa-access-title">Un cod scurt. O singură trecere.</h2>
             <p>
-              Aegis leagă telefonul elevului, terminalul porții și jurnalul administrativ
-              într-o tranzacție server-side cu rezultat verificabil.
+              Pornește demonstrația și urmărește codul: de la telefon, prin verificare,
+              până la deschiderea porții.
             </p>
 
             <button
               className="sa-scan-command"
               type="button"
               onClick={onStartScan}
-              disabled={traceOutcome !== 'idle'}
+              disabled={traceOutcome === 'running'}
             >
               {traceOutcome === 'allowed'
                 ? <ShieldCheck aria-hidden="true" />
                 : <ScanLine aria-hidden="true" />}
               <span>{scanLabel}</span>
             </button>
+            <div className="sa-access__feedback">
+              <span aria-hidden="true">{traceOutcome === 'allowed' ? '✓' : traceOutcome === 'running' ? `${currentStep + 1}/5` : '→'}</span>
+              <p>{traceOutcome === 'allowed' ? 'Poarta este deschisă. Continuă prin școală.' : traceOutcome === 'running' ? TRACE_STEPS[currentStep].detail : 'O simulare a accesului, direct în scena 3D.'}</p>
+            </div>
           </header>
 
           <div className="sa-trace" style={progressStyle}>
@@ -163,6 +167,7 @@ export function SchoolActOverlay({
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={Math.round(progress * 100)}
+              aria-valuetext={traceOutcome === 'allowed' ? 'Acces validat' : traceOutcome === 'running' ? TRACE_STEPS[currentStep].label : 'Pregătit pentru scanare'}
             >
               <span aria-hidden="true" />
             </div>

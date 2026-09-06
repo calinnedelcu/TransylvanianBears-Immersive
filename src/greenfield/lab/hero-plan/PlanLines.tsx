@@ -154,18 +154,24 @@ export function PlanLines({ progressRef, fadeStart, fadeEnd }: PlanLinesProps) {
   // never created for it.
   const lines = useMemo(
     () =>
-      drawing.map((entry) => {
-        const geometry = new THREE.BufferGeometry().setFromPoints(entry.points);
+      (Object.keys(TONE_COLOR) as Drawn['tone'][]).map((tone) => {
+        const points: THREE.Vector3[] = [];
+        drawing.filter((entry) => entry.tone === tone).forEach((entry) => {
+          for (let i = 1; i < entry.points.length; i += 1) {
+            points.push(entry.points[i - 1], entry.points[i]);
+          }
+        });
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
         const material = new THREE.LineBasicMaterial({
-          color: new THREE.Color(TONE_COLOR[entry.tone]),
+          color: new THREE.Color(TONE_COLOR[tone]),
           transparent: true,
-          opacity: TONE_OPACITY[entry.tone],
+          opacity: TONE_OPACITY[tone],
           depthWrite: false,
           toneMapped: false,
         });
-        const object = new THREE.Line(geometry, material);
+        const object = new THREE.LineSegments(geometry, material);
         object.raycast = () => {};
-        return { object, material, base: TONE_OPACITY[entry.tone] };
+        return { object, material, base: TONE_OPACITY[tone] };
       }),
     [drawing],
   );
@@ -182,7 +188,8 @@ export function PlanLines({ progressRef, fadeStart, fadeEnd }: PlanLinesProps) {
   useFrame(() => {
     const p = progressRef.current;
     const fade = 1 - Math.max(0, Math.min(1, (p - fadeStart) / (fadeEnd - fadeStart)));
-    lines.forEach(({ material, base }) => {
+    lines.forEach(({ object, material, base }) => {
+      object.visible = fade > 0.001;
       material.opacity = base * fade;
     });
   });

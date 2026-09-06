@@ -1530,3 +1530,35 @@
     background: linear-gradient(180deg, transparent, #c9c8bf 8dvh, #e2ded0 calc(100% - 18dvh), transparent);
   }
 }
+
+.sa-passage__copy h2 { font-family: 'Fraunces Variable', Georgia, serif; font-weight: 400; font-size: clamp(38px, 4.6vw, 64px); line-height: 1.04; }
+.sa-access__feedback { display: flex; align-items: flex-start; gap: 10px; max-width: 280px; min-height: 58px; margin-top: 14px; padding: 10px 12px; border: 1px solid rgb(187 163 107 / 25%); background: rgb(9 15 16 / 88%); color: #d4d8ca; }
+.sa-access__feedback > span { color: #d7bd80; font: 11px/1.6 'JetBrains Mono', monospace; }
+.sa-access__feedback p { margin: 0; font-size: 11px; line-height: 1.6; }
+.sa-access[data-state='allowed'] .sa-access__feedback { border-color: #6f9d8f; }
+.sa-access[data-state='allowed'] .sa-access__feedback > span { color: #9ed8bd; }
+.sa-scan-command { min-height: 44px; }
+@media (max-width: 600px) { .sa-passage__copy h2 { font-size: 38px; } }
+
+/* A compact reading surface keeps the gate visible behind the access controls. */
+.sa-access__intro {
+  padding: 20px;
+  background: linear-gradient(115deg, rgb(8 18 20 / 94%), rgb(8 18 20 / 75%));
+  border: 1px solid rgb(187 163 107 / 28%);
+  border-left: 2px solid #bba36b;
+}
+.sa-access__intro h2 {
+  max-width: 320px;
+  font: 400 clamp(28px, 2.7vw, 38px)/1.08 'Fraunces Variable', Georgia, serif;
+  color: #e5e6d8;
+  text-wrap: pretty;
+}
+.sa-access__intro .sa-kicker { color: #d7bd80; }
+.sa-access__feedback { max-width: none; background: transparent; border-width: 1px 0 0; padding: 12px 0 0; min-height: 48px; }
+.sa-access[data-state='allowed'] .sa-access__intro { border-left-color: #9ed8bd; }
+.sa-access__intro .sa-scan-command { width: 100%; }
+@media (max-width: 560px) {
+  .sa-access__intro { padding: 16px; }
+  .sa-access__intro h2 { font-size: 30px; max-width: 300px; }
+  .sa-access__intro .sa-kicker { font-size: 8px; line-height: 1.6; margin-bottom: 12px; }
+}

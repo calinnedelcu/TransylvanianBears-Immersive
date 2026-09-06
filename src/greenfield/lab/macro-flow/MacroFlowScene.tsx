@@ -171,6 +171,7 @@ function cameraProgress(progress: number) {
 }
 
 function CameraDirector({
+  openingActive,
   activeChapter,
   progressRef,
   schoolActProgressRef,
@@ -184,6 +185,7 @@ function CameraDirector({
   schoolCameraCurve,
   buriedCameraCurve,
 }: Pick<MacroFlowSceneProps, 'activeChapter' | 'progressRef' | 'schoolActProgressRef' | 'buriedActProgressRef' | 'schoolEntranceHandoffProgressRef' | 'descentHandoffProgressRef' | 'reducedMotion' | 'qualityTier' | 'velocityRef'> & {
+  openingActive: boolean;
   authoredCurves: VerticalSliceCameraCurves;
   schoolCameraCurve: SchoolActCameraCurve | null;
   buriedCameraCurve: BuriedActCameraCurve | null;
@@ -218,6 +220,12 @@ function CameraDirector({
   }, [authoredCurves]);
 
   useFrame(({ camera, clock, pointer, size }, delta) => {
+    // The citadel owns its entire approach. Start the city at its own camera pose
+    // under the transition cover instead of interpolating across unrelated worlds.
+    if (openingActive) {
+      firstFrameRef.current = true;
+      return;
+    }
     if (introStartTimeRef.current === null) introStartTimeRef.current = clock.elapsedTime;
     const sceneTime = clock.elapsedTime - introStartTimeRef.current;
     const worldProgress = progressRef.current;
@@ -1220,6 +1228,12 @@ function World({
   const showSchool = SCHOOL_CHAPTERS.has(activeChapter);
   const showBuried = BURIED_CHAPTERS.has(activeChapter);
   const showHemisphere = !(showNexus && (compact || showThreshold));
+  useLayoutEffect(() => {
+    const root = document.querySelector<HTMLElement>('.mf-lab');
+    if (!root) return;
+    root.dataset.openingWorld = showThreshold ? 'citadel' : showNexus ? 'nexus' : 'later';
+    return () => { delete root.dataset.openingWorld; };
+  }, [showThreshold, showNexus]);
   const keyLightRef = useRef<THREE.DirectionalLight>(null);
 
   useFrame(() => {
@@ -1259,7 +1273,7 @@ function World({
         showThreshold={showThreshold}
         showNexus={showNexus}
       />
-      {showHemisphere ? (
+      {showHemisphere && !showThreshold ? (
         <hemisphereLight
           intensity={showBuried ? 0.16 : showThreshold ? (compact ? 0.78 : 0.68) : showSchool ? 0.46 : 0.38}
           color={showBuried ? '#b8ac98' : showThreshold ? '#b7c8d6' : showSchool ? '#d2c6a4' : '#b9cfcd'}
@@ -1268,6 +1282,7 @@ function World({
       ) : null}
       <directionalLight
         ref={keyLightRef}
+        visible={!showThreshold}
         // The threshold was excluded from this when the opening was a flat drawing
         // and there was nothing solid to cast. There is a building there now, and
         // a building lit from every side at once is a toy.
@@ -1297,6 +1312,7 @@ function World({
       {showBuried ? <BuriedTransitionLight handoffProgressRef={descentHandoffProgressRef} /> : null}
 
       <CameraDirector
+        openingActive={showThreshold}
         activeChapter={activeChapter}
         progressRef={progressRef}
         schoolActProgressRef={schoolActProgressRef}

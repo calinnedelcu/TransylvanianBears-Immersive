@@ -37,7 +37,7 @@ body.hp-lab-mode {
   --hp-fade-out: clamp(0, calc(1 - var(--hp-progress) * 2.4), 1);
   /* Atmosfera planșei pleacă înaintea restului: la 0.12 începe extrudarea și
      lumina trebuie să vină deja din lume, nu de pe masa de desen. */
-  --hp-aura-out: clamp(0, calc(1 - var(--hp-progress) * 5), 1);
+  --hp-aura-out: clamp(0, calc(1 - var(--hp-progress) * 2.8), 1);
   --hp-fade-labels: clamp(0, calc(1 - var(--hp-progress) * 2.6), 1);
   --hp-fade-in: clamp(0, calc((var(--hp-progress) - 0.15) * 1.5), 1);
   --hp-extrude-in: clamp(0, calc((var(--hp-progress) - 0.12) * 2.6), 1);
@@ -481,6 +481,7 @@ body.hp-lab-mode {
 
 .hp-opening .hp-btn {
   display: inline-flex;
+  min-height: 44px;
   gap: 10px;
   align-items: center;
   padding: 14px 22px;
@@ -1557,6 +1558,7 @@ body.hp-lab-mode {
    ========================================================================= */
 
 .hp-preview {
+  opacity: var(--hp-fade-labels);
   position: absolute;
   right: clamp(20px, 4vw, 48px);
   bottom: 26px;
@@ -1574,9 +1576,7 @@ body.hp-lab-mode {
   min-height: 196px;
   padding-top: 16px;
   border-top: 1px solid var(--hp-line);
-  /* Vizibil in doua momente: cat timp planul e desen, si dupa ce cetatea s-a
-     ridicat si nodurile devin tinte in lume. In tranzitie nu are ce cauta. */
-  opacity: max(var(--hp-fade-out), clamp(0, calc((var(--hp-progress) - 0.9) * 12), 1));
+  /* Node hints belong to the interactive drawing, before the camera enters. */
 }
 
 .hp-preview[data-empty] {

@@ -1,4 +1,5 @@
 import { Boxes, Eye, ScanLine } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 
 type ProofMode = 'source' | 'segmentation' | 'detection';
@@ -55,6 +56,11 @@ const MODES = [
 ] as const;
 
 export function NexusProofInspector({ mode, onModeChange }: NexusProofInspectorProps) {
+  const [zoomed, setZoomed] = useState(false);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    viewportRef.current?.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [zoomed, mode]);
   const proofMode: ProofMode = mode === 'raw' ? 'source' : mode;
   const activeMode = MODES.find((option) => option.id === proofMode) ?? MODES[0];
 
@@ -70,9 +76,11 @@ export function NexusProofInspector({ mode, onModeChange }: NexusProofInspectorP
     <figure
       className="mf-proof-lab"
       data-mode={proofMode}
+      data-zoomed={zoomed || undefined}
       style={{ '--proof-image': `url("${activeMode.src}")` } as CSSProperties}
     >
-      <div className="mf-proof-lab__viewport" onPointerMove={moveLoupe}>
+      <div className="mf-proof-image-panel">
+      <div ref={viewportRef} className="mf-proof-lab__viewport" data-lenis-prevent={zoomed || undefined} tabIndex={zoomed ? 0 : undefined} aria-label="Imagine Nexus; la mărire, derulează pentru detalii" onPointerMove={moveLoupe} onKeyDown={(event) => { if (event.key === 'Escape') setZoomed(false); }}>
         <img
           src={activeMode.src}
           alt={activeMode.alt}
@@ -93,11 +101,17 @@ export function NexusProofInspector({ mode, onModeChange }: NexusProofInspectorP
         </div>
       </div>
 
+        <div className="mf-proof-tools">
+          <button type="button" aria-pressed={zoomed} onClick={() => setZoomed(!zoomed)}>{zoomed ? 'Revino la cadrul întreg' : 'Mărește imaginea · 2×'}</button>
+          <a href={activeMode.src} target="_blank" rel="noreferrer">Deschide imaginea ↗</a>
+        </div>
+      </div>
+
       <figcaption className="mf-proof-lab__rail">
         <div>
-          <span>Evidence surface / 01</span>
-          <strong>Trei cadre.<br />Context declarat.</strong>
-          <p>Cadrul de validare Stanford și cele două exporturi sintetice UE5/AirSim sunt materiale autentice Project Nexus. Nu sunt un triplet pixel-aligned, deci fiecare este prezentat cu proveniența lui, nu ca o comparație cadru-cu-cadru.</p>
+          <span>03 / Rezultate · Nexus</span>
+          <strong>Din simulare<br />în lumea reală.</strong>
+          <p>Explorează segmentarea și detecțiile din mediul sintetic, apoi cadrul de validare pe Stanford Drone Dataset. Sunt imagini distincte din proiect, fiecare cu sursa indicată.</p>
         </div>
 
         <div className="mf-proof-lab__modes" role="group" aria-label="Schimbă lectura dovezii Nexus">
@@ -109,7 +123,7 @@ export function NexusProofInspector({ mode, onModeChange }: NexusProofInspectorP
                 type="button"
                 aria-pressed={proofMode === option.id}
                 data-active={proofMode === option.id || undefined}
-                onClick={() => onModeChange(option.lensMode)}
+                onClick={() => { setZoomed(false); onModeChange(option.lensMode); }}
               >
                 <Icon aria-hidden="true" />
                 <span><strong>{option.label}</strong><small>{option.detail}</small></span>

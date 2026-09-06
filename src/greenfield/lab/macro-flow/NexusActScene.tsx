@@ -251,7 +251,7 @@ function createSemanticMaterial(
 
         vec3 normalView = normalize(vNormalView);
         vec3 lightDirection = normalize(vec3(-0.46, 0.82, 0.34));
-        float diffuse = 0.4 + max(0.0, dot(normalView, lightDirection)) * 0.6;
+        float diffuse = 0.4 + max(0.0, dot(normalize(vNormalWorld), lightDirection)) * 0.6;
         float materialGrain = 0.94 + hash21(floor(vWorldPosition.xz * 2.6)) * 0.09;
         float surfacePattern = 1.0;
 
@@ -289,18 +289,26 @@ function createSemanticMaterial(
           inspected = uSegment * (0.68 + diffuse * 0.38) * mix(0.92, 1.0, surfacePattern);
           inspected += vec3(0.08) * max(silhouette * 0.28, structuralBand * 0.32);
         } else if (uMode >= 1.5) {
-          float semanticEdge = clamp(silhouette * 1.35 + structuralBand, 0.0, 1.0);
-          inspected = mix(rawColor * 0.47, uDetection, semanticEdge * 0.82);
+          // Detection isolates actors; grazing road normals must not turn
+          // the whole street into a red silhouette.
+          float actor = step(4.5, uSemanticClass);
+          float semanticEdge = clamp(silhouette * 1.35, 0.0, 1.0);
+          float luminance = dot(rawColor, vec3(0.2126, 0.7152, 0.0722));
+          vec3 context = mix(rawColor, vec3(luminance), 0.42) * 0.76;
+          vec3 target = mix(rawColor * 0.88, uDetection, 0.18 + semanticEdge * 0.65);
+          inspected = mix(context, target, actor);
         } else {
           inspected = rawColor * 1.12;
         }
 
         vec3 color = mix(rawColor, inspected, lensMask);
         vec3 modeAccent = uMode > 1.5 ? uDetection : (uMode > 0.5 ? uSegment : vec3(0.447, 0.851, 0.839));
-        color += modeAccent * lensEdge * 0.42;
+        color += modeAccent * lensEdge * 0.18;
         float fogAmount = smoothstep(28.0, 74.0, vDepth);
         color = mix(color, vec3(0.035, 0.072, 0.071), fogAmount * 0.62);
         gl_FragColor = vec4(color, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
       }
     `,
   });
@@ -436,7 +444,7 @@ function updateSemanticMaterials(
     material.uniforms.uResolution.value.set(width * pixelRatio, height * pixelRatio);
     material.uniforms.uMode.value = mode;
     material.uniforms.uLensMix.value = lensMix;
-    material.uniforms.uRadius.value = width <= 820 ? 0.28 : 0.2;
+    material.uniforms.uRadius.value = width <= 820 ? 0.18 : 0.2;
   });
 }
 
@@ -2557,7 +2565,8 @@ function CompactNexusCity({
 
   useFrame(({ clock, gl, size }, delta) => {
     const progress = progressRef.current;
-    const reveal = motionRange(progress, 0.035, 0.062, reducedMotion);
+    // Match the measured entry interval used by the desktop city.
+    const reveal = motionRange(progress, CITY_REVEAL.from, CITY_REVEAL.to, reducedMotion);
     const departure = motionRange(progress, 0.285, 0.345, reducedMotion);
     const lensPresence = lensPresenceAt(progress);
     updateSemanticMaterials(
@@ -2574,7 +2583,7 @@ function CompactNexusCity({
       rootRef.current.position.y = THREE.MathUtils.damp(rootRef.current.position.y, -departure * 6.5, 14, delta);
     }
     if (cityRef.current) {
-      cityRef.current.scale.y = THREE.MathUtils.damp(cityRef.current.scale.y, Math.max(0.001, reveal), 14, delta);
+      cityRef.current.scale.y = Math.max(0.001, reveal);
     }
 
     pedestrians.forEach((pedestrian, index) => {
@@ -3424,7 +3433,7 @@ function LensOptic({ progressRef, lensPointerRef, lensMode }: Pick<NexusActScene
   const scratch = useMemo(() => new THREE.Object3D(), []);
   const accent = useMemo(() => new THREE.Color(), []);
   const geometries = useMemo(() => ({
-    segment: new THREE.RingGeometry(0.9, 0.96, 14, 1, -Math.PI / 6 + 0.055, Math.PI / 3 - 0.11),
+    segment: new THREE.RingGeometry(0.924, 0.936, 14, 1, -Math.PI / 6 + 0.055, Math.PI / 3 - 0.11),
     tick: new THREE.PlaneGeometry(0.24, 0.018),
     glass: new THREE.CircleGeometry(0.89, 54),
     center: new THREE.RingGeometry(0.035, 0.047, 24),
@@ -3494,7 +3503,10 @@ function LensOptic({ progressRef, lensPointerRef, lensMode }: Pick<NexusActScene
     rootRef.current.position.copy(camera.position).add(direction.multiplyScalar(3.1));
     rootRef.current.quaternion.copy(camera.quaternion);
     rootRef.current.rotateZ((progressRef.current - 0.16) * 0.12);
-    const scale = (size.width <= 820 ? 0.34 : 0.46) * presence;
+    // Match the shader's screen-space radius at the optic's actual camera depth.
+    cursor.copy(rootRef.current.position).applyMatrix4(camera.matrixWorldInverse);
+    const viewHeight = 2 * -cursor.z * Math.tan(THREE.MathUtils.degToRad((camera as THREE.PerspectiveCamera).getEffectiveFOV()) / 2);
+    const scale = viewHeight * (size.width <= 820 ? 0.18 : 0.2) / 0.93;
     rootRef.current.scale.setScalar(Math.max(0.001, scale));
     rootRef.current.visible = presence > 0.005;
 
@@ -3529,7 +3541,7 @@ function CompactLensOptic({
   const cursor = useMemo(() => new THREE.Vector3(), []);
   const direction = useMemo(() => new THREE.Vector3(), []);
   const accent = useMemo(() => new THREE.Color(), []);
-  const geometry = useMemo(() => new THREE.RingGeometry(0.87, 0.95, 48), []);
+  const geometry = useMemo(() => new THREE.RingGeometry(0.904, 0.916, 64), []);
   const material = useMemo(() => new THREE.MeshBasicMaterial({
     color: '#72d9d6',
     transparent: true,
@@ -3544,7 +3556,7 @@ function CompactLensOptic({
     material.dispose();
   }, [geometry, material]);
 
-  useFrame(({ camera }, delta) => {
+  useFrame(({ camera, size }, delta) => {
     if (!rootRef.current) return;
     const presence = lensPresenceAt(progressRef.current);
     const lensPointer = lensPointerRef.current;
@@ -3553,7 +3565,9 @@ function CompactLensOptic({
     rootRef.current.position.copy(camera.position).add(direction.multiplyScalar(3.1));
     rootRef.current.quaternion.copy(camera.quaternion);
     rootRef.current.rotateZ((progressRef.current - 0.16) * 0.12);
-    rootRef.current.scale.setScalar(Math.max(0.001, 0.34 * presence));
+    cursor.copy(rootRef.current.position).applyMatrix4(camera.matrixWorldInverse);
+    const viewHeight = 2 * -cursor.z * Math.tan(THREE.MathUtils.degToRad((camera as THREE.PerspectiveCamera).getEffectiveFOV()) / 2);
+    rootRef.current.scale.setScalar(Math.max(0.001, viewHeight * (size.width <= 820 ? 0.18 : 0.2) / 0.91));
     rootRef.current.visible = presence > 0.005;
     accent.set(LENS_ACCENTS[lensMode]);
     material.color.lerp(accent, 1 - Math.exp(-delta * 18));

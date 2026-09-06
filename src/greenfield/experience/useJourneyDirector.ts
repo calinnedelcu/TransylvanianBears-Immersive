@@ -356,32 +356,29 @@ export function useJourneyDirector({
         });
       }
 
-      // The swap itself.
-      //
-      // The citadel comes down and the city goes up between one frame and the next,
-      // at the moment the first chapter takes the frame. In clear air that reads as
-      // two scenes; inside a flare it reads as arriving somewhere. Deliberately
-      // asymmetric - the light gathers fast on the way in and lets go of the frame
-      // slowly on the way out, so the city is uncovered rather than cut to.
+      // A short opaque interval covers the world swap, in both scroll directions.
+      // The city and its heading emerge after the camera has taken its new pose.
       const crossingVeil = root.querySelector<HTMLElement>('.mf-crossing');
       if (firstChapter && crossingVeil) {
-        // Where the swap sits inside the span: 14% of a viewport before the first
-        // chapter's top, 25% after, so the peak is on the frame the worlds change.
-        const BOUNDARY = 14 / 39;
+        const smooth01 = (value: number) => {
+          const t = Math.max(0, Math.min(1, value));
+          return t * t * (3 - 2 * t);
+        };
+        const showCrossing = (progress: number) => {
+          // This interval spans -0.18 to +0.42 viewport around the world boundary.
+          const offset = progress * 0.6 - 0.18;
+          const cover = smooth01((offset + 0.18) / 0.155)
+            * (1 - smooth01((offset - 0.06) / 0.36));
+          crossingVeil.style.setProperty('--mf-crossing', reducedMotion ? '0' : cover.toFixed(4));
+          root.style.setProperty('--mf-nexus-entry', reducedMotion ? '1' : smooth01((offset - 0.06) / 0.36).toFixed(4));
+        };
         ScrollTrigger.create({
-          id: 'journey-crossing',
-          trigger: firstChapter,
-          start: 'top 14%',
-          end: 'top top-=25%',
-          onUpdate: (self) => {
-            const p = self.progress;
-            const shaped = p < BOUNDARY
-              ? (p / BOUNDARY) ** 1.9
-              : (1 - (p - BOUNDARY) / (1 - BOUNDARY)) ** 1.25;
-            crossingVeil.style.setProperty('--mf-crossing', shaped.toFixed(4));
-          },
-          onLeave: () => crossingVeil.style.setProperty('--mf-crossing', '0'),
-          onLeaveBack: () => crossingVeil.style.setProperty('--mf-crossing', '0'),
+          id: 'journey-crossing', trigger: firstChapter,
+          start: 'top 18%', end: 'top top-=42%',
+          onUpdate: (self) => showCrossing(self.progress),
+          onRefresh: (self) => showCrossing(self.progress),
+          onLeave: () => showCrossing(1),
+          onLeaveBack: () => showCrossing(0),
         });
       }
 

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, type MutableRefObject } from 'react';
 import * as THREE from 'three';
 import CITADEL from '../../../../shared/citadel.json';
 import { PlanLines } from './PlanLines';
-import type { BuildUniforms, Lamp } from './luminousCitadel';
+import type { BuildUniforms, Lamp, LuminousParts } from './luminousCitadel';
 import {
   GLASS_COLOR,
   GLASS_OPACITY,
@@ -19,6 +19,7 @@ import {
 import { onRing } from './citadelSpace';
 import { gateBeyond, gateThreshold } from './departures';
 import { NightSky } from './NightSky';
+import { CitadelBackdrop } from './CitadelBackdrop';
 
 const CITADEL_URL = '/assets/world/citadel.glb';
 useGLTF.preload(CITADEL_URL);
@@ -208,6 +209,7 @@ function CitadelModel({
       lamp: Lamp | null;
     }>
   >([]);
+  const outlinesRef = useRef<LuminousParts[]>([]);
   const bladesRef = useRef<Array<{ pivot: THREE.Object3D; baseYaw: number; turn: number; phase: number }>>([]);
   const gateLightRef = useRef<THREE.PointLight>(null);
   const keepLightRef = useRef<THREE.PointLight>(null);
@@ -268,11 +270,13 @@ function CitadelModel({
     // glass material, records the authored surface and adds the outline meshes,
     // so collecting first left every piece with no material and no edges to
     // animate, and the whole materialise phase quietly did nothing.
-    citadel?.children
+    outlinesRef.current = citadel?.children
       .filter((stage) => authoredName(stage).startsWith('Stage '))
-      .forEach((stage) => makeLuminous(stage));
+      .map((stage) => makeLuminous(stage)) ?? [];
     if (landscape) makeSilhouette(landscape, '#0d1512', true);
     if (scatter) makeSilhouette(scatter, '#080d0c');
+    const oldRidges = scatter?.getObjectByName('Ridges');
+    if (oldRidges) oldRidges.visible = false;
 
     // The enclosure comes up first and the core last, the way a building is read:
     // boundary, rooms, threshold, towers, then the centre it was all protecting.
@@ -456,6 +460,10 @@ function CitadelModel({
       scatter.scale.y = LAND_MIN_SCALE;
       scatter.visible = false;
     }
+    return () => {
+      outlinesRef.current.forEach((batch) => batch.dispose());
+      outlinesRef.current = [];
+    };
   }, [prepared]);
 
   useFrame((state) => {
@@ -526,11 +534,12 @@ function CitadelModel({
         // build shader: a window that goes translucent stops being a window.
         if (lamp) {
           const lit = smooth(built);
-          // The light at the end of the keep's passage is the one the reader is
-          // walking at, so it gains as they close on it. Everything else holds.
-          const approach = authoredName(object) === 'Court portal beacon' ? 1 + near * 1.1 : 1;
+          // Ease the portal lamp down as it fills the camera to preserve detail.
+          const portal = authoredName(object) === 'Court portal beacon';
+          const approach = portal ? 1 - near * 0.85 : 1;
           lamp.material.emissiveIntensity = lamp.base * lit * approach;
           lamp.material.color.copy(GLASS_COLOR).lerp(lamp.tint, lit);
+          if (portal) lamp.material.color.lerp(GLASS_COLOR, near * 0.8);
         }
 
         // A finished piece is opaque, and has to be in the opaque queue to prove it.
@@ -626,7 +635,7 @@ function CitadelModel({
       // courtyard filling with light rather than a filter fading in over one.
       const arch = handoff <= 0 ? 0 : Math.sin(smooth(range(handoff, 0.62, 0.86)) * Math.PI);
       const gather = smooth(range(handoff, 0.84, 1)) ** 1.7;
-      const t = Math.min(0.88, arch * arch * 0.22 + gather * 0.56);
+      const t = Math.min(0.88, arch * arch * 0.1 + gather * 0.1);
       flashRef.current.visible = t > 0.004;
       flash.uniforms.uT.value = t;
       if (flashRef.current.visible) {
@@ -653,6 +662,7 @@ function CitadelModel({
         );
       }
     }
+    if (citadelRef.current?.visible) outlinesRef.current.forEach((batch) => batch.update());
   });
 
   return (
@@ -932,30 +942,32 @@ export function CitadelSequence({
         planFrameRef={planFrameRef}
         handoffRef={handoffRef}
       />
-      {sky ? <NightSky progressRef={progressRef} showFrom={TIP_END} /> : null}
+      {sky ? <NightSky progressRef={progressRef} showFrom={TIP_START} /> : null}
+      {sky ? <CitadelBackdrop progressRef={progressRef} /> : null}
 
       {/* Blue hour: cool sky key, warm occupancy fill, readable shadow detail.
           Skippable, because a host scene arrives with a lighting rig of its own
           and two keys on the same model read as neither. */}
-      {lit ? <hemisphereLight intensity={0.34} color="#7f9ab4" groundColor="#0c1210" /> : null}
+      {lit ? <hemisphereLight intensity={0.72} color="#a7c3d4" groundColor="#171913" /> : null}
+      {lit ? <directionalLight position={[28, 12, -20]} intensity={1.1} color="#809fae" /> : null}
       {lit ? (
       <directionalLight
         position={[-38, 34, 20]}
-        intensity={0.9}
-        color="#c3d6e8"
+        intensity={3.2}
+        color="#d1dfeb"
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-near={10}
         shadow-camera-far={140}
-        shadow-camera-left={-40}
-        shadow-camera-right={40}
-        shadow-camera-top={40}
-        shadow-camera-bottom={-40}
-        shadow-bias={-0.0006}
-        shadow-normalBias={0.04}
+        shadow-camera-left={-27}
+        shadow-camera-right={27}
+        shadow-camera-top={27}
+        shadow-camera-bottom={-27}
+        shadow-bias={-0.00015}
+        shadow-normalBias={0.07}
       />
       ) : null}
-      {lit ? <pointLight position={[0, 7.5, 1]} intensity={220} distance={40} color="#f2c377" /> : null}
+      {lit ? <pointLight position={[0, 7.5, 1]} intensity={65} distance={24} color="#f2c377" /> : null}
 
       <CitadelModel
         progressRef={progressRef}

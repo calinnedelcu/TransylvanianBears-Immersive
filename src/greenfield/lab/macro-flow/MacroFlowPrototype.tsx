@@ -155,11 +155,12 @@ const LENS_OPTIONS: Array<{
   id: MacroLensMode;
   label: string;
   description: string;
+  explanation: string;
   icon: typeof Eye;
 }> = [
-  { id: 'raw', label: 'Raw', description: 'Sursa vizuală', icon: Eye },
-  { id: 'segmentation', label: 'Segmentation', description: 'Clasele devin suprafețe', icon: Boxes },
-  { id: 'detection', label: 'Detection', description: 'Semnalele devin limite', icon: ScanLine },
+  { id: 'raw', label: 'Raw', description: 'Imaginea originală', explanation: 'Pornește de la scena virtuală: clădiri, oameni și trafic, înainte de adnotare.', icon: Eye },
+  { id: 'segmentation', label: 'Segmentation', description: 'Fiecare pixel, o clasă', explanation: 'În zona lentilei, culorile separă clasele de obiecte. Imaginea devine o hartă semantică.', icon: Boxes },
+  { id: 'detection', label: 'Detection', description: 'Oameni și vehicule', explanation: 'Oamenii și vehiculele sunt evidențiate în lentilă. Orașul rămâne vizibil pentru context.', icon: ScanLine },
 ];
 
 function MacroFlowExperience() {
@@ -255,7 +256,6 @@ function MacroFlowExperience() {
   const evidenceCores = useExperienceSelector((state) => state.context.evidenceCores);
   const schoolAct = useSchoolActController({ reducedMotion });
   const {
-    canStart: canStartSchoolScan,
     reset: resetSchoolAct,
     resolve: resolveSchoolAct,
     start: runSchoolScan,
@@ -535,7 +535,8 @@ function MacroFlowExperience() {
   });
 
   const startSchoolScan = useCallback(() => {
-    if (!canStartSchoolScan) return;
+    if (schoolActStatusRef.current === 'running') return;
+    if (schoolActStatusRef.current === 'allowed') resetSchoolAct();
     schoolActStatusRef.current = reducedMotion ? 'allowed' : 'running';
     schoolSoundParametersRef.current.scanProgress = 0;
 
@@ -546,7 +547,7 @@ function MacroFlowExperience() {
       });
     }
     runSchoolScan();
-  }, [audioEnabled, canStartSchoolScan, getSchoolSoundscape, reducedMotion, runSchoolScan]);
+  }, [audioEnabled, getSchoolSoundscape, reducedMotion, resetSchoolAct, runSchoolScan]);
 
   const raiseLamp = useCallback(() => {
     setLampRaisedByUser(true);
@@ -562,6 +563,11 @@ function MacroFlowExperience() {
   }, [activeChapter, audioEnabled, getBuriedSoundscape]);
 
   const moveLens = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    // Changing a mode must not steer the drone toward the controls.
+    if ((event.target as HTMLElement).closest('.mf-lens-dock')) {
+      nexusFlightInputRef.current.active = false;
+      return;
+    }
     // The sensor reaches the whole frame.
     //
     // X was clamped to 0.59-0.94 on desktop and 0.75-0.80 on compact - a five
@@ -607,6 +613,14 @@ function MacroFlowExperience() {
             : null;
     if (!vector) return;
     event.preventDefault();
+    const compact = window.innerWidth <= 820;
+    const lensStep = event.shiftKey ? 0.06 : 0.025;
+    const x = Math.max(compact ? 0.16 : 0.13, Math.min(compact ? 0.84 : 0.9, lensPointerRef.current.x + vector[0] * lensStep));
+    const y = Math.max(compact ? 0.34 : 0.24, Math.min(compact ? 0.8 : 0.9, lensPointerRef.current.y + vector[1] * lensStep));
+    lensPointerRef.current = { x, y, active: true };
+    event.currentTarget.style.setProperty('--mf-lens-x', `${x * 100}%`);
+    event.currentTarget.style.setProperty('--mf-lens-y', `${(1 - y) * 100}%`);
+    event.currentTarget.dataset.lensEngaged = 'true';
     const step = event.shiftKey ? 0.34 : 0.2;
     nexusFlightInputRef.current = {
       x: Math.max(-1, Math.min(1, nexusFlightInputRef.current.x + vector[0] * step)),
@@ -695,6 +709,7 @@ function MacroFlowExperience() {
       data-trace-outcome={schoolAct.status}
       data-renderer={macroWorldActive ? 'webgl' : 'editorial'}
       data-renderer-failure={rendererFailure ?? undefined}
+      data-static-opening={reducedMotion || !webglAvailable || rendererFailure !== null || qualityTier === 'editorial' || undefined}
     >
       <a className="mf-skip" href="#mf-field">Sari la prima poveste</a>
 
@@ -817,13 +832,16 @@ function MacroFlowExperience() {
       </section>
 
       <section id="mf-field" className="mf-beat mf-beat--field" data-chapter="field">
-        <div className="mf-copy mf-copy--side">
-          <p className="mf-kicker">Project Nexus / synthetic field</p>
-          <h2>Un oraș construit ca instrument de cercetare.</h2>
-          <p>
-            Strada, clădirile și semnalele devin materia datasetului: 11 scenarii, aproximativ
-            9.500 de imagini și peste 140.000 de adnotări.
-          </p>
+        <div className="mf-copy mf-nexus-intro">
+          <p className="mf-kicker">01 / Observe · Machine learning</p>
+          <h2>Project <span>Nexus</span></h2>
+          <p className="mf-nexus-intro__summary">Un oraș construit pentru a antrena modele de detecție.</p>
+          <dl className="mf-nexus-intro__metrics">
+            <div><dt>scenarii</dt><dd>11</dd></div>
+            <div><dt>imagini</dt><dd>~9.500</dd></div>
+            <div><dt>adnotări</dt><dd>&gt;140.000</dd></div>
+          </dl>
+          <p className="mf-nexus-intro__next">Derulează pentru a vedea cum devine dataset <span aria-hidden="true">↓</span></p>
         </div>
       </section>
 
@@ -832,20 +850,33 @@ function MacroFlowExperience() {
           className="mf-lens-knot"
           tabIndex={0}
           aria-label="Controlează drona Nexus și schimbă modul de analiză"
+          onPointerDown={moveLens}
           onPointerMove={moveLens}
           onPointerEnter={moveLens}
           onPointerLeave={leaveLens}
+          onPointerCancel={leaveLens}
+          onPointerUp={(event) => {
+            if (event.pointerType !== 'mouse') leaveLens(event);
+          }}
           onKeyDown={moveFlightWithKeyboard}
           onKeyUp={stopFlightWithKeyboard}
+          onBlur={() => {
+            nexusFlightInputRef.current.active = false;
+            lensPointerRef.current.active = false;
+          }}
+          aria-describedby="mf-lens-instructions"
         >
           <div className="mf-lens-reticle" aria-hidden="true">
             <i /><i /><span>inspect</span>
           </div>
           <div className="mf-lens-knot__heading">
-            <p className="mf-kicker">Evidence lens / Project Nexus</p>
-            <h2>Trei suprafețe de evidență.</h2>
+            <p className="mf-kicker">02 / Analiză · Project Nexus</p>
+            <h2>Același oraș.<br /><span>Trei moduri de a-l vedea.</span></h2>
+            <p className="mf-lens-explanation" aria-live="polite" aria-atomic="true">{LENS_OPTIONS.find((option) => option.id === lensMode)?.explanation}</p>
           </div>
-          <div className="mf-lens-control" aria-label="Lens mode">
+          <div className="mf-lens-dock">
+          <p className="mf-lens-hint" id="mf-lens-instructions"><span className="mf-lens-hint__pointer">Mișcă lentila peste oraș · </span><span className="mf-lens-hint__keyboard">Săgeți / WASD: explorează · Shift: pas mai mare</span><span className="mf-lens-hint__touch">Atinge scena pentru a inspecta</span></p>
+          <div className="mf-lens-control" role="group" aria-label="Mod de analiză">
             {LENS_OPTIONS.map((option) => {
               const Icon = option.icon;
               return (
@@ -876,6 +907,7 @@ function MacroFlowExperience() {
                 </span>
               );
             })}
+          </div>
           </div>
         </div>
       </section>

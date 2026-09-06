@@ -1,14 +1,7 @@
 import * as THREE from 'three';
+import { createCitadelOutlines, type OutlinePiece } from './citadelOutlines';
 
-/**
- * Turns the citadel model into a luminous drawing.
- *
- * The building is not trying to be photoreal masonry: procedural geometry never
- * gets there, and every attempt read as a blockout. Instead the solids go almost
- * black so they occlude and hold silhouette, and every structural edge is drawn
- * as a bright line. The result is the plan given a third dimension rather than
- * given concrete, which is also the language the rest of the site speaks.
- */
+/** The drawing gains physical surfaces as each piece finishes its rise. */
 
 /** Edge colour per material family. Structure reads white, mechanism reads brass. */
 const EDGE_TONES: Array<[RegExp, string, number]> = [
@@ -29,7 +22,7 @@ const EDGE_TONES: Array<[RegExp, string, number]> = [
 export const GLASS_COLOR = new THREE.Color('#4a6270');
 const GLASS_OPACITY = 0.34;
 /** How hard a lit surface burns once its piece has turned to stone. */
-export const EMISSIVE_STRENGTH = 2.6;
+export const EMISSIVE_STRENGTH = 0.85;
 
 /**
  * Line hierarchy.
@@ -61,8 +54,8 @@ export const GROUND_CLIP = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
  * Crossfading a piece from glass to stone reads as it changing its mind. A wall
  * gets poured: the surface arrives from the bottom up behind a bright line, and
  * the outline the piece was drawn with is eaten away as the material catches up
- * with it. One uniform block drives the solid and both of its outlines, so all
- * three share a single fill line instead of three that nearly agree.
+ * with it. One uniform block drives the solid and its batched outline so their
+ * fill lines stay aligned.
  */
 export type BuildUniforms = {
   /** 0 glass, 1 fully built. Height of the fill line through the piece. */
@@ -160,7 +153,7 @@ float hpFill(float h) {
 /** The bright line riding the front. Absent before the pour and after it. */
 float hpBand(float h) {
   if (uBuild <= 0.0 || uBuild >= 1.0) return 0.0;
-  return smoothstep(uWide, 0.0, abs(h - uBuild)) * uBand;
+  return (1.0 - smoothstep(0.0, uWide, abs(h - uBuild))) * uBand;
 }
 `;
 
@@ -172,7 +165,7 @@ float hpBand(float h) {
  * The cache key keeps these programs from being handed to materials that were
  * never injected.
  */
-function attachBuild(material: THREE.Material, build: BuildUniforms, kind: 'solid' | 'line' | 'halo') {
+function attachBuild(material: THREE.Material, build: BuildUniforms) {
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, build);
     shader.vertexShader = shader.vertexShader
@@ -183,69 +176,62 @@ function attachBuild(material: THREE.Material, build: BuildUniforms, kind: 'soli
       `#include <common>\n${BUILD_FRAGMENT_HEAD}`,
     );
 
-    if (kind === 'solid') {
-      shader.fragmentShader = shader.fragmentShader
-        .replace(
-          '#include <color_fragment>',
-          `#include <color_fragment>
-          float hpH = hpHeight();
-          float hpF = hpFill(hpH);
-          float hpB = hpBand(hpH);
-          // Multiply, do not replace: by this point diffuseColor already holds
-          // whatever the material produced - the palette texel, in this build -
-          // and dropping a flat colour on top of it discards the whole palette.
-          // Grain, and weather off the ground. Stone that has stood outside is
-          // darker and dirtier where the rain runs off it and where it meets the
-          // earth, and the difference is what tells the eye it is stone at all.
-          float hpG = hpGrain();
-          // Dirt collects at the foot of a wall, not at the top of it. The first
-          // pass had this the wrong way up and darkened the parapets instead.
-          float hpDirt = 1.0 - (1.0 - smoothstep(0.0, 2.8, vBuildY)) * 0.2;
-          float hpRun = 0.92 + hpNoise(vec3(vBuildPos.xz * 2.2, vBuildY * 0.26)) * 0.16;
-          vec3 hpReal = diffuseColor.rgb * uReal * uTone * (0.78 + hpG * 0.42) * hpDirt * hpRun;
-          diffuseColor.rgb = mix(uGlass, hpReal, hpF);
-          diffuseColor.a = max(mix(uGlassAlpha, 1.0, hpF), hpB * 0.55);`,
-        )
-        // Glass is uniformly matte; the authored surface only applies where the
-        // material has actually landed, or the sheen arrives before the stone.
-        .replace(
-          '#include <roughnessmap_fragment>',
-          `#include <roughnessmap_fragment>
-          roughnessFactor = mix(0.95, clamp(roughnessFactor * uRealRough * (0.88 + hpGrain() * 0.26), 0.04, 1.0), hpF);`,
-        )
-        .replace(
-          '#include <metalnessmap_fragment>',
-          `#include <metalnessmap_fragment>
-          metalnessFactor = mix(0.0, metalnessFactor * uRealMetal, hpF);`,
-        )
-        .replace(
-          '#include <emissivemap_fragment>',
-          `#include <emissivemap_fragment>
-          totalEmissiveRadiance += uEdge * (hpB * 1.6 + uFlash * 0.7);`,
-        );
-    } else if (kind === 'line') {
-      shader.fragmentShader = shader.fragmentShader.replace(
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
         '#include <color_fragment>',
         `#include <color_fragment>
         float hpH = hpHeight();
         float hpF = hpFill(hpH);
-        float hpB = max(hpBand(hpH), uFlash * 0.6);
-        diffuseColor.rgb = mix(diffuseColor.rgb, uEdge, hpB * 0.85);
-        diffuseColor.a = max(diffuseColor.a * (1.0 - hpF * 0.92), hpB * 0.75);`,
+        float hpB = hpBand(hpH);
+        // Multiply, do not replace: by this point diffuseColor already holds
+        // whatever the material produced - the palette texel, in this build -
+        // and dropping a flat colour on top of it discards the whole palette.
+        // Grain, and weather off the ground. Stone that has stood outside is
+        // darker and dirtier where the rain runs off it and where it meets the
+        // earth, and the difference is what tells the eye it is stone at all.
+        float hpG = hpGrain();
+        // Dirt collects at the foot of a wall, not at the top of it. The first
+        // pass had this the wrong way up and darkened the parapets instead.
+        float hpDirt = 1.0 - (1.0 - smoothstep(0.0, 2.8, vBuildY)) * 0.2;
+        float hpRun = 0.92 + hpNoise(vec3(vBuildPos.xz * 2.2, vBuildY * 0.26)) * 0.16;
+        vec3 hpReal = diffuseColor.rgb * uReal * uTone * (0.78 + hpG * 0.42) * hpDirt * hpRun;
+        diffuseColor.rgb = mix(uGlass, hpReal, hpF);
+        diffuseColor.a = max(mix(uGlassAlpha, 1.0, hpF), hpB * 0.55);`,
+      )
+      .replace(
+        '#include <normal_fragment_maps>',
+        `#include <normal_fragment_maps>
+        // Screen-space surface gradient; bounded amplitude keeps distant stone stable.
+        float hpRelief = hpGrain() * 0.012 * hpF;
+        vec3 hpDx = dFdx(-vViewPosition);
+        vec3 hpDy = dFdy(-vViewPosition);
+        vec3 hpRx = cross(hpDy, normal);
+        vec3 hpRy = cross(normal, hpDx);
+        float hpDet = dot(hpDx, hpRx);
+        if (abs(hpDet) > 0.0000001) {
+          vec3 hpGradient = sign(hpDet) * (dFdx(hpRelief) * hpRx + dFdy(hpRelief) * hpRy);
+          normal = normalize(abs(hpDet) * normal - hpGradient);
+        }`,
+      )
+      // Glass is uniformly matte; the authored surface only applies where the
+      // material has actually landed, or the sheen arrives before the stone.
+      .replace(
+        '#include <roughnessmap_fragment>',
+        `#include <roughnessmap_fragment>
+        roughnessFactor = mix(0.95, clamp(roughnessFactor * uRealRough * (0.88 + hpGrain() * 0.26), 0.04, 1.0), hpF);`,
+      )
+      .replace(
+        '#include <metalnessmap_fragment>',
+        `#include <metalnessmap_fragment>
+        metalnessFactor = mix(0.0, metalnessFactor * uRealMetal, hpF);`,
+      )
+      .replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+        totalEmissiveRadiance += uEdge * (hpB * 0.55 + uFlash * 0.12);`,
       );
-    } else {
-      // The halo blends additively, so brightening it is what turned the pour
-      // into a white fog: every overlapping piece added its glow to the last.
-      // It only ever recedes as the surface arrives.
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <color_fragment>',
-        `#include <color_fragment>
-        float hpH = hpHeight();
-        diffuseColor.a *= 1.0 - hpFill(hpH);`,
-      );
-    }
   };
-  material.customProgramCacheKey = () => `hp-build-${kind}`;
+  material.customProgramCacheKey = () => 'hp-build-solid';
 }
 
 /**
@@ -293,15 +279,6 @@ export function createBuildPulse() {
   return { material, uniforms };
 }
 
-/**
- * Line overlays are drawing, not targets. They are added outside the React tree,
- * so leaving them raycastable makes the renderer look for state it never created
- * and throw on every pointer move.
- */
-const noRaycast = (line: THREE.Object3D) => {
-  line.raycast = () => {};
-};
-
 function toneFor(materialName: string): [string, number] {
   const match = EDGE_TONES.find(([pattern]) => pattern.test(materialName));
   return match ? [match[1], match[2]] : ['#9aa3a0', 0.45];
@@ -314,10 +291,8 @@ export type Lamp = {
 };
 
 export type LuminousParts = {
-  /** Line overlays, so they can fade in with the rise. */
-  lines: THREE.LineSegments[];
-  /** Glass materials, so each piece can thicken as it settles into place. */
-  glass: THREE.MeshStandardMaterial[];
+  update: () => void;
+  dispose: () => void;
 };
 
 /**
@@ -343,7 +318,7 @@ function toneJitter(name: string) {
 }
 
 export function makeLuminous(root: THREE.Object3D, threshold = 32): LuminousParts {
-  const lines: THREE.LineSegments[] = [];
+  const outlines: OutlinePiece[] = [];
   const glass: THREE.MeshStandardMaterial[] = [];
 
   // Collect first, then mutate: adding children while traverse walks the graph
@@ -412,7 +387,7 @@ export function makeLuminous(root: THREE.Object3D, threshold = 32): LuminousPart
       roughnessMap: emissive ? null : source.roughnessMap ?? null,
       metalnessMap: emissive ? null : source.metalnessMap ?? null,
       roughness: emissive ? 0.95 : 1,
-      metalness: 0,
+      metalness: emissive ? 0 : 1,
       emissive: emissive ? source.emissive.clone() : new THREE.Color('#000000'),
       emissiveIntensity: 0,
       transparent: true,
@@ -421,6 +396,7 @@ export function makeLuminous(root: THREE.Object3D, threshold = 32): LuminousPart
       // camera moves; the edges carry the form anyway.
       depthWrite: false,
       side: THREE.DoubleSide,
+      forceSinglePass: true,
       // Cast from the back faces only.
       //
       // A double sided material casts shadow from both, so every piece shadows its
@@ -462,7 +438,7 @@ export function makeLuminous(root: THREE.Object3D, threshold = 32): LuminousPart
         // deriving one from the other is what made the band either invisible on
         // a wall or the entire surface of a merlon.
         uSoft: { value: THREE.MathUtils.clamp(0.12 / span, 0.02, 0.14) },
-        uWide: { value: THREE.MathUtils.clamp(0.6 / span, 0.05, 0.55) },
+        uWide: { value: THREE.MathUtils.clamp(0.18 / span, 0.015, 0.18) },
         // Only pieces with real height earn the glow. Floor plates and rails are
         // too thin for a travelling line to mean anything on them: they would
         // simply strobe, and there are hundreds of them.
@@ -480,7 +456,7 @@ export function makeLuminous(root: THREE.Object3D, threshold = 32): LuminousPart
         // shade on every reload, and no two neighbours are exactly equal.
         uTone: { value: 0.9 + toneJitter(name) * 0.2 },
       };
-      attachBuild(solid, build, 'solid');
+      attachBuild(solid, build);
       object.userData.build = build;
       object.userData.glass = solid;
       glass.push(solid);
@@ -492,64 +468,25 @@ export function makeLuminous(root: THREE.Object3D, threshold = 32): LuminousPart
       glass.push(solid);
     }
 
-    // One outline per piece, deliberately not merged.
-    //
-    // Merging edges per tone was cheaper by roughly nine hundred draw calls, but it
-    // destroyed the effect: hundreds of separately outlined pieces read as stacked
-    // translucent plates, while a handful of large merged line meshes read as one
-    // pale mass. The look is the product here, so the pieces keep their own edges.
     const [tone, baseOpacity] = toneFor(name);
-    // Repeated small parts step back; they are texture, not structure.
     const minor = MINOR_PIECE.test(authored(object));
-    const opacity = minor ? baseOpacity * MINOR_WEIGHT : baseOpacity;
-    // A wider angle drops the near coplanar edges that faceted surfaces produce
-    // in quantity and that carry no information about the form.
-    const geometry = new THREE.EdgesGeometry(object.geometry, minor ? 46 : threshold);
-
-    const core = new THREE.LineSegments(
-      geometry,
-      new THREE.LineBasicMaterial({
-        color: new THREE.Color(tone),
-        transparent: true,
-        opacity,
-        depthWrite: false,
-        toneMapped: false,
-        clippingPlanes: [GROUND_CLIP],
-      }),
-    );
-    core.name = `${object.name} edges`;
-    if (build) attachBuild(core.material as THREE.Material, build, 'line');
-    core.renderOrder = 3;
-    noRaycast(core);
-    object.add(core);
-    lines.push(core);
-
-    // Only structure gets a halo, and it now respects depth. Drawing every edge
-    // through every solid is what made the whole thing read as a tangle.
-    if (!minor) {
-      const halo = new THREE.LineSegments(
-        geometry,
-        new THREE.LineBasicMaterial({
-          color: new THREE.Color(tone),
-          transparent: true,
-          opacity: opacity * 0.3,
-          depthWrite: false,
-          toneMapped: false,
-          blending: THREE.AdditiveBlending,
-          clippingPlanes: [GROUND_CLIP],
-        }),
-      );
-      halo.name = `${object.name} halo`;
-      if (build) attachBuild(halo.material as THREE.Material, build, 'halo');
-      halo.renderOrder = 2;
-      noRaycast(halo);
-      halo.scale.setScalar(1.006);
-      object.add(halo);
-      lines.push(halo);
-    }
+    outlines.push({
+      object,
+      geometry: new THREE.EdgesGeometry(object.geometry, minor ? 46 : threshold),
+      color: new THREE.Color(tone),
+      opacity: baseOpacity * (minor ? MINOR_WEIGHT : 1),
+      build,
+    });
   });
 
-  return { lines, glass };
+  const batch = createCitadelOutlines(root, outlines);
+  return {
+    update: batch.update,
+    dispose() {
+      batch.dispose();
+      glass.forEach((material) => material.dispose());
+    },
+  };
 }
 
 /** Scatter keeps silhouette only: 260 outlined pines is noise, not drawing. */
@@ -777,7 +714,7 @@ export function createDoorGlow() {
         float depth = mix(1.0, 0.16, vCard);
         // Eight cards accumulate, so each one carries very little: the beam has to
         // read as haze standing in the doorway, not as the doorway on fire.
-        float a = edge * depth * (0.02 + uNear * 0.17);
+        float a = edge * depth * (0.012 + uNear * 0.065);
         if (a < 0.003) discard;
         gl_FragColor = vec4(uColor, a);
       }

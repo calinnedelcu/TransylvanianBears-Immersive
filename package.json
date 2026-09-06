@@ -12,6 +12,7 @@
     "qa:buried-act": "node scripts/qa-buried-act.mjs",
     "check:buried-assets": "node scripts/check-buried-assets.mjs",
     "qa:visual": "node scripts/qa-visual.mjs",
+    "qa:citadel-opening": "node scripts/qa-citadel-opening.mjs",
     "preview": "vite preview",
     "build:cameras": "blender --background --python-exit-code 1 --python scripts/blender/build_vertical_slice_cameras.py",
     "build:buried-act:cameras": "blender --background --python-exit-code 1 --python scripts/blender/build_buried_act_cameras.py",

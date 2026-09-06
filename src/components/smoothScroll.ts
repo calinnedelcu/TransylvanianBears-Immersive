@@ -15,10 +15,13 @@ export function setSmoothScroll(instance: Lenis | null) {
   running = instance;
 }
 
-/** Travel to an absolute document offset. Falls back to a jump if Lenis is down. */
+/** Travel to an absolute document offset, respecting the current motion preference. */
 export function scrollSmoothTo(target: number, duration = 1.6) {
-  if (running) running.scrollTo(target, { duration });
-  else window.scrollTo({ top: target, behavior: 'smooth' });
+  // The Lenis frame loop is paused in reduced motion. A queued animation would
+  // never advance, so update its position immediately as well as the document's.
+  const immediate = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (running) running.scrollTo(target, { duration, immediate });
+  else window.scrollTo({ top: target, behavior: immediate ? 'instant' : 'smooth' });
 }
 
 /**
