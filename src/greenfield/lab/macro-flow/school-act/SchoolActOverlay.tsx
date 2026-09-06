@@ -240,9 +240,9 @@ export function SchoolActOverlay({
             <strong>Clasă</strong>
           </div>
           <div className="sa-classroom-passage__copy">
-            <p className="sa-kicker">07 / Classroom passage</p>
-            <h2 id="sa-classroom-passage-title">Accesul devine o zi de școală.</h2>
-            <p>Ecranul clasei preia firul de la poartă și deschide lumea SchoolMate.</p>
+            <p className="sa-kicker">06 / SchoolMate · Clasă</p>
+            <h2 id="sa-classroom-passage-title">Tot ce urmează după sonerie.</h2>
+            <p>Orarul și anunțurile aduc ziua de școală într-un singur loc. Dincolo de poartă începe SchoolMate.</p>
           </div>
         </div>
       </section>
@@ -262,9 +262,9 @@ export function SchoolActOverlay({
             <span>Dovadă</span>
           </div>
           <div className="sa-secretariat-passage__copy">
-            <p className="sa-kicker">07 / Secretariat passage</p>
+            <p className="sa-kicker">07 / SchoolMate · Secretariat</p>
             <h2 id="sa-secretariat-passage-title">Cererea ajunge pe birou.</h2>
-            <p>Monitorul, teancul de hârtii și dulapurile sunt același birou administrativ, înainte de pagina de dovezi.</p>
+            <p>Cererile conectează elevii și administrația școlii. Același SchoolMate, văzut de la celălalt capăt al biroului.</p>
           </div>
         </div>
       </section>
