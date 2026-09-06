@@ -1016,7 +1016,7 @@ function MacroFlowExperience() {
 
             <section id="mf-descent" className="mf-beat mf-beat--descent" data-chapter="descent">
         <div className="mf-copy mf-copy--descent">
-          <p className="mf-kicker">Continuity rule / SchoolMate → The Buried Hands</p>
+          <p className="mf-kicker">08 / The Buried Hands · Coborârea</p>
           <h2>Mausoleul se închide.</h2>
           <p>
             În premisa jocului, plasată în anul 210 î.Hr., un meșteșugar rămâne prins în mausoleul lui Qin Shi Huang când
@@ -1024,7 +1024,7 @@ function MacroFlowExperience() {
           </p>
           <div className="mf-next-beat">
             <span>Coboară în mausoleu</span>
-            <strong>Rule Descent / The Buried Hands <ArrowDown aria-hidden="true" /></strong>
+            <strong>The Buried Hands <ArrowDown aria-hidden="true" /></strong>
           </div>
         </div>
       </section>
@@ -1053,9 +1053,9 @@ function MacroFlowExperience() {
           <div className="mf-lamp-chamber__shade" aria-hidden="true" />
 
           <header className="mf-lamp-head">
-            <p className="mf-kicker">Interpretare web / reguli documentate</p>
-            <h2>Lumina dezvăluie dovezile.</h2>
-            <p>Scena 3D aparține site-ului; informațiile provin din pagina și capturile publice ale jocului.</p>
+            <p className="mf-kicker">09 / The Buried Hands · Lampa</p>
+            <h2>Ridică lumina. Descoperă mecanismul.</h2>
+            <p>Ridică lampa, apoi derulează pentru a explora mecanismele mausoleului. O reinterpretare 3D pentru site, inspirată din joc.</p>
           </header>
 
           <div className="mf-lamp-command-panel">
@@ -1069,7 +1069,7 @@ function MacroFlowExperience() {
               <Flame aria-hidden="true" />
               <span>
                 <strong>{lampRaised ? 'Lampa este ridicată' : 'Ridică lampa'}</strong>
-                <small role="status" aria-live="polite">{lampRaised ? 'Traseul este acum lizibil' : 'O singură acțiune, fără rută alternativă'}</small>
+                <small role="status" aria-live="polite">{lampRaised ? 'Continuă să derulezi pentru a explora' : 'Aprinde detaliile din jurul tău'}</small>
               </span>
             </button>
 
