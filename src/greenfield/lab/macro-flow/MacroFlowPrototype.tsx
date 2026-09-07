@@ -29,6 +29,7 @@ import {
 import { usePrefersReducedMotion } from '../../../hooks/usePrefersReducedMotion';
 import { ViewTransitionLink } from '../../components/ViewTransitionLink';
 import {
+  JOURNEY_CHAPTERS,
   chapterIndex,
   chapterTone,
   type JourneyChapter,
@@ -249,6 +250,9 @@ function MacroFlowExperience() {
     experienceActor.send({ type: 'QUALITY_FALLBACK' });
   }, [experienceActor]);
   const activeChapter = useExperienceSelector((state) => state.context.activeChapter);
+  const activeChapterPosition = Math.max(0, chapterIndex(activeChapter));
+  const activeChapterMeta = JOURNEY_CHAPTERS[activeChapterPosition] ?? JOURNEY_CHAPTERS[0];
+  const activeChapterProgress = ((activeChapterPosition + 1) / JOURNEY_CHAPTERS.length) * 100;
   const lensMode = useExperienceSelector((state) => state.context.lensMode);
   const qualityTier = useExperienceSelector((state) => effectiveQuality(state.context));
   const qualityMode = useExperienceSelector((state) => state.context.qualityMode);
@@ -758,7 +762,10 @@ function MacroFlowExperience() {
         <ViewTransitionLink className="mf-brand" to="/" aria-label="Transylvanian Bears, start">
           <span>Transylvanian Bears</span>
         </ViewTransitionLink>
-        <p>Șapte sisteme · o cetate</p>
+        <p className="mf-chapter-position" aria-hidden="true">
+          <span>{activeChapterMeta.index} / {activeChapterMeta.label}</span>
+          <i><b style={{ width: `${activeChapterProgress}%` }} /></i>
+        </p>
         <div className="mf-header__actions">
           <button
             className="mf-system-control"
