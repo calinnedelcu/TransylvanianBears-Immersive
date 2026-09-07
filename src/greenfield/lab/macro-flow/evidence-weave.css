@@ -4,6 +4,7 @@
   --ew-open-start: 82%;
   --ew-dawn-start: 92%;
   --ew-travel: 100%;
+  --ew-entry-clearance: 72px;
   position: relative;
   z-index: 24;
   height: 1100dvh;
@@ -157,7 +158,7 @@
   position: absolute;
   z-index: 6;
   right: 74px;
-  bottom: 108px;
+  bottom: calc(108px + var(--ew-entry-clearance));
   display: grid;
   width: min(360px, 31vw);
   gap: 7px;
@@ -197,7 +198,7 @@
 .ew-selector {
   position: absolute;
   z-index: 8;
-  bottom: 28px;
+  bottom: calc(28px + var(--ew-entry-clearance));
   left: 32px;
   display: flex;
   align-items: center;
@@ -278,7 +279,7 @@
   position: absolute;
   z-index: 8;
   right: 74px;
-  bottom: 34px;
+  bottom: calc(34px + var(--ew-entry-clearance));
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -743,7 +744,7 @@
 
   .ew-readout {
     right: 49px;
-    bottom: 130px;
+    bottom: calc(130px + var(--ew-entry-clearance));
     left: 18px;
     width: auto;
     background: linear-gradient(90deg, rgb(3 7 8 / 0.76), transparent);
@@ -755,7 +756,7 @@
 
   .ew-selector {
     right: 49px;
-    bottom: 64px;
+    bottom: calc(64px + var(--ew-entry-clearance));
     left: 18px;
     gap: 3px;
   }
@@ -772,7 +773,7 @@
 
   .ew-archive-link {
     right: 49px;
-    bottom: 25px;
+    bottom: calc(25px + var(--ew-entry-clearance));
   }
 
   .ew-map-interface {
