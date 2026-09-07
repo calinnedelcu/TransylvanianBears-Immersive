@@ -73,6 +73,20 @@ body.mf-lab-mode {
     var(--mf-bg);
 }
 
+/*
+ * These chapters deliberately unmount the WebGL world. Keep the fixed world
+ * layer opaque while their own sticky stage is entering, otherwise its default
+ * citadel poster can flash through the gap before the 2D canvas paints.
+ */
+.mf-lab[data-active-chapter='infect'] .mf-world,
+.mf-lab[data-active-chapter='research'] .mf-world,
+.mf-lab[data-active-chapter='evidence-weave'] .mf-world,
+.mf-lab[data-active-chapter='final-return'] .mf-world,
+.mf-lab[data-active-chapter='open-paths'] .mf-world,
+.mf-lab[data-active-chapter='dawn'] .mf-world {
+  background: #000;
+}
+
 .mf-canvas,
 .mf-canvas > div {
   position: absolute !important;
