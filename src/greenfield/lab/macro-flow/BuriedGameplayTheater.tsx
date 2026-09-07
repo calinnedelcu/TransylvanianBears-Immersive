@@ -121,13 +121,9 @@ export default function BuriedGameplayTheater() {
     const travel = Math.max(1, section.offsetHeight - window.innerHeight);
     const target = sectionTop + (index / PASSAGES.length) * travel + 2;
     if (lenis) {
-      if (reducedMotion) {
-        lenis.scrollTo(target, { immediate: true, force: true });
-      } else {
-        lenis.scrollTo(target, { duration: 1.05, force: true });
-      }
+      lenis.scrollTo(target, { duration: 1.05, force: true });
     } else {
-      window.scrollTo({ top: target, behavior: reducedMotion ? 'auto' : 'smooth' });
+      window.scrollTo({ top: target, behavior: 'smooth' });
     }
   }, [lenis, reducedMotion]);
 

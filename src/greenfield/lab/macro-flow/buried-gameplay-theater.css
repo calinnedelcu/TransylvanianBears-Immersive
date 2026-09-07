@@ -471,3 +471,10 @@
 .bh-open-frame { display: inline-flex; align-items: center; min-height: 44px; margin-top: 12px; padding: 8px 12px; border: 1px solid rgb(212 170 96 / 45%); background: rgb(18 13 9 / 88%); color: #f0dfbe; font: 10px/1.5 'JetBrains Mono', monospace; text-decoration: none; pointer-events: auto; }
 .bh-open-frame:hover { background: #392b1c; }
 .bh-open-frame:focus-visible { outline: 2px solid #d4aa60; outline-offset: 3px; }
+
+.bh-evidence-passage__readout { padding: 18px 20px; border: 1px solid rgb(212 170 96 / 25%); background: linear-gradient(110deg, rgb(18 13 9 / 94%), rgb(18 13 9 / 78%)); }
+.bh-evidence-passage__readout h3 { font: 400 clamp(28px, 3.1vw, 44px)/1.08 'Fraunces Variable', Georgia, serif; }
+.bh-evidence-passage__readout p { color: #d2c5b2; font-size: 13px; }
+.bh-evidence-passage__route button:focus-visible { outline: 2px solid #d4aa60; outline-offset: 3px; }
+.bh-evidence-passage__route button[data-active] { background: rgb(212 170 96 / 12%); }
+@media (max-width: 600px) { .bh-evidence-passage__readout { padding: 14px 16px; gap: 9px; } .bh-evidence-passage__readout h3 { font-size: 28px; } }
