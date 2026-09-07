@@ -441,12 +441,22 @@
 }
 
 .rc-phases li {
-  display: grid;
-  min-height: 72px;
-  align-content: space-between;
-  padding: 12px 10px 0;
   border-left: 1px solid rgb(15 17 20 / 0.22);
   color: rgb(15 17 20 / 0.4);
+}
+
+.rc-phases button {
+  display: grid;
+  width: 100%;
+  min-height: 72px;
+  align-content: space-between;
+  padding: 12px 10px 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
 }
 
 .rc-phases li:first-child {
@@ -460,6 +470,15 @@
 
 .rc-phases li[data-active] {
   box-shadow: inset 0 4px 0 #0f1114;
+}
+
+.rc-phases button:hover {
+  background: rgb(15 17 20 / 0.06);
+}
+
+.rc-phases button:focus-visible {
+  outline: 2px solid #0f1114;
+  outline-offset: -4px;
 }
 
 .rc-phases span {
@@ -933,7 +952,11 @@
 
   .rc-phases li {
     min-height: 50px;
-    padding: 8px 7px 0;
+  }
+
+  .rc-phases button {
+    min-height: 50px;
+    padding: 8px 7px 5px;
   }
 
   .rc-to-evidence,

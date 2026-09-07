@@ -1,4 +1,5 @@
 import { ArrowDown, ExternalLink, LineChart, Network, Orbit, ScanSearch } from 'lucide-react';
+import { useLenis } from 'lenis/react';
 import {
   Component,
   lazy,
@@ -42,9 +43,9 @@ type ResearchLens = 'economy' | 'automation';
 type ResearchPhase = 'collect' | 'compare' | 'qualify';
 
 const PHASES: Array<{ id: ResearchPhase; index: string; label: string }> = [
-  { id: 'collect', index: '01', label: 'Collect' },
-  { id: 'compare', index: '02', label: 'Compare' },
-  { id: 'qualify', index: '03', label: 'Qualify' },
+  { id: 'collect', index: '01', label: 'Colectează' },
+  { id: 'compare', index: '02', label: 'Compară' },
+  { id: 'qualify', index: '03', label: 'Verifică' },
 ];
 
 const READOUTS: Record<ResearchLens, Record<ResearchPhase, { title: string; body: string; metric: string }>> = {
@@ -119,6 +120,7 @@ export default function ResearchCrossing() {
   const [worldFailed, setWorldFailed] = useState(false);
   const [nearViewport, setNearViewport] = useState(false);
   const lensRef = useRef<ResearchLens>('economy');
+  const lenis = useLenis();
   const reducedMotion = usePrefersReducedMotion();
   const qualityTier = useExperienceSelector((state) => effectiveQuality(state.context));
   const readout = READOUTS[lens][phase];
@@ -143,7 +145,7 @@ export default function ResearchCrossing() {
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
     const w = rect.width;
     const h = rect.height;
-    const progress = reducedMotion ? 1 : progressRef.current;
+    const progress = progressRef.current;
     const assemble = ease(progress / 0.28);
     const cross = ease((progress - 0.24) / 0.46);
     const qualify = ease((progress - 0.66) / 0.34);
@@ -297,6 +299,25 @@ export default function ResearchCrossing() {
     setLens(nextLens);
   }, []);
 
+  const selectPhase = useCallback((nextPhase: ResearchPhase) => {
+    const section = sectionRef.current;
+    const journey = section?.querySelector<HTMLElement>('.rc-journey');
+    if (!section || !journey) return;
+    const index = PHASES.findIndex((item) => item.id === nextPhase);
+    const progress = (index + 0.16) / PHASES.length;
+    if (reducedMotion) {
+      progressRef.current = progress;
+      setPhase(nextPhase);
+      requestDraw();
+      return;
+    }
+    const sectionTop = window.scrollY + journey.getBoundingClientRect().top;
+    const travel = Math.max(1, journey.offsetHeight - window.innerHeight);
+    const target = sectionTop + progress * travel;
+    if (lenis) lenis.scrollTo(target, { duration: 0.9, force: true });
+    else window.scrollTo({ top: target, behavior: 'smooth' });
+  }, [lenis, reducedMotion, requestDraw]);
+
   return (
     <section id="mf-research" ref={sectionRef} className="rc-section" data-chapter="research">
       <div className="rc-journey">
@@ -388,7 +409,9 @@ export default function ResearchCrossing() {
           <ol className="rc-phases" aria-label="Research method phases">
             {PHASES.map((item) => (
               <li key={item.id} data-active={phase === item.id || undefined} data-passed={PHASES.findIndex((phaseItem) => phaseItem.id === phase) > PHASES.findIndex((phaseItem) => phaseItem.id === item.id) || undefined}>
-                <span>{item.index}</span><strong>{item.label}</strong>
+                <button type="button" aria-pressed={phase === item.id} onClick={() => selectPhase(item.id)}>
+                  <span>{item.index}</span><strong>{item.label}</strong>
+                </button>
               </li>
             ))}
           </ol>
