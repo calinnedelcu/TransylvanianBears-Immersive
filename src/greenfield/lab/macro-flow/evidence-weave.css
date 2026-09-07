@@ -219,6 +219,7 @@
   color: rgb(231 232 224 / 0.5);
   backdrop-filter: blur(12px);
   cursor: pointer;
+  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease, transform 180ms ease;
 }
 
 .ew-selector button span {
@@ -245,6 +246,13 @@
 
 .ew-selector button[aria-pressed='true'] i {
   background: #72d9d6;
+}
+
+.ew-selector button:hover {
+  border-color: rgb(114 217 214 / 0.62);
+  background: rgb(114 217 214 / 0.08);
+  color: #e7e8e0;
+  transform: translateY(-2px);
 }
 
 .ew-scroll-state {
@@ -285,12 +293,18 @@
   gap: 8px;
   color: #72d9d6;
   font-size: 8px;
-  transition: opacity 300ms ease;
+  text-decoration: none;
+  transition: color 180ms ease, opacity 300ms ease, transform 180ms ease;
 }
 
 .ew-archive-link svg {
   width: 13px;
   height: 13px;
+}
+
+.ew-archive-link:hover {
+  color: #fff;
+  transform: translateY(-2px);
 }
 
 .ew-accessible-records {
@@ -368,6 +382,7 @@
   background: transparent;
   color: rgb(231 232 224 / 0.44);
   cursor: pointer;
+  transition: background-color 180ms ease, box-shadow 180ms ease, color 180ms ease;
 }
 
 .ew-map-interface nav button span {
@@ -385,6 +400,12 @@
   color: #e7e8e0;
 }
 
+.ew-map-interface nav button:hover,
+.ew-open-interface nav button:hover {
+  background: rgb(114 217 214 / 0.08);
+  color: #e7e8e0;
+}
+
 .ew-map-interface > a {
   display: inline-flex;
   min-height: 43px;
@@ -392,7 +413,9 @@
   gap: 12px;
   color: #72d9d6;
   font-size: 9px;
+  text-decoration: none;
   white-space: nowrap;
+  transition: color 180ms ease, transform 180ms ease;
 }
 
 .ew-map-interface > a svg {
@@ -497,6 +520,7 @@
   background: transparent;
   color: rgb(231 232 224 / 0.46);
   cursor: pointer;
+  transition: background-color 180ms ease, box-shadow 180ms ease, color 180ms ease;
 }
 
 .ew-open-interface nav button span,
@@ -517,7 +541,9 @@
   gap: 10px;
   color: #72d9d6;
   font-size: 9px;
+  text-decoration: none;
   white-space: nowrap;
+  transition: color 180ms ease, transform 180ms ease;
 }
 
 .ew-open-interface > a svg {
@@ -548,6 +574,26 @@
 
 .ew-dawn-interface a {
   color: #e7e8e0;
+  text-decoration: none;
+  transition: color 180ms ease, transform 180ms ease;
+}
+
+.ew-map-interface > a:hover,
+.ew-open-interface > a:hover,
+.ew-dawn-interface a:hover {
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+.ew-selector button:focus-visible,
+.ew-map-interface nav button:focus-visible,
+.ew-open-interface nav button:focus-visible,
+.ew-map-interface > a:focus-visible,
+.ew-open-interface > a:focus-visible,
+.ew-dawn-interface a:focus-visible,
+.ew-archive-link:focus-visible {
+  outline: 2px solid #72d9d6;
+  outline-offset: 3px;
 }
 
 .ew-section[data-open-ready] .ew-map-interface {
