@@ -171,7 +171,7 @@ export default function InfectInterlude() {
   const syncJourney = useCallback(() => {
     scrollFrameRef.current = 0;
     const journey = journeyRef.current;
-    if (!journey) return;
+    if (!journey || reducedMotion) return;
     const rect = journey.getBoundingClientRect();
     const travel = Math.max(1, journey.offsetHeight - window.innerHeight);
     const progress = clamp(-rect.top / travel);
@@ -195,7 +195,7 @@ export default function InfectInterlude() {
         return next;
       });
     }
-  }, []);
+  }, [reducedMotion]);
 
   const scheduleJourneySync = useCallback(() => {
     if (scrollFrameRef.current) return;
@@ -374,6 +374,16 @@ export default function InfectInterlude() {
   const selectStage = useCallback((index: number) => {
     const journey = journeyRef.current;
     if (!journey) return;
+    if (reducedMotion) {
+      lastStageIndexRef.current = index;
+      journeyProgressRef.current = (index + 0.5) / STAGES.length;
+      setActiveStage(STAGES[index].id);
+      setVisited((current) => new Set([...current, STAGES[index].id]));
+      journey.style.setProperty('--ix-route-progress', String(journeyProgressRef.current));
+      journey.dataset.arrival = 'false';
+      drawStaticFrameRef.current?.();
+      return;
+    }
     const sectionTop = window.scrollY + journey.getBoundingClientRect().top;
     const travel = Math.max(1, journey.offsetHeight - window.innerHeight);
     const slotProgress = Math.min(0.96, index / STAGES.length + 0.035);
@@ -407,7 +417,7 @@ export default function InfectInterlude() {
           <div className="ix-grid" aria-hidden="true" />
 
           <header className="ix-head">
-            <p>Playable route / authentic captures</p>
+            <p>11 / Infect.exe · Capturi din joc</p>
             <h2>You are<br />the enemy.</h2>
             <span>O singură limitare. Două culori. Trei subsisteme legate într-o singură infiltrare.</span>
           </header>
@@ -451,7 +461,7 @@ export default function InfectInterlude() {
           </aside>
 
           <div className="ix-progress">
-            <span>{visited.size.toString().padStart(2, '0')} / 03 breached</span>
+            <span>{visited.size.toString().padStart(2, '0')} / 03 explorate</span>
             <i aria-hidden="true"><b /></i>
             <a href="#ix-proof" aria-label="Vezi rezultatele Infect.exe"><ArrowDown aria-hidden="true" /></a>
           </div>
