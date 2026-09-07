@@ -1048,3 +1048,22 @@
     transition: none;
   }
 }
+
+@media (max-width: 600px) {
+  .rc-heading h2 {
+    font-size: 40px;
+    line-height: 0.92;
+  }
+
+  .rc-lenses {
+    bottom: calc(var(--mf-mobile-rail-clearance, 65px) + 297px);
+  }
+
+  .rc-readout {
+    bottom: calc(var(--mf-mobile-rail-clearance, 65px) + 140px);
+  }
+
+  .rc-phases {
+    bottom: calc(var(--mf-mobile-rail-clearance, 65px) + 82px);
+  }
+}
