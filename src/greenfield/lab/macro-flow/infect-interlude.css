@@ -59,6 +59,44 @@
   filter: contrast(1.18);
 }
 
+.ix-media-status {
+  position: absolute;
+  z-index: 9;
+  inset: 50% auto auto 50%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgb(255 255 255 / 0.72);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transform: translate(-50%, -50%);
+  transition: opacity 180ms linear;
+}
+
+.ix-media-status i {
+  width: 7px;
+  aspect-ratio: 1;
+  background: #fff;
+  box-shadow: 0 0 18px rgb(255 255 255 / 0.7);
+  animation: ix-media-pulse 780ms steps(2, end) infinite;
+}
+
+.ix-stage[data-image-ready] .ix-media-status {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ix-stage[data-image-failed] .ix-media-status i {
+  background: transparent;
+  border: 1px solid #fff;
+  animation: none;
+}
+
+@keyframes ix-media-pulse {
+  50% { opacity: 0.24; }
+}
+
 .ix-grid {
   z-index: -2;
   pointer-events: none;

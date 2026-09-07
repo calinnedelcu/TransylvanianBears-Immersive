@@ -161,6 +161,8 @@ export default function InfectInterlude() {
   const lastStageIndexRef = useRef(0);
   const [activeStage, setActiveStage] = useState<InfectStage>('gpu');
   const [visited, setVisited] = useState<Set<InfectStage>>(() => new Set(['gpu']));
+  const [loadedStages, setLoadedStages] = useState<Set<InfectStage>>(() => new Set());
+  const [failedStages, setFailedStages] = useState<Set<InfectStage>>(() => new Set());
   const [nearViewport, setNearViewport] = useState(false);
   const lenis = useLenis();
   const reducedMotion = usePrefersReducedMotion();
@@ -217,13 +219,20 @@ export default function InfectInterlude() {
     STAGES.forEach((item) => {
       const image = new Image();
       image.decoding = 'async';
-      image.onload = () => drawStaticFrameRef.current?.();
+      image.onload = () => {
+        setLoadedStages((current) => new Set(current).add(item.id));
+        drawStaticFrameRef.current?.();
+      };
+      image.onerror = () => setFailedStages((current) => new Set(current).add(item.id));
       image.src = item.image;
       imagesRef.current[item.id] = image;
     });
     return () => {
       Object.values(imagesRef.current).forEach((image) => {
-        if (image) image.onload = null;
+        if (image) {
+          image.onload = null;
+          image.onerror = null;
+        }
       });
       imagesRef.current = {};
     };
@@ -399,10 +408,19 @@ export default function InfectInterlude() {
     }
   }, [lenis, reducedMotion]);
 
+  const activeImageReady = loadedStages.has(activeStage);
+  const activeImageFailed = failedStages.has(activeStage);
+
   return (
     <section id="mf-infect" className="ix-section" data-chapter="infect">
       <div id="ix-route" ref={journeyRef} className="ix-journey">
-        <div className="ix-stage" onPointerMove={moveSignal} onPointerLeave={leaveSignal}>
+        <div
+          className="ix-stage"
+          data-image-ready={activeImageReady || undefined}
+          data-image-failed={activeImageFailed || undefined}
+          onPointerMove={moveSignal}
+          onPointerLeave={leaveSignal}
+        >
           <div className="ix-arrival" aria-hidden="true"><i /></div>
           <canvas
             ref={canvasRef}
@@ -414,6 +432,14 @@ export default function InfectInterlude() {
           >
             {stage.alt}. Traseul continuă prin GPU, SSD și CPU.
           </canvas>
+          <div className="ix-media-status" role="status" aria-live="polite">
+            <i aria-hidden="true" />
+            <span>
+              {activeImageFailed
+                ? `Captura ${stage.label} nu a putut fi încărcată`
+                : `Se încarcă captura ${stage.label}`}
+            </span>
+          </div>
           <div className="ix-grid" aria-hidden="true" />
 
           <header className="ix-head">
