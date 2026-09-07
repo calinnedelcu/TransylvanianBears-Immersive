@@ -20,7 +20,7 @@ const PASSAGES: EvidencePassage[] = [
   {
     id: 'mechanism',
     index: 'I',
-    system: 'Craft knowledge',
+    system: 'Mecanism',
     title: 'Mecanismul indică următoarea rută.',
     detail: 'Captura cere luarea vazei și măștii, apoi urmarea tunelului spre Sala Mercurului.',
     image: '/assets/projects/buried-hands/mechanism.webp',
@@ -31,7 +31,7 @@ const PASSAGES: EvidencePassage[] = [
   {
     id: 'guards',
     index: 'II',
-    system: 'Acoustic field',
+    system: 'Gardieni',
     title: 'Gardienii aud pașii.',
     detail: 'Pagina proiectului formulează regula direct: gardienii aud pașii.',
     image: '/assets/projects/buried-hands/guards.webp',
@@ -42,7 +42,7 @@ const PASSAGES: EvidencePassage[] = [
   {
     id: 'mercury',
     index: 'III',
-    system: 'Toxic atmosphere',
+    system: 'Mercur',
     title: 'Vaporii limitează expunerea.',
     detail: 'HUD-ul urmărește vaporii, iar obiectivul cere umplerea vazei cu mercur și întoarcerea la mecanism.',
     image: '/assets/projects/buried-hands/mercury.webp',
@@ -53,7 +53,7 @@ const PASSAGES: EvidencePassage[] = [
   {
     id: 'royal-hall',
     index: 'IV',
-    system: 'Monumental logic',
+    system: 'Sala Regală',
     title: 'Ieșirea devine urgentă.',
     detail: 'Obiectivul din Sala Regală cere găsirea ieșirii înainte ca vaporii de mercur să devină prea denși.',
     image: '/assets/projects/buried-hands/royal-hall.webp',
@@ -76,7 +76,7 @@ export default function BuriedGameplayTheater() {
   const updateJourney = useCallback(() => {
     rafRef.current = 0;
     const section = sectionRef.current;
-    if (!section) return;
+    if (!section || reducedMotion) return;
 
     const rect = section.getBoundingClientRect();
     const travel = Math.max(1, section.offsetHeight - window.innerHeight);
@@ -90,7 +90,7 @@ export default function BuriedGameplayTheater() {
       activeIndexRef.current = nextActive;
       setActiveIndex(nextActive);
     }
-  }, []);
+  }, [reducedMotion]);
 
   const scheduleUpdate = useCallback(() => {
     if (rafRef.current) return;
@@ -111,6 +111,12 @@ export default function BuriedGameplayTheater() {
   const selectPassage = useCallback((index: number) => {
     const section = sectionRef.current;
     if (!section) return;
+    if (reducedMotion) {
+      activeIndexRef.current = index;
+      setActiveIndex(index);
+      section.style.setProperty('--bh-evidence-index', String(index));
+      return;
+    }
     const sectionTop = window.scrollY + section.getBoundingClientRect().top;
     const travel = Math.max(1, section.offsetHeight - window.innerHeight);
     const target = sectionTop + (index / PASSAGES.length) * travel + 2;
@@ -158,7 +164,7 @@ export default function BuriedGameplayTheater() {
         </div>
 
         <header className="bh-evidence-passage__head">
-          <span>Public gallery / spatial evidence</span>
+          <span>10 / Capturi din joc</span>
           <strong>The Buried Hands</strong>
         </header>
 
@@ -170,6 +176,7 @@ export default function BuriedGameplayTheater() {
           </div>
           <p>{activePassage.detail}</p>
           <small>Cadru din galeria publică a proiectului</small>
+          <a className="bh-open-frame" href={activePassage.image} target="_blank" rel="noreferrer">Deschide captura completă ↗</a>
         </aside>
 
         <nav className="bh-evidence-passage__route" aria-label="Dovezi The Buried Hands">
@@ -196,7 +203,7 @@ export default function BuriedGameplayTheater() {
         </div>
 
         <a className="bh-evidence-passage__exit" href="#mf-build-metrics">
-          <span>Build record</span>
+          <span>Despre joc</span>
           <ArrowDown aria-hidden="true" />
         </a>
       </div>
