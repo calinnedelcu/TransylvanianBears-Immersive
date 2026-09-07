@@ -509,7 +509,11 @@ export default function ResearchCrossing() {
           <span>Continuity / axis → evidence timeline</span>
           <strong>Metoda capătă istorie.</strong>
           <p>Proiectele, oamenii și rezultatele se aliniază acum pe aceeași axă verificabilă.</p>
-          <span className="rc-handoff__next"><ScanSearch aria-hidden="true" /> Next / Evidence Weave</span>
+          <a className="rc-handoff__next" href="#mf-evidence-weave" aria-label="Continuă la Evidence Weave">
+            <ScanSearch aria-hidden="true" />
+            <span>Next / Evidence Weave</span>
+            <ArrowDown aria-hidden="true" />
+          </a>
         </footer>
       </div>
     </section>
