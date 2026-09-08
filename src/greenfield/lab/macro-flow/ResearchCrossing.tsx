@@ -112,6 +112,7 @@ export default function ResearchCrossing() {
   const sectionRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const progressRef = useRef(0);
+  const selectedProgressRef = useRef<number | null>(null);
   const pointerRef = useRef({ x: 0.5, y: 0.5, active: false });
   const visibleRef = useRef(false);
   const frameRef = useRef(0);
@@ -242,12 +243,14 @@ export default function ResearchCrossing() {
     if (!journey) return;
     const rect = journey.getBoundingClientRect();
     const max = Math.max(1, journey.offsetHeight - window.innerHeight);
-    const nextProgress = clamp(-rect.top / max);
+    const nextProgress = reducedMotion && selectedProgressRef.current !== null
+      ? selectedProgressRef.current
+      : clamp(-rect.top / max);
     progressRef.current = nextProgress;
     const nextPhase = phaseFromProgress(nextProgress);
     setPhase((current) => current === nextPhase ? current : nextPhase);
     requestDraw();
-  }, [requestDraw]);
+  }, [reducedMotion, requestDraw]);
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -306,6 +309,7 @@ export default function ResearchCrossing() {
     const index = PHASES.findIndex((item) => item.id === nextPhase);
     const progress = (index + 0.16) / PHASES.length;
     if (reducedMotion) {
+      selectedProgressRef.current = progress;
       progressRef.current = progress;
       setPhase(nextPhase);
       requestDraw();
