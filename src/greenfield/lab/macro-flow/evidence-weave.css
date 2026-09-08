@@ -849,10 +849,15 @@
     min-width: 0;
     width: 100%;
     grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    gap: 4px 8px;
+    padding: 6px 8px;
   }
 
   .ew-selector button strong {
-    display: none;
+    display: block;
+    grid-column: 1 / -1;
+    font-size: 8px;
   }
 
   .ew-archive-link {
