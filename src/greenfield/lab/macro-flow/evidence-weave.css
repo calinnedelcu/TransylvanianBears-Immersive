@@ -318,6 +318,7 @@
 }
 
 .ew-map-interface {
+  visibility: hidden;
   position: absolute;
   z-index: 9;
   right: 74px;
@@ -429,17 +430,20 @@
 
 .ew-section[data-plan-ready] .ew-readout,
 .ew-section[data-plan-ready] .ew-selector {
+  visibility: hidden;
   opacity: 0;
   pointer-events: none;
   transform: translateY(20px);
 }
 
 .ew-section[data-plan-ready] .ew-archive-link {
+  visibility: hidden;
   opacity: 0;
   pointer-events: none;
 }
 
 .ew-section[data-plan-ready] .ew-map-interface {
+  visibility: visible;
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
@@ -452,6 +456,7 @@
 
 .ew-open-interface,
 .ew-dawn-interface {
+  visibility: hidden;
   position: absolute;
   z-index: 10;
   right: 74px;
@@ -597,6 +602,7 @@
 }
 
 .ew-section[data-open-ready] .ew-map-interface {
+  visibility: hidden;
   opacity: 0;
   pointer-events: none;
   transform: translateY(20px);
@@ -608,18 +614,21 @@
 }
 
 .ew-section[data-open-ready] .ew-open-interface {
+  visibility: visible;
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
 }
 
 .ew-section[data-dawn-ready] .ew-open-interface {
+  visibility: hidden;
   opacity: 0;
   pointer-events: none;
   transform: translateY(20px);
 }
 
 .ew-section[data-dawn-ready] .ew-dawn-interface {
+  visibility: visible;
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
