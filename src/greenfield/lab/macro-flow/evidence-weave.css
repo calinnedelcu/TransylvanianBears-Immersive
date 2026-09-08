@@ -578,6 +578,10 @@
 }
 
 .ew-dawn-interface a {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
   color: #e7e8e0;
   text-decoration: none;
   transition: color 180ms ease, transform 180ms ease;
@@ -752,8 +756,11 @@
 }
 
 .ew-footer nav a {
-  display: block;
-  padding-bottom: 5px;
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  padding: 8px 0;
+  overflow-wrap: anywhere;
   border-bottom: 1px solid rgb(16 23 21 / 0.28);
   color: inherit;
   text-decoration: none;
@@ -938,7 +945,7 @@
 
   .ew-dawn-interface nav {
     display: grid;
-    grid-template-columns: repeat(4, auto);
+    grid-template-columns: repeat(4, minmax(44px, 1fr));
     gap: 12px;
   }
 
@@ -976,6 +983,12 @@
 
   .ew-scroll-state {
     right: 18px;
+  }
+}
+
+@media (max-width: 360px) {
+  .ew-footer nav a[href^='mailto:'] {
+    grid-column: 1 / -1;
   }
 }
 
