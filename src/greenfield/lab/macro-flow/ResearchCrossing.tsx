@@ -396,12 +396,12 @@ export default function ResearchCrossing() {
           </header>
 
           <div className="rc-lenses" role="group" aria-label="Research lens">
-            <button type="button" data-active={lens === 'economy' || undefined} aria-pressed={lens === 'economy'} onClick={() => selectLens('economy')} onFocus={() => selectLens('economy')}>
+            <button type="button" data-active={lens === 'economy' || undefined} aria-pressed={lens === 'economy'} onClick={() => selectLens('economy')}>
               <LineChart aria-hidden="true" />
               <span>Market reaction</span>
               <strong>EconomyNews</strong>
             </button>
-            <button type="button" data-active={lens === 'automation' || undefined} aria-pressed={lens === 'automation'} onClick={() => selectLens('automation')} onFocus={() => selectLens('automation')}>
+            <button type="button" data-active={lens === 'automation' || undefined} aria-pressed={lens === 'automation'} onClick={() => selectLens('automation')}>
               <Network aria-hidden="true" />
               <span>Labour transformation</span>
               <strong>Automation Risk</strong>

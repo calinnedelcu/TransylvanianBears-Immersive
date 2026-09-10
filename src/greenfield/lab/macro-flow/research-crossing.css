@@ -357,6 +357,11 @@
   border-right: 0;
 }
 
+.rc-lenses button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -7px;
+}
+
 .rc-lenses button[data-active] {
   background: #0f1114;
   color: #fff;
