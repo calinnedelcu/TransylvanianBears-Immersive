@@ -1,5 +1,5 @@
 import { ArrowDown, ExternalLink, LineChart, Network, Orbit, ScanSearch } from 'lucide-react';
-import { useLenis } from 'lenis/react';
+import { scrollSmoothTo } from '../../../components/smoothScroll';
 import {
   Component,
   lazy,
@@ -121,7 +121,6 @@ export default function ResearchCrossing() {
   const [worldFailed, setWorldFailed] = useState(false);
   const [nearViewport, setNearViewport] = useState(false);
   const lensRef = useRef<ResearchLens>('economy');
-  const lenis = useLenis();
   const reducedMotion = usePrefersReducedMotion();
   const qualityTier = useExperienceSelector((state) => effectiveQuality(state.context));
   const readout = READOUTS[lens][phase];
@@ -318,9 +317,8 @@ export default function ResearchCrossing() {
     const sectionTop = window.scrollY + journey.getBoundingClientRect().top;
     const travel = Math.max(1, journey.offsetHeight - window.innerHeight);
     const target = sectionTop + progress * travel;
-    if (lenis) lenis.scrollTo(target, { duration: 0.9, force: true });
-    else window.scrollTo({ top: target, behavior: 'smooth' });
-  }, [lenis, reducedMotion, requestDraw]);
+    scrollSmoothTo(target, 0.9);
+  }, [reducedMotion, requestDraw]);
 
   return (
     <section id="mf-research" ref={sectionRef} className="rc-section" data-chapter="research">
