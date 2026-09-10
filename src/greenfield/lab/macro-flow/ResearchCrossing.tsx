@@ -423,7 +423,11 @@ export default function ResearchCrossing() {
             <span>654 occupations</span>
           </div>
 
-          <a className="rc-to-evidence" href="#rc-economy" aria-label="Continuă la dovezile cercetării">
+          <a
+            className="rc-to-evidence"
+            href={lens === 'economy' ? '#rc-economy' : '#rc-automation'}
+            aria-label={`Continuă la dovezile ${lens === 'economy' ? 'EconomyNews' : 'Automation Risk'}`}
+          >
             <span>Read the evidence</span><ArrowDown aria-hidden="true" />
           </a>
         </div>
