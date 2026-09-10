@@ -110,7 +110,7 @@ function phaseFromProgress(progress: number): ResearchPhase {
 
 export default function ResearchCrossing() {
   const sectionRef = useRef<HTMLElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const progressRef = useRef(0);
   const selectedProgressRef = useRef<number | null>(null);
   const pointerRef = useRef({ x: 0.5, y: 0.5, active: false });
@@ -235,6 +235,11 @@ export default function ResearchCrossing() {
     frameRef.current = window.requestAnimationFrame(draw);
   }, [draw]);
 
+  const attachCanvas = useCallback((canvas: HTMLCanvasElement | null) => {
+    canvasRef.current = canvas;
+    if (canvas) requestDraw();
+  }, [requestDraw]);
+
   const updateProgress = useCallback(() => {
     const section = sectionRef.current;
     if (!section) return;
@@ -320,6 +325,12 @@ export default function ResearchCrossing() {
     scrollSmoothTo(target, 0.9);
   }, [reducedMotion, requestDraw]);
 
+  const fallbackCanvas = (
+    <canvas ref={attachCanvas} className="rc-canvas" role="img" aria-label="Câmp abstract de observații care leagă evenimente financiare și ocupații analizate">
+      Două cercetări compară observații: 2.449 evenimente financiare și 654 ocupații COR mapate.
+    </canvas>
+  );
+
   return (
     <section id="mf-research" ref={sectionRef} className="rc-section" data-chapter="research">
       <div className="rc-journey">
@@ -331,9 +342,9 @@ export default function ResearchCrossing() {
           onPointerLeave={leaveLens}
         >
           {useWorld && nearViewport ? (
-            <div className="rc-world" role="img" aria-label="Câmp 3D de observații: evenimente financiare și ocupații analizate">
-              <ResearchWorldBoundary onError={() => setWorldFailed(true)}>
-                <Suspense fallback={null}>
+            <ResearchWorldBoundary onError={() => setWorldFailed(true)}>
+              <Suspense fallback={fallbackCanvas}>
+                <div className="rc-world" role="img" aria-label="Câmp 3D de observații: evenimente financiare și ocupații analizate">
                   <ResearchActScene
                     progressRef={progressRef}
                     lensRef={lensRef}
@@ -341,14 +352,10 @@ export default function ResearchCrossing() {
                     qualityTier={qualityTier}
                     reducedMotion={reducedMotion}
                   />
-                </Suspense>
-              </ResearchWorldBoundary>
-            </div>
-          ) : (
-            <canvas ref={canvasRef} className="rc-canvas" role="img" aria-label="Câmp abstract de observații care leagă evenimente financiare și ocupații analizate">
-              Două cercetări compară observații: 2.449 evenimente financiare și 654 ocupații COR mapate.
-            </canvas>
-          )}
+                </div>
+              </Suspense>
+            </ResearchWorldBoundary>
+          ) : fallbackCanvas}
 
           <div className="rc-projection-field" aria-hidden="true">
             <div className="rc-source-block">
