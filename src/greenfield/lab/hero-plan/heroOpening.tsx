@@ -143,7 +143,7 @@ export function HeroPlanTitle({ onFollow }: { onFollow?: () => void }) {
       <div className="hp-cta">
         <a
           className="hp-btn hp-btn--primary"
-          href="#mf-threshold"
+          href="#mf-field"
           onClick={(event) => {
             if (!onFollow || event.metaKey || event.ctrlKey || event.shiftKey) return;
             event.preventDefault();
@@ -234,4 +234,3 @@ export function HeroPlanSheet({
     </div>
   );
 }
-
