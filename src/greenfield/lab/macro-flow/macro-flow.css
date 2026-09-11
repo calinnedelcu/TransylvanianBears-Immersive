@@ -4610,6 +4610,12 @@ body.mf-lab-mode {
 }
 
 /* The editorial opening is a complete first screen, independent of scroll progress. */
+.mf-lab:not([data-static-opening]) .hp-opening[data-plan='world'] .hp-copy,
+.mf-lab:not([data-static-opening]) .hp-opening[data-plan='world'] .hp-preview,
+.mf-lab:not([data-static-opening]) .hp-opening[data-plan='world'] .hp-plan__node {
+  visibility: hidden;
+}
+
 .mf-lab[data-active-chapter='threshold'] .hp-cta,
 .mf-lab[data-active-chapter='threshold'] .hp-preview__enter,
 .mf-lab[data-active-chapter='threshold'] .hp-plan__node {
