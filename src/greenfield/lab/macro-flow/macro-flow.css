@@ -4610,7 +4610,8 @@ body.mf-lab-mode {
 }
 
 /* The editorial opening is a complete first screen, independent of scroll progress. */
-.mf-lab[data-active-chapter='threshold'] .hp-cta {
+.mf-lab[data-active-chapter='threshold'] .hp-cta,
+.mf-lab[data-active-chapter='threshold'] .hp-plan__node {
   pointer-events: auto;
 }
 
