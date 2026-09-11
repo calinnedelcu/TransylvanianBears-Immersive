@@ -64,6 +64,22 @@
   color: rgb(231 232 224 / 0.4);
   font: 9px 'JetBrains Mono', monospace;
   text-transform: uppercase;
+  background: radial-gradient(ellipse at center, #153131 0%, #030708 68%);
+}
+
+.ew-fallback__orbit {
+  width: min(70vw, 58dvh, 600px);
+  overflow: visible;
+  fill: none;
+  stroke: rgb(114 217 214 / 0.32);
+  stroke-width: 1;
+}
+
+.ew-fallback__orbit [data-active],
+.ew-fallback__core {
+  fill: #72d9d6;
+  stroke: #72d9d6;
+  filter: drop-shadow(0 0 9px rgb(114 217 214 / 0.6));
 }
 
 .ew-stage__grade {
