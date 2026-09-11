@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * The state the opening shares with its 3D scene.
@@ -26,7 +26,12 @@ export function useHeroOpening() {
    * the index it belonged to - the story is one scroll now - and what survives is
    * the drawing lighting a system up as you pass over it.
    */
-  const [hoverSlug, setHoverSlug] = useState<string | null>(null);
+  const [hoverSlug, updateHoverSlug] = useState<string | null>(null);
+  const [previewSlug, setPreviewSlug] = useState<string | null>(null);
+  const setHoverSlug = useCallback((slug: string | null) => {
+    updateHoverSlug(slug);
+    if (slug !== null) setPreviewSlug(slug);
+  }, []);
   const activeSlug = hoverSlug;
 
   useEffect(() => {
@@ -150,6 +155,7 @@ export function useHeroOpening() {
     planRef,
     planFrameRef,
     activeSlug,
+    previewSlug,
     setHoverSlug,
   };
 }

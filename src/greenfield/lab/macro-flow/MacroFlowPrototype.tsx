@@ -817,7 +817,7 @@ function MacroFlowExperience() {
           <HeroPlanSheet opening={opening} interactive={activeChapter === 'threshold'} />
           {/* Ancorat în viewport, nu în scenă: panoul stă în colțul cadrului, iar
               `.hp-stage` se înclină odată cu planul. */}
-          <NodePreview activeSlug={opening.activeSlug} />
+          <NodePreview activeSlug={opening.previewSlug} />
           <PlanReticle locked={opening.activeSlug !== null} />
         </div>
         <p className="hp-scroll-cue" aria-hidden="true">

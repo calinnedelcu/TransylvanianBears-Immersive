@@ -48,11 +48,7 @@ export function NodePreview({ activeSlug }: { activeSlug: string | null }) {
             <b>{metric.value}</b> {metric.label}
           </span>
         ) : null}
-        {/* Singura ieșire reală din inel: nodul își deschide capitolul.
-            Scos din ordinea de tab fiindcă panoul apare la focusul nodului, iar
-            nodul e deja un link către aceeași adresă: două opriri de tastatură
-            spre același loc, dintre care una vizibilă doar cât ține focusul. */}
-        <Link className="hp-preview__enter" to={`/work/${project.slug}`} tabIndex={-1}>
+        <Link className="hp-preview__enter" to={`/work/${project.slug}`}>
           Deschide <b>{project.shortTitle}</b>
         </Link>
       </div>
