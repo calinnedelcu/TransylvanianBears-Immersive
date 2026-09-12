@@ -567,10 +567,16 @@ function MacroFlowExperience() {
     });
   }, [activeChapter, audioEnabled, getBuriedSoundscape]);
 
+  const resetLens = useCallback((element: HTMLDivElement) => {
+    lensPointerRef.current.active = false;
+    nexusFlightInputRef.current.active = false;
+    delete element.dataset.lensEngaged;
+  }, []);
+
   const moveLens = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     // Changing a mode must not steer the drone toward the controls.
     if ((event.target as HTMLElement).closest('.mf-lens-dock')) {
-      nexusFlightInputRef.current.active = false;
+      resetLens(event.currentTarget);
       return;
     }
     // The sensor reaches the whole frame.
@@ -597,13 +603,11 @@ function MacroFlowExperience() {
     event.currentTarget.style.setProperty('--mf-lens-x', `${(x * 100).toFixed(2)}%`);
     event.currentTarget.style.setProperty('--mf-lens-y', `${(yFromTop * 100).toFixed(2)}%`);
     event.currentTarget.dataset.lensEngaged = 'true';
-  }, []);
+  }, [resetLens]);
 
   const leaveLens = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    lensPointerRef.current.active = false;
-    nexusFlightInputRef.current.active = false;
-    delete event.currentTarget.dataset.lensEngaged;
-  }, []);
+    resetLens(event.currentTarget);
+  }, [resetLens]);
 
   const moveFlightWithKeyboard = useCallback((event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.target !== event.currentTarget) return;
@@ -869,10 +873,7 @@ function MacroFlowExperience() {
           }}
           onKeyDown={moveFlightWithKeyboard}
           onKeyUp={stopFlightWithKeyboard}
-          onBlur={() => {
-            nexusFlightInputRef.current.active = false;
-            lensPointerRef.current.active = false;
-          }}
+          onBlur={(event) => resetLens(event.currentTarget)}
           aria-describedby="mf-lens-instructions"
         >
           <div className="mf-lens-reticle" aria-hidden="true">
