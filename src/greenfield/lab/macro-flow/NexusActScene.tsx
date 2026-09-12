@@ -167,6 +167,7 @@ function createSemanticMaterial(
       uMode: { value: 0 },
       uLensMix: { value: 0 },
       uRadius: { value: 0.18 },
+      uOverview: { value: 0 },
       uSemanticClass: { value: semanticClass },
     },
     vertexShader: `
@@ -210,6 +211,7 @@ function createSemanticMaterial(
       uniform float uMode;
       uniform float uLensMix;
       uniform float uRadius;
+      uniform float uOverview;
       uniform float uSemanticClass;
       varying vec3 vNormalView;
       varying vec3 vNormalWorld;
@@ -246,8 +248,8 @@ function createSemanticMaterial(
         vec2 lensDelta = screenUv - uLens;
         lensDelta.x *= uResolution.x / max(1.0, uResolution.y);
         float lensDistance = length(lensDelta);
-        float lensMask = (1.0 - smoothstep(uRadius, uRadius + 0.018, lensDistance)) * uLensMix;
-        float lensEdge = (1.0 - smoothstep(0.012, 0.026, abs(lensDistance - uRadius))) * uLensMix;
+        float lensMask = mix(1.0 - smoothstep(uRadius, uRadius + 0.018, lensDistance), 1.0, uOverview) * uLensMix;
+        float lensEdge = (1.0 - smoothstep(0.012, 0.026, abs(lensDistance - uRadius))) * uLensMix * (1.0 - uOverview);
 
         vec3 normalView = normalize(vNormalView);
         vec3 lightDirection = normalize(vec3(-0.46, 0.82, 0.34));
@@ -443,6 +445,7 @@ function updateSemanticMaterials(
     material.uniforms.uLens.value.set(lensX, lensY);
     material.uniforms.uResolution.value.set(width * pixelRatio, height * pixelRatio);
     material.uniforms.uMode.value = mode;
+    material.uniforms.uOverview.value = lensPointer?.overview ? 1 : 0;
     material.uniforms.uLensMix.value = lensMix;
     material.uniforms.uRadius.value = width <= 820 ? 0.18 : 0.2;
   });
@@ -3496,7 +3499,7 @@ function LensOptic({ progressRef, lensPointerRef, lensMode }: Pick<NexusActScene
 
   useFrame(({ camera, size }, delta) => {
     if (!rootRef.current) return;
-    const presence = lensPresenceAt(progressRef.current);
+    const presence = lensPointerRef.current.overview ? 0 : lensPresenceAt(progressRef.current);
     const lensPointer = lensPointerRef?.current;
     cursor.set((lensPointer?.x ?? 0.76) * 2 - 1, (lensPointer?.y ?? 0.54) * 2 - 1, 0.12).unproject(camera);
     direction.copy(cursor).sub(camera.position).normalize();
@@ -3558,7 +3561,7 @@ function CompactLensOptic({
 
   useFrame(({ camera, size }, delta) => {
     if (!rootRef.current) return;
-    const presence = lensPresenceAt(progressRef.current);
+    const presence = lensPointerRef.current.overview ? 0 : lensPresenceAt(progressRef.current);
     const lensPointer = lensPointerRef.current;
     cursor.set(lensPointer.x * 2 - 1, lensPointer.y * 2 - 1, 0.12).unproject(camera);
     direction.copy(cursor).sub(camera.position).normalize();

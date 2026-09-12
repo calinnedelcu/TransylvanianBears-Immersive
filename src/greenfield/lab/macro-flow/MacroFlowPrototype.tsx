@@ -220,6 +220,7 @@ function MacroFlowExperience() {
   const previousSchoolActStatusRef = useRef<SchoolActStatus>('idle');
   const schoolRequestCueRef = useRef(false);
   const lastSoundChapterRef = useRef<JourneyChapter | null>(null);
+  const [lensOverview, setLensOverview] = useState(false);
   const lensPointerRef = useRef<LensPointerState>({ x: 0.5, y: 0.5, active: false });
   const nexusFlightInputRef = useRef<NexusFlightInput>({ x: 0, y: 0, active: false });
   const reducedMotion = usePrefersReducedMotion();
@@ -611,7 +612,7 @@ function MacroFlowExperience() {
     const maximumY = compact ? 0.66 : 0.76;
     const x = Math.max(minimumX, Math.min(maximumX, event.clientX / window.innerWidth));
     const yFromTop = Math.max(minimumY, Math.min(maximumY, event.clientY / window.innerHeight));
-    lensPointerRef.current = { x, y: 1 - yFromTop, active: true };
+    lensPointerRef.current = { ...lensPointerRef.current, x, y: 1 - yFromTop, active: true };
     nexusFlightInputRef.current = {
       x: Math.max(-1, Math.min(1, event.clientX / window.innerWidth * 2 - 1)),
       y: Math.max(-1, Math.min(1, 1 - event.clientY / window.innerHeight * 2)),
@@ -643,7 +644,7 @@ function MacroFlowExperience() {
     const lensStep = event.shiftKey ? 0.06 : 0.025;
     const x = Math.max(compact ? 0.16 : 0.13, Math.min(compact ? 0.84 : 0.9, lensPointerRef.current.x + vector[0] * lensStep));
     const y = Math.max(compact ? 0.34 : 0.24, Math.min(compact ? 0.8 : 0.9, lensPointerRef.current.y + vector[1] * lensStep));
-    lensPointerRef.current = { x, y, active: true };
+    lensPointerRef.current = { ...lensPointerRef.current, x, y, active: true };
     event.currentTarget.style.setProperty('--mf-lens-x', `${x * 100}%`);
     event.currentTarget.style.setProperty('--mf-lens-y', `${(1 - y) * 100}%`);
     event.currentTarget.dataset.lensEngaged = 'true';
@@ -878,6 +879,7 @@ function MacroFlowExperience() {
             <section id="mf-lens" className="mf-beat mf-beat--lens" data-chapter="lens">
         <div
           className="mf-lens-knot"
+          data-overview={lensOverview || undefined}
           tabIndex={0}
           aria-label="Controlează drona Nexus și schimbă modul de analiză"
           onPointerDown={moveLens}
@@ -894,15 +896,30 @@ function MacroFlowExperience() {
           aria-describedby="mf-lens-instructions"
         >
           <div className="mf-lens-reticle" aria-hidden="true">
-            <i /><i /><span>inspect</span>
+            <i /><i /><span>{lensMode === 'raw' ? 'RAW / SOURCE' : lensMode === 'segmentation' ? 'SEG / CLASSES' : 'DET / OBJECTS'}</span>
           </div>
           <div className="mf-lens-knot__heading">
             <p className="mf-kicker">02 / Analiză · Project Nexus</p>
             <h2>Același oraș.<br /><span>Trei moduri de a-l vedea.</span></h2>
-            <p className="mf-lens-explanation" aria-live="polite" aria-atomic="true">{LENS_OPTIONS.find((option) => option.id === lensMode)?.explanation}</p>
+            <p className="mf-lens-explanation" aria-live="polite" aria-atomic="true">{lensOverview && lensMode !== 'raw' ? (lensMode === 'segmentation' ? 'Suprafețele sunt separate prin culoare în întregul oraș. Compară structura cu imaginea originală.' : 'Oamenii și vehiculele sunt evidențiate în întregul oraș. Revino la lentilă pentru inspecție locală.') : LENS_OPTIONS.find((option) => option.id === lensMode)?.explanation}</p>
           </div>
           <div className="mf-lens-dock">
-          <p className="mf-lens-hint" id="mf-lens-instructions"><span className="mf-lens-hint__pointer">Mișcă lentila peste oraș · </span><span className="mf-lens-hint__keyboard">Săgeți / WASD: explorează · Shift: pas mai mare</span><span className="mf-lens-hint__touch">Atinge scena pentru a inspecta</span></p>
+          <div className="mf-lens-scope" hidden={!macroWorldActive} role="group" aria-label="Aria de analiză">
+            <span>ARIA DE ANALIZĂ</span>
+            {[false, true].map((overview) => (
+              <button key={String(overview)} type="button" aria-pressed={lensOverview === overview}
+                onClick={() => {
+                  lensPointerRef.current.overview = overview;
+                  setLensOverview(overview);
+                }}>{overview ? 'Tot orașul' : 'Lentilă locală'}</button>
+            ))}
+          </div>
+          <p className="mf-lens-legend" aria-live="polite">
+            {lensMode === 'raw' ? 'RAW / Lumină · materiale · context' : lensMode === 'segmentation'
+              ? 'SEG / Suprafețe separate prin culoare'
+              : 'DET / Obiecte evidențiate · context păstrat'}
+          </p>
+          <p className="mf-lens-hint" id="mf-lens-instructions"><span className="mf-lens-hint__pointer">{lensOverview ? 'Explorează orașul · ' : 'Mișcă lentila peste oraș · '}</span><span className="mf-lens-hint__keyboard">Săgeți / WASD: explorează · Shift: pas mai mare</span><span className="mf-lens-hint__touch">{lensOverview ? 'Alege un mod pentru întregul oraș' : 'Atinge scena pentru a inspecta'}</span></p>
           <div className="mf-lens-control" role="group" aria-label="Mod de analiză">
             {LENS_OPTIONS.map((option) => {
               const Icon = option.icon;

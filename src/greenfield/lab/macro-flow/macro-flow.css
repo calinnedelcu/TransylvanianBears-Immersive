@@ -4865,3 +4865,25 @@ body.mf-lab-mode {
   .mf-rule-readout { padding: 14px 16px; }
   .mf-rule-readout strong { font-size: 24px; }
 }
+
+/* The analysis scope controls the same scene materials as the inspection lens. */
+.mf-lens-scope { display: flex; align-items: center; gap: 6px; padding: 6px; border: 1px solid #506962; background: #081211eb; }
+.mf-lens-scope > span { margin-right: auto; padding-left: 10px; font: 9px 'JetBrains Mono', monospace; letter-spacing: .1em; color: #b7c9c3; }
+.mf-lens-scope button { min-height: 44px; padding: 0 16px; border: 1px solid transparent; background: transparent; color: #c4d0c9; font: 11px 'JetBrains Mono', monospace; cursor: pointer; }
+.mf-lens-scope button[aria-pressed='true'] { border-color: #93d5ce; background: #93d5ce18; color: #c7fff4; }
+.mf-lens-scope button:focus-visible { outline: 2px solid #e1bd67; outline-offset: 2px; }
+.mf-lens-legend { margin: 0; color: #aadbd2; text-align: center; font: 10px/1.4 'JetBrains Mono', monospace; }
+.mf-lab[data-lens='segmentation'] .mf-lens-legend { color: #e1bd67; }
+.mf-lab[data-lens='detection'] .mf-lens-legend { color: #f29b86; }
+.mf-lens-knot[data-overview] .mf-lens-reticle { opacity: 0; }
+@media (max-width: 600px) {
+  .mf-lens-scope > span { display: none; }
+  .mf-lens-scope button { flex: 1; padding: 0 8px; }
+  .mf-lens-legend { font-size: 8px; }
+}
+@media (max-height: 600px) and (orientation: landscape) {
+  .mf-lens-scope { position: absolute; right: 0; bottom: calc(100% + 8px); }
+  .mf-lens-scope > span, .mf-lens-legend { display: none; }
+}
+
+.mf-lens-scope[hidden] { display: none; }
