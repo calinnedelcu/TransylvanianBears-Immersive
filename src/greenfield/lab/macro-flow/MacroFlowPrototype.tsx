@@ -795,7 +795,7 @@ function MacroFlowExperience() {
           >
             {audioEnabled ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
           </button>
-          <ViewTransitionLink className="mf-index-link" to="/work">
+          <ViewTransitionLink className="mf-index-link" to="/work" aria-label="Vezi proiectele">
             Open work index <Waypoints aria-hidden="true" />
           </ViewTransitionLink>
         </div>

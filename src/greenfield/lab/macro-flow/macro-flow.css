@@ -3082,7 +3082,7 @@ body.mf-lab-mode {
   }
 
   .mf-chapter-position {
-    width: min(220px, calc(100vw - 172px));
+    width: min(220px, calc(100vw - 190px));
     grid-template-columns: minmax(0, auto) 38px;
     justify-self: start;
     gap: 8px;
@@ -3108,6 +3108,10 @@ body.mf-lab-mode {
   }
 
   .mf-index-link {
+    width: 44px;
+    height: 44px;
+    justify-content: center;
+    flex-shrink: 0;
     font-size: 0;
   }  .mf-copy {
     padding: 92px 28px 54px;
@@ -3872,7 +3876,7 @@ body.mf-lab-mode {
   }
 
   .mf-chapter-position {
-    width: min(210px, calc(100vw - 172px));
+    width: min(210px, calc(100vw - 190px));
     grid-template-columns: minmax(0, auto) 34px;
     justify-self: start;
     gap: 7px;
