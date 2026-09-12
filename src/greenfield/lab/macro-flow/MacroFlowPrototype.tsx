@@ -720,7 +720,7 @@ function MacroFlowExperience() {
       <div className="mf-world" aria-hidden="true">
         {macroWorldActive ? (
           <WorldErrorBoundary onError={handleRendererError}>
-            <Suspense fallback={<VerticalSliceLoader />}>
+            <Suspense fallback={<VerticalSliceLoader onTimeout={handleRendererError} />}>
               <MacroFlowScene
                 activeChapter={activeChapter}
                 progressRef={progressRef}
