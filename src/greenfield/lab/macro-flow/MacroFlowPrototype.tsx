@@ -573,6 +573,23 @@ function MacroFlowExperience() {
     delete element.dataset.lensEngaged;
   }, []);
 
+  useEffect(() => {
+    const clearInspection = () => {
+      const scene = rootRef.current?.querySelector<HTMLDivElement>('.mf-lens-knot');
+      if (scene) resetLens(scene);
+    };
+    const handleVisibility = () => {
+      if (document.hidden) clearInspection();
+    };
+    if (activeChapter !== 'lens') clearInspection();
+    window.addEventListener('blur', clearInspection);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('blur', clearInspection);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [activeChapter, resetLens]);
+
   const moveLens = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     // Changing a mode must not steer the drone toward the controls.
     if ((event.target as HTMLElement).closest('.mf-lens-dock')) {
