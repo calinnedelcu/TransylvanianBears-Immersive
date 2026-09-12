@@ -4,14 +4,14 @@ import { VerticalSliceLoader } from './VerticalSliceLoader';
 
 type VerticalSliceLoadingGateProps = {
   cameraReady: boolean;
+  onTimeout: () => void;
 };
 
-export function VerticalSliceLoadingGate({ cameraReady }: VerticalSliceLoadingGateProps) {
+export function VerticalSliceLoadingGate({ cameraReady, onTimeout }: VerticalSliceLoadingGateProps) {
   const { active, loaded, progress, total } = useProgress();
   const [started, setStarted] = useState(false);
   const [revealing, setRevealing] = useState(false);
   const [ready, setReady] = useState(false);
-  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (active || total > 0) setStarted(true);
@@ -30,11 +30,11 @@ export function VerticalSliceLoadingGate({ cameraReady }: VerticalSliceLoadingGa
 
   useEffect(() => {
     if (ready) return;
-    const fallbackTimer = window.setTimeout(() => setFailed(true), 8_000);
+    const fallbackTimer = window.setTimeout(onTimeout, 8_000);
     return () => window.clearTimeout(fallbackTimer);
-  }, [ready]);
+  }, [onTimeout, ready]);
 
-  if (ready || failed) return null;
+  if (ready) return null;
   const composedProgress = revealing
     ? 100
     : cameraReady

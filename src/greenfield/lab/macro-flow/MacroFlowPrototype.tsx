@@ -224,7 +224,7 @@ function MacroFlowExperience() {
   const nexusFlightInputRef = useRef<NexusFlightInput>({ x: 0, y: 0, active: false });
   const reducedMotion = usePrefersReducedMotion();
   const [webglAvailable] = useState(supportsWebGL);
-  const [rendererFailure, setRendererFailure] = useState<'render-error' | 'context-lost' | null>(null);
+  const [rendererFailure, setRendererFailure] = useState<'render-error' | 'context-lost' | 'loading-timeout' | null>(null);
   const directInfectEntryRef = useRef(window.location.hash === '#mf-infect');
   const directInfectChapterReachedRef = useRef(false);
   /**
@@ -237,6 +237,7 @@ function MacroFlowExperience() {
   const [, setBuriedHandoffComplete] = useState(
     () => directInfectEntryRef.current,
   );
+  const handleLoadingTimeout = useCallback(() => setRendererFailure('loading-timeout'), []);
   const handleRendererError = useCallback(() => setRendererFailure('render-error'), []);
   const handleRendererContextLost = useCallback(() => setRendererFailure('context-lost'), []);
   const handleBuriedPixelHandoffRendered = useCallback(() => {
@@ -720,7 +721,7 @@ function MacroFlowExperience() {
       <div className="mf-world" aria-hidden="true">
         {macroWorldActive ? (
           <WorldErrorBoundary onError={handleRendererError}>
-            <Suspense fallback={<VerticalSliceLoader onTimeout={handleRendererError} />}>
+            <Suspense fallback={<VerticalSliceLoader onTimeout={handleLoadingTimeout} />}>
               <MacroFlowScene
                 activeChapter={activeChapter}
                 progressRef={progressRef}
@@ -744,6 +745,7 @@ function MacroFlowExperience() {
                 velocityRef={velocityRef}
                 onPerformanceFactor={handlePerformanceFactor}
                 onPerformanceFallback={handlePerformanceFallback}
+                onLoadingTimeout={handleLoadingTimeout}
                 onRendererFailure={handleRendererContextLost}
                 onBuriedPixelHandoffRendered={handleBuriedPixelHandoffRendered}
               />

@@ -74,6 +74,7 @@ type MacroFlowSceneProps = {
   onPerformanceFactor: (factor: number) => void;
   onPerformanceFallback: () => void;
   onRendererFailure: () => void;
+  onLoadingTimeout: () => void;
   onBuriedPixelHandoffRendered: () => void;
 };
 
@@ -1534,7 +1535,7 @@ export function MacroFlowScene(props: MacroFlowSceneProps) {
 
   return (
     <>
-      <VerticalSliceLoadingGate cameraReady={cameraReady} />
+      <VerticalSliceLoadingGate cameraReady={cameraReady} onTimeout={props.onLoadingTimeout} />
       <Canvas
         className="mf-canvas"
         dpr={dpr}
