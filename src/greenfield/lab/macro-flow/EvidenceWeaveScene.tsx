@@ -2,6 +2,7 @@ import { Line, PerformanceMonitor, useTexture } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Bloom, EffectComposer } from '@react-three/postprocessing';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { EvidenceFallback } from './EvidenceFallback';
 import * as THREE from 'three';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import {
@@ -1062,6 +1063,17 @@ function World(props: EvidenceWeaveSceneProps) {
 
 export default function EvidenceWeaveScene(props: EvidenceWeaveSceneProps) {
   const [dpr, setDpr] = useState(1.25);
+  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
+  const [contextLost, setContextLost] = useState(false);
+
+  useEffect(() => {
+    if (!canvas) return;
+    const handleContextLost = () => setContextLost(true);
+    canvas.addEventListener('webglcontextlost', handleContextLost);
+    return () => canvas.removeEventListener('webglcontextlost', handleContextLost);
+  }, [canvas]);
+
+  if (contextLost) return <EvidenceFallback activeId={props.activeId} />;
 
   return (
     <Canvas
@@ -1069,7 +1081,8 @@ export default function EvidenceWeaveScene(props: EvidenceWeaveSceneProps) {
       dpr={dpr}
       camera={{ fov: 47, near: 0.1, far: 110, position: [0.16, 0.08, 7.7] }}
       gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
-      fallback={<div className="ew-fallback">Evidence scene unavailable</div>}
+      onCreated={({ gl }) => setCanvas(gl.domElement)}
+      fallback={<EvidenceFallback activeId={props.activeId} />}
     >
       <Suspense fallback={null}>
         <PerformanceMonitor
