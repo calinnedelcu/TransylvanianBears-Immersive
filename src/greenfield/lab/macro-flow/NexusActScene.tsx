@@ -1,3 +1,4 @@
+import { NEXUS_SEGMENTS } from './nexusPalette';
 import { useTexture } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef, type MutableRefObject } from 'react';
@@ -1204,7 +1205,7 @@ function StreetFurniture({
     shrub: new THREE.ConeGeometry(0.44, 1, 7),
   }), []);
   const semanticMaterials = useMemo(() => ({
-    road: createSemanticMaterial('#58615b', '#4f9692', 1, '#df6553'),
+    road: createSemanticMaterial('#58615b', NEXUS_SEGMENTS.road, 1, '#df6553'),
     sidewalk: createSemanticMaterial('#74786f', '#d0ae60', 2, '#df6553'),
     curb: createSemanticMaterial('#b5ad96', '#e1bd67', 2, '#df6553'),
     marking: createSemanticMaterial('#d8d2bd', '#e9dfb5', 3, '#df6553'),
@@ -1511,8 +1512,8 @@ function Traffic({
     wheel: new THREE.CylinderGeometry(0.15, 0.15, 0.1, 12),
   }), []);
   const materials = useMemo(() => ({
-    body: createSemanticMaterial('#ffffff', '#cf6554', 5),
-    cabin: createSemanticMaterial('#324345', '#72d9d6', 5),
+    body: createSemanticMaterial('#ffffff', NEXUS_SEGMENTS.vehicle, 5),
+    cabin: createSemanticMaterial('#324345', NEXUS_SEGMENTS.vehicle, 5),
     wheel: new THREE.MeshStandardMaterial({ color: '#0a0e0f', roughness: 0.88 }),
   }), []);
 
@@ -1652,10 +1653,10 @@ function TrackedSubjects({
     limb: new THREE.CapsuleGeometry(0.075, 0.42, 3, 7),
   }), []);
   const materials = useMemo(() => ({
-    solid: createSemanticMaterial('#ffffff', '#cf6554', 5),
-    body: createSemanticMaterial('#ffffff', '#72d9d6', 5),
-    head: createSemanticMaterial('#b7aa96', '#72d9d6', 5),
-    limb: createSemanticMaterial('#ffffff', '#72d9d6', 5),
+    solid: createSemanticMaterial('#ffffff', NEXUS_SEGMENTS.person, 5),
+    body: createSemanticMaterial('#ffffff', NEXUS_SEGMENTS.person, 5),
+    head: createSemanticMaterial('#b7aa96', NEXUS_SEGMENTS.person, 5),
+    limb: createSemanticMaterial('#ffffff', NEXUS_SEGMENTS.person, 5),
     boundary: new THREE.MeshBasicMaterial({
       color: '#df6553',
       transparent: true,
@@ -2463,10 +2464,10 @@ function CompactNexusCity({
   }), []);
   const materials = useMemo(() => ({
     architecture: createSemanticMaterial('#ffffff', '#c96554', 0),
-    street: createSemanticMaterial('#74786f', '#4f9692', 1),
+    street: createSemanticMaterial('#74786f', NEXUS_SEGMENTS.road, 1),
     opening: createSemanticMaterial('#ffffff', '#d0ae60', 3),
-    person: createSemanticMaterial('#ffffff', '#72d9d6', 5),
-    traffic: createSemanticMaterial('#ffffff', '#e1bd67', 5),
+    person: createSemanticMaterial('#ffffff', NEXUS_SEGMENTS.person, 5),
+    traffic: createSemanticMaterial('#ffffff', NEXUS_SEGMENTS.vehicle, 5),
     horizon: new THREE.MeshBasicMaterial({ color: '#112120', fog: true }),
   }), []);
 

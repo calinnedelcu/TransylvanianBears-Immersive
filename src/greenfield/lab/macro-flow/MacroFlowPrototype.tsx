@@ -1,3 +1,4 @@
+import { NEXUS_SEGMENTS } from './nexusPalette';
 import {
   ArrowDown,
   Boxes,
@@ -916,7 +917,7 @@ function MacroFlowExperience() {
           </div>
           <p className="mf-lens-legend" aria-live="polite">
             {lensMode === 'raw' ? 'RAW / Lumină · materiale · context' : lensMode === 'segmentation'
-              ? 'SEG / Suprafețe separate prin culoare'
+              ? <><span><i style={{ background: NEXUS_SEGMENTS.road }} />Carosabil</span><span><i style={{ background: NEXUS_SEGMENTS.person }} />Oameni</span><span><i style={{ background: NEXUS_SEGMENTS.vehicle }} />Vehicule</span></>
               : 'DET / Obiecte evidențiate · context păstrat'}
           </p>
           <p className="mf-lens-hint" id="mf-lens-instructions"><span className="mf-lens-hint__pointer">{lensOverview ? 'Explorează orașul · ' : 'Mișcă lentila peste oraș · '}</span><span className="mf-lens-hint__keyboard">Săgeți / WASD: explorează · Shift: pas mai mare</span><span className="mf-lens-hint__touch">{lensOverview ? 'Alege un mod pentru întregul oraș' : 'Atinge scena pentru a inspecta'}</span></p>
