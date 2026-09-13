@@ -442,11 +442,27 @@ function updateSemanticMaterials(
   const lensPointer = lensPointerRef?.current;
   const lensX = lensPointer?.x ?? 0.76;
   const lensY = lensPointer?.y ?? 0.54;
+  const overviewTarget = lensPointer?.overview ? 1 : 0;
+  const now = performance.now();
   materials.forEach((material) => {
     material.uniforms.uLens.value.set(lensX, lensY);
     material.uniforms.uResolution.value.set(width * pixelRatio, height * pixelRatio);
     material.uniforms.uMode.value = mode;
-    material.uniforms.uOverview.value = lensPointer?.overview ? 1 : 0;
+    let transition = material.userData.overviewTransition as {
+      from: number; target: number; started: number; duration: number;
+    } | undefined;
+    if (!transition || transition.target !== overviewTarget) {
+      transition = {
+        from: material.uniforms.uOverview.value,
+        target: overviewTarget,
+        started: now,
+        duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 280,
+      };
+      material.userData.overviewTransition = transition;
+    }
+    const t = transition.duration === 0 ? 1 : Math.min(1, (now - transition.started) / transition.duration);
+    const eased = t * t * (3 - 2 * t);
+    material.uniforms.uOverview.value = THREE.MathUtils.lerp(transition.from, transition.target, eased);
     material.uniforms.uLensMix.value = lensMix;
     material.uniforms.uRadius.value = width <= 820 ? 0.18 : 0.2;
   });
