@@ -4879,7 +4879,7 @@ body.mf-lab-mode {
 @media (max-width: 600px) {
   .mf-lens-scope > span { display: none; }
   .mf-lens-scope button { flex: 1; padding: 0 8px; }
-  .mf-lens-legend { font-size: 8px; }
+  .mf-lens-legend { font-size: 11px; }
 }
 @media (max-height: 600px) and (orientation: landscape) {
   .mf-lens-scope { position: absolute; right: 0; bottom: calc(100% + 8px); }
@@ -4891,6 +4891,10 @@ body.mf-lab-mode {
 /* Chapter links land below the 72px page scroll padding. Keep the full dock visible. */
 .mf-lens-knot { min-height: calc(100dvh - 72px); }
 
-.mf-lens-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px 18px; }
+.mf-lens-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px 12px; padding: 7px 8px; background: #081211; border: 1px solid #506962; }
 .mf-lens-legend > span { display: inline-flex; align-items: center; gap: 6px; }
 .mf-lens-legend i { width: 8px; height: 8px; border: 1px solid #ffffff55; }
+
+@media (max-height: 600px) and (orientation: landscape) {
+  .mf-lens-legend { display: none; }
+}
