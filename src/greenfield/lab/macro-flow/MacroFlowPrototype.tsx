@@ -592,6 +592,19 @@ function MacroFlowExperience() {
     };
   }, [activeChapter, resetLens]);
 
+  const resetComparison = useCallback(() => {
+    lensPointerRef.current = { x: 0.5, y: 0.5, active: false, overview: false };
+    nexusFlightInputRef.current = { x: 0, y: 0, active: false };
+    setLensOverview(false);
+    selectLens('raw');
+    const scene = rootRef.current?.querySelector<HTMLDivElement>('.mf-lens-knot');
+    if (scene) {
+      resetLens(scene);
+      scene.style.setProperty('--mf-lens-x', '50%');
+      scene.style.setProperty('--mf-lens-y', '50%');
+    }
+  }, [resetLens, selectLens]);
+
   const moveLens = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     // Changing a mode must not steer the drone toward the controls.
     if ((event.target as HTMLElement).closest('.mf-lens-dock')) {
@@ -924,6 +937,7 @@ function MacroFlowExperience() {
                   setLensOverview(overview);
                 }}>{overview ? 'Tot orașul' : 'Lentilă locală'}</button>
             ))}
+            <button type="button" onClick={resetComparison} title="Revino la Raw și centrează lentila">Resetează</button>
           </div>
           <p className="mf-lens-legend" aria-live="polite">
             {lensMode === 'raw' ? 'RAW / Lumină · materiale · context' : lensMode === 'segmentation'
