@@ -4887,3 +4887,6 @@ body.mf-lab-mode {
 }
 
 .mf-lens-scope[hidden] { display: none; }
+
+/* Chapter links land below the 72px page scroll padding. Keep the full dock visible. */
+.mf-lens-knot { min-height: calc(100dvh - 72px); }
