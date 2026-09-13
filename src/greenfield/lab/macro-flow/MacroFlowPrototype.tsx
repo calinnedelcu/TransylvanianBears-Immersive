@@ -629,7 +629,17 @@ function MacroFlowExperience() {
   }, [resetLens]);
 
   const moveFlightWithKeyboard = useCallback((event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget) return;
+    if (event.target !== event.currentTarget || event.ctrlKey || event.metaKey || event.altKey || event.nativeEvent.isComposing) return;
+    if (event.key === 'Escape') {
+      resetLens(event.currentTarget);
+      return;
+    }
+    const mode = { '1': 'raw', '2': 'segmentation', '3': 'detection' }[event.key] as MacroLensMode | undefined;
+    if (mode) {
+      event.preventDefault();
+      selectLens(mode);
+      return;
+    }
     const vector = event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a'
       ? [-1, 0]
       : event.key === 'ArrowRight' || event.key.toLowerCase() === 'd'
@@ -655,7 +665,7 @@ function MacroFlowExperience() {
       y: Math.max(-1, Math.min(1, nexusFlightInputRef.current.y + vector[1] * step)),
       active: true,
     };
-  }, []);
+  }, [resetLens, selectLens]);
 
   const stopFlightWithKeyboard = useCallback((event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.target !== event.currentTarget) return;
@@ -920,7 +930,7 @@ function MacroFlowExperience() {
               ? <><span><i style={{ background: NEXUS_SEGMENTS.road }} />Carosabil</span><span><i style={{ background: NEXUS_SEGMENTS.person }} />Oameni</span><span><i style={{ background: NEXUS_SEGMENTS.vehicle }} />Vehicule</span></>
               : 'DET / Obiecte evidențiate · context păstrat'}
           </p>
-          <p className="mf-lens-hint" id="mf-lens-instructions"><span className="mf-lens-hint__pointer">{lensOverview ? 'Explorează orașul · ' : 'Mișcă lentila peste oraș · '}</span><span className="mf-lens-hint__keyboard">Săgeți / WASD: explorează · Shift: pas mai mare</span><span className="mf-lens-hint__touch">{lensOverview ? 'Alege un mod pentru întregul oraș' : 'Atinge scena pentru a inspecta'}</span></p>
+          <p className="mf-lens-hint" id="mf-lens-instructions"><span className="mf-lens-hint__pointer">{lensOverview ? 'Explorează orașul · ' : 'Mișcă lentila peste oraș · '}</span><span className="mf-lens-hint__keyboard">1–2–3: moduri · Săgeți / WASD: explorează · Shift: pas mai mare · Esc: oprește</span><span className="mf-lens-hint__touch">{lensOverview ? 'Alege un mod pentru întregul oraș' : 'Atinge scena pentru a inspecta'}</span></p>
           <div className="mf-lens-control" role="group" aria-label="Mod de analiză">
             {LENS_OPTIONS.map((option) => {
               const Icon = option.icon;
