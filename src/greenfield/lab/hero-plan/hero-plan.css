@@ -5,7 +5,7 @@
    ========================================================================= */
 
 body.hp-lab-mode {
-  background: #0a1216;
+  background: #090b0c;
   overscroll-behavior-y: none;
 }
 
@@ -18,7 +18,7 @@ body.hp-lab-mode {
  */
 .hp-lab,
 .hp-opening {
-  --hp-bg: #0a1216;
+  --hp-bg: #090b0c;
   --hp-ink: #d7d0c3;
   --hp-ink-strong: #f2ede3;
   --hp-muted: #8a928f;
@@ -154,66 +154,14 @@ body.hp-lab-mode {
   opacity: var(--hp-aura-out);
 }
 
-/* The initial sky color is also the fallback if 2D canvas is unavailable. */
+/* Fereastra rece sus-dreapta, lumina caldă joasă stânga: două surse, deci volum. */
 .hp-aura__wash {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(55% 100% at 78% 22%, rgb(75 53 124 / .35), transparent 75%),
-    linear-gradient(135deg, #090f22, #13142d 66%, #080c19);
-}
-
-.hp-cosmos {
-  position: absolute;
-  inset: -3%;
-}
-
-.hp-cosmos canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.hp-cosmos__nebula {
-  translate: calc(var(--hp-px) * -5px) calc(var(--hp-py) * -4px);
-  animation: hp-cosmic-drift 38s ease-in-out infinite alternate;
-}
-
-.hp-cosmos__stars {
-  translate: calc(var(--hp-px) * -13px) calc(var(--hp-py) * -9px);
-}
-
-.hp-cosmos__veil {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(27% 35% at 73% 51%, rgb(6 10 23 / .38), transparent 100%),
-    linear-gradient(0deg, rgb(6 10 19 / .65), transparent 28%);
-}
-
-@keyframes hp-cosmic-drift {
-  from { transform: scale(1); opacity: .85; }
-  to { transform: scale(1.035); opacity: 1; }
-}
-
-.hp-opening[data-plan='world'] .hp-cosmos__nebula { animation-play-state: paused; }
-
-@media (prefers-reduced-motion: reduce) {
-  .hp-cosmos canvas { translate: none; animation: none; }
-}
-
-/* Un halo concentric leagă planul de fundal fără să-i deseneze încă o schemă. */
-.hp-aura__wash::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(31% 45% at 72% 52%, rgb(105 206 208 / 0.09), transparent 74%),
-    radial-gradient(14% 20% at 72% 52%, rgb(238 184 91 / 0.11), transparent 78%);
-  opacity: 0.9;
-  mix-blend-mode: screen;
+    radial-gradient(58% 46% at 10% 88%, rgb(105 206 208 / 0.10), transparent 66%),
+    radial-gradient(86% 64% at 82% 4%, rgb(43 66 87 / 0.44), transparent 72%),
+    linear-gradient(178deg, rgb(14 20 27 / 0.9) 0%, rgb(9 11 12 / 0.5) 54%, rgb(10 13 15 / 0.85) 100%);
 }
 
 /*
@@ -225,8 +173,8 @@ body.hp-lab-mode {
   inset: -18%;
   background: radial-gradient(
     42% 42% at 70% 50%,
-    rgb(169 133 70 / 0.28),
-    rgb(169 133 70 / 0.10) 36%,
+    rgb(169 133 70 / 0.22),
+    rgb(169 133 70 / 0.08) 36%,
     transparent 64%
   );
   /*
@@ -308,7 +256,7 @@ body.hp-lab-mode {
 .hp-aura__grain {
   position: absolute;
   inset: -60px;
-  opacity: 0.025;
+  opacity: 0.055;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
   animation: hp-grain 900ms steps(1) infinite;
 }
@@ -325,7 +273,7 @@ body.hp-lab-mode {
 .hp-aura__vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(118% 88% at 50% 44%, transparent 42%, rgb(4 6 7 / 0.58) 100%);
+  background: radial-gradient(118% 88% at 50% 44%, transparent 40%, rgb(4 6 7 / 0.74) 100%);
 }
 
 /* Blue hour: apare pe măsură ce planul se înclină, nu de la început. */
