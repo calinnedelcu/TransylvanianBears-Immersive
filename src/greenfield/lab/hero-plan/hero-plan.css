@@ -159,11 +159,54 @@ body.hp-lab-mode {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(44% 62% at 72% 52%, rgb(105 206 208 / 0.14), transparent 70%),
-    radial-gradient(30% 34% at 70% 54%, rgb(169 133 70 / 0.15), transparent 72%),
-    radial-gradient(62% 58% at 16% 20%, rgb(39 79 97 / 0.34), transparent 76%),
-    radial-gradient(56% 46% at 10% 88%, rgb(105 206 208 / 0.11), transparent 66%),
-    linear-gradient(145deg, rgb(18 37 47 / 0.96) 0%, rgb(10 24 30 / 0.96) 48%, rgb(7 14 17 / 0.98) 100%);
+    radial-gradient(65% 66% at 5% -12%, rgb(92 145 184 / .28), transparent 76%),
+    radial-gradient(48% 46% at 48% 110%, rgb(65 161 164 / .2), transparent 75%),
+    radial-gradient(44% 70% at 105% 8%, rgb(177 137 90 / .17), transparent 74%),
+    linear-gradient(125deg, #152b3a, #0c1b26 47%, #101b22 75%, #1b262d);
+}
+
+.hp-light-field {
+  position: absolute;
+  inset: -3%;
+  width: 106%;
+  height: 106%;
+  max-width: none;
+  overflow: visible;
+  translate: calc(var(--hp-px) * -12px) calc(var(--hp-py) * -8px);
+  /* Detail gathers around the opening, leaving the copy quiet. */
+  mask-image: linear-gradient(90deg, rgb(0 0 0 / .55), #000 56%);
+}
+
+.hp-light-field__ribbon {
+  transform-origin: 72% 50%;
+  animation: hp-field-breathe 24s ease-in-out infinite alternate;
+}
+
+.hp-light-field__echo {
+  transform-origin: 25% 10%;
+  animation: hp-field-breathe 32s ease-in-out infinite alternate-reverse;
+  opacity: .28;
+}
+
+@keyframes hp-field-breathe {
+  from { transform: translateY(0) rotate(-1deg) scale(1); opacity: .7; }
+  to { transform: translateY(-12px) rotate(1deg) scale(1.03); opacity: 1; }
+}
+
+.hp-opening[data-plan='world'] .hp-light-field g { animation-play-state: paused; }
+
+@media (max-width: 900px) {
+  .hp-light-field {
+    width: 200%;
+    left: -75%;
+    opacity: .65;
+    mask-image: linear-gradient(#000, rgb(0 0 0 / .2) 70%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hp-light-field { translate: none; }
+  .hp-light-field g { animation: none; }
 }
 
 /* Un halo concentric leagă planul de fundal fără să-i deseneze încă o schemă. */
@@ -270,7 +313,7 @@ body.hp-lab-mode {
 .hp-aura__grain {
   position: absolute;
   inset: -60px;
-  opacity: 0.055;
+  opacity: 0.025;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
   animation: hp-grain 900ms steps(1) infinite;
 }

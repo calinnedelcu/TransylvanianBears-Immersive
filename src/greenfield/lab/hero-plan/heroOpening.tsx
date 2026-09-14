@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ARCHIVE, PROJECTS, TEAM } from '../../data';
 import { CitadelPlan, CitadelPlanShell, PlanTerrain } from './CitadelPlan';
 import type { HeroOpening } from './useHeroOpening';
+import { PlanLightField } from './PlanLightField';
 
 /**
  * The opening's DOM layer and the state it shares with the 3D scene.
@@ -55,8 +56,8 @@ export function HeroPlanAtmosphere() {
   return (
     <div className="hp-aura" aria-hidden="true">
       <div className="hp-aura__wash" />
+      <PlanLightField />
       <div className="hp-aura__lamp" />
-      <div className="hp-aura__dust" />
       <div className="hp-aura__grain" />
       <div className="hp-aura__vignette" />
     </div>
