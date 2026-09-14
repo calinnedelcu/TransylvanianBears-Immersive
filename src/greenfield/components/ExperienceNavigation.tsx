@@ -1,7 +1,8 @@
+import { createPortal } from 'react-dom';
 import { useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { PROJECTS } from '../data';
-import { projectExperienceUrl } from '../projectExperience';
+import { PROJECT_EXPERIENCE_ORDER, projectExperienceUrl } from '../projectExperience';
 import { ViewTransitionLink } from './ViewTransitionLink';
 import './experience-navigation.css';
 
@@ -10,15 +11,21 @@ export function ExperienceNavigation() {
   const { search } = useLocation();
   const slug = new URLSearchParams(search).get('project');
   const project = PROJECTS.find((item) => item.slug === slug);
+  const nextSlug = project ? PROJECT_EXPERIENCE_ORDER[PROJECT_EXPERIENCE_ORDER.indexOf(project.slug) + 1] : undefined;
+  const nextProject = PROJECTS.find((item) => item.slug === nextSlug);
   const close = () => { if (details.current) details.current.open = false; };
   return (
     <>
     {project && <ViewTransitionLink className="experience-return" to={`/work/${project.slug}`}>
       ← Prezentarea proiectului: {project.shortTitle}
     </ViewTransitionLink>}
-    {project && <ViewTransitionLink className="experience-end" to={`/work/${project.slug}`}>
-      Secțiune încheiată · Înapoi la {project.shortTitle} →
-    </ViewTransitionLink>}
+    {project && createPortal(<nav className="experience-end" aria-label="Continuă după proiect">
+      <p>Ai ajuns la finalul secțiunii {project.shortTitle}.</p>
+      {nextProject ? <ViewTransitionLink to={projectExperienceUrl(nextProject.slug)!}>
+        Continuă cu {nextProject.shortTitle} →
+      </ViewTransitionLink> : <ViewTransitionLink to="/work">Ai explorat ultimul proiect · Vezi toate proiectele →</ViewTransitionLink>}
+      <ViewTransitionLink to={`/work/${project.slug}`}>Înapoi la prezentare</ViewTransitionLink>
+    </nav>, document.body)}
     <details ref={details} className="experience-nav" onBlur={(event) => {
       if (!event.currentTarget.contains(event.relatedTarget as Node | null)) close();
     }} onKeyDown={(event) => {

@@ -12,3 +12,9 @@ export function projectExperienceUrl(slug: string) {
   const entry = PROJECT_EXPERIENCE[slug];
   return entry ? `/?project=${encodeURIComponent(slug)}#${entry.anchor}` : undefined;
 }
+
+// Narrative order: the game breach precedes the two research projects.
+export const PROJECT_EXPERIENCE_ORDER = [
+  'project-nexus', 'aegis', 'schoolmate', 'the-buried-hands',
+  'infect-exe', 'economy-news', 'automation-risk',
+];

@@ -13,3 +13,10 @@
 
 .experience-end { display: none; }
 html[data-project-end] .experience-end { position: fixed; display: block; bottom: 16px; right: 16px; max-width: calc(100vw - 32px); padding: 16px; background: #081211; border: 1px solid #93d5ce; color: #d9f3e8; font: 11px/1.5 'JetBrains Mono', monospace; text-decoration: none; }
+
+.experience-end p { margin: 0 0 8px; color: #b5c9c1; }
+.experience-end a { display: flex; align-items: center; min-height: 44px; padding: 8px 10px; color: #d9f3e8; text-decoration: none; }
+.experience-end a:first-of-type { background: #c7fff4; color: #081211; }
+.experience-end a:focus-visible { outline: 2px solid #e1bd67; outline-offset: 2px; }
+
+html[data-project-end] .experience-end { z-index: 120; }

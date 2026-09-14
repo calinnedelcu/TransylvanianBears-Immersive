@@ -860,7 +860,12 @@ function MacroFlowExperience() {
           <HeroPlanAtmosphere />
           <HeroPlanTitle onFollow={() => {
             const beat = heroBeatRef.current;
-            if (beat) scrollSmoothTo(beat.offsetTop + beat.offsetHeight);
+            if (beat) {
+              const travel = Math.max(0, beat.offsetHeight - window.innerHeight);
+              // Stop inside the citadel reveal; the visitor controls the rest of the journey.
+              const target = travel > 0 ? beat.offsetTop + travel * 0.55 : beat.offsetTop + beat.offsetHeight;
+              scrollSmoothTo(target, 2.4);
+            }
           }} />
           <HeroPlanSheet opening={opening} interactive={activeChapter === 'threshold'} />
           {/* Ancorat în viewport, nu în scenă: panoul stă în colțul cadrului, iar
