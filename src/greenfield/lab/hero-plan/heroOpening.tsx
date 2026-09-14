@@ -55,6 +55,26 @@ export function HeroPlanAtmosphere() {
   return (
     <div className="hp-aura" aria-hidden="true">
       <div className="hp-aura__wash" />
+      <svg className="hp-landscape" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+          <linearGradient id="hp-ridge-light" x2="0" y2="1">
+            <stop stopColor="#809da0" stopOpacity=".52" />
+            <stop offset="1" stopColor="#173b44" stopOpacity=".08" />
+          </linearGradient>
+          <linearGradient id="hp-valley" x2="0" y2="1">
+            <stop stopColor="#275660" />
+            <stop offset="1" stopColor="#091b25" />
+          </linearGradient>
+        </defs>
+        <circle className="hp-landscape__sun" cx="1200" cy="275" r="108" fill="#e5bc83" />
+        <path fill="url(#hp-ridge-light)" d="M0 530 120 475 205 502 354 376 409 410 547 286 592 320 658 246 736 332 815 304 941 388 1048 288 1100 318 1200 227 1280 315 1344 295 1460 399 1600 322V1000H0Z" />
+        <path fill="none" stroke="#aac5c0" strokeOpacity=".22" d="m0 530 120-55 85 27 149-126 55 34 138-124 45 34 66-74 78 86 79-28 126 84 107-100 52 30 100-91 80 88 64-20 116 104 140-77" />
+        <path fill="#1c414d" fillOpacity=".65" d="M0 674 176 582 268 611 432 464 553 520 674 409 820 529 943 464 1103 598 1290 450 1454 516 1600 458V1000H0Z" />
+        <path fill="url(#hp-valley)" d="M0 795Q200 660 416 713T797 740Q970 675 1130 699T1600 608V1000H0Z" />
+        <path fill="#0a2029" d="M0 856Q210 755 460 844T903 848Q1290 730 1600 799V1000H0Z" />
+        <path fill="none" stroke="#91c8c0" strokeOpacity=".15" d="M1600 692Q1260 777 1010 755T612 806M1600 710Q1320 803 1040 777T680 825M1600 733Q1320 826 1090 803" />
+      </svg>
+      <div className="hp-aura__mist" />
       <div className="hp-aura__lamp" />
       <div className="hp-aura__dust" />
       <div className="hp-aura__grain" />

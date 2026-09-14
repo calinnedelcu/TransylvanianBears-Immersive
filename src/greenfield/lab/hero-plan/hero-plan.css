@@ -5,7 +5,7 @@
    ========================================================================= */
 
 body.hp-lab-mode {
-  background: #0a1216;
+  background: #090b0c;
   overscroll-behavior-y: none;
 }
 
@@ -18,7 +18,7 @@ body.hp-lab-mode {
  */
 .hp-lab,
 .hp-opening {
-  --hp-bg: #0a1216;
+  --hp-bg: #090b0c;
   --hp-ink: #d7d0c3;
   --hp-ink-strong: #f2ede3;
   --hp-muted: #8a928f;
@@ -159,23 +159,43 @@ body.hp-lab-mode {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(44% 62% at 72% 52%, rgb(105 206 208 / 0.14), transparent 70%),
-    radial-gradient(30% 34% at 70% 54%, rgb(169 133 70 / 0.15), transparent 72%),
-    radial-gradient(62% 58% at 16% 20%, rgb(39 79 97 / 0.34), transparent 76%),
-    radial-gradient(56% 46% at 10% 88%, rgb(105 206 208 / 0.11), transparent 66%),
-    linear-gradient(145deg, rgb(18 37 47 / 0.96) 0%, rgb(10 24 30 / 0.96) 48%, rgb(7 14 17 / 0.98) 100%);
+    radial-gradient(44% 62% at 76% 30%, rgb(205 155 98 / .25), transparent 72%),
+    linear-gradient(122deg, #112b3b 8%, #244957 58%, #53615e 100%);
 }
 
-/* Un halo concentric leagă planul de fundal fără să-i deseneze încă o schemă. */
-.hp-aura__wash::after {
-  content: '';
+.hp-landscape {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  inset: 0;
+  opacity: .82;
+  mask-image: linear-gradient(90deg, rgb(0 0 0 / .22), #000 65%);
+  transform: translate3d(calc(var(--hp-px) * -6px), calc(var(--hp-py) * -4px), 0) scale(1.02);
+}
+
+.hp-landscape__sun { opacity: .14; }
+
+.hp-aura__mist {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(31% 45% at 72% 52%, rgb(105 206 208 / 0.09), transparent 74%),
-    radial-gradient(14% 20% at 72% 52%, rgb(238 184 91 / 0.11), transparent 78%);
-  opacity: 0.9;
-  mix-blend-mode: screen;
+    radial-gradient(65% 10% at 83% 69%, rgb(161 202 197 / .18), transparent 80%),
+    radial-gradient(55% 12% at 65% 83%, rgb(100 176 181 / .12), transparent 80%),
+    linear-gradient(90deg, rgb(7 22 32 / .65), transparent 72%),
+    linear-gradient(0deg, #091820, transparent 38%);
+}
+
+@media (max-width: 900px) {
+  .hp-landscape {
+    mask-image: linear-gradient(#000, rgb(0 0 0 / .2) 65%);
+  }
+  .hp-aura__mist {
+    background: linear-gradient(0deg, #091820 5%, rgb(9 24 32 / .75) 45%, transparent 88%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hp-landscape { transform: none; }
 }
 
 /*
@@ -187,8 +207,8 @@ body.hp-lab-mode {
   inset: -18%;
   background: radial-gradient(
     42% 42% at 70% 50%,
-    rgb(169 133 70 / 0.28),
-    rgb(169 133 70 / 0.10) 36%,
+    rgb(169 133 70 / 0.22),
+    rgb(169 133 70 / 0.08) 36%,
     transparent 64%
   );
   /*
@@ -287,7 +307,7 @@ body.hp-lab-mode {
 .hp-aura__vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(118% 88% at 50% 44%, transparent 42%, rgb(4 6 7 / 0.58) 100%);
+  background: radial-gradient(118% 88% at 50% 44%, transparent 40%, rgb(4 6 7 / 0.74) 100%);
 }
 
 /* Blue hour: apare pe măsură ce planul se înclină, nu de la început. */
