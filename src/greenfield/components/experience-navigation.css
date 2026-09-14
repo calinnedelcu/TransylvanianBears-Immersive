@@ -10,3 +10,6 @@
 
 .experience-return { position: fixed; top: 76px; left: 16px; max-width: calc(100vw - 32px); min-height: 44px; display: flex; align-items: center; padding: 8px 12px; border: 1px solid #506962; background: #081211; color: #d9f3e8; font: 10px/1.4 'JetBrains Mono', monospace; text-decoration: none; }
 @media(max-height: 520px) { .experience-return { top: 58px; min-height: 36px; } }
+
+.experience-end { display: none; }
+html[data-project-end] .experience-end { position: fixed; display: block; bottom: 16px; right: 16px; max-width: calc(100vw - 32px); padding: 16px; background: #081211; border: 1px solid #93d5ce; color: #d9f3e8; font: 11px/1.5 'JetBrains Mono', monospace; text-decoration: none; }

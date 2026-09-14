@@ -1,3 +1,4 @@
+import { useProjectScrollBounds } from '../../components/useProjectScrollBounds';
 import { ExperienceNavigation } from '../../components/ExperienceNavigation';
 import { NEXUS_SEGMENTS } from './nexusPalette';
 import {
@@ -166,6 +167,7 @@ const LENS_OPTIONS: Array<{
 ];
 
 function MacroFlowExperience() {
+  useProjectScrollBounds();
   const opening = useHeroOpening();
   /**
    * ?hp=0.8 holds the opening at one frame of itself. The sequence only exists

@@ -16,6 +16,9 @@ export function ExperienceNavigation() {
     {project && <ViewTransitionLink className="experience-return" to={`/work/${project.slug}`}>
       ← Prezentarea proiectului: {project.shortTitle}
     </ViewTransitionLink>}
+    {project && <ViewTransitionLink className="experience-end" to={`/work/${project.slug}`}>
+      Secțiune încheiată · Înapoi la {project.shortTitle} →
+    </ViewTransitionLink>}
     <details ref={details} className="experience-nav" onBlur={(event) => {
       if (!event.currentTarget.contains(event.relatedTarget as Node | null)) close();
     }} onKeyDown={(event) => {
@@ -25,8 +28,9 @@ export function ExperienceNavigation() {
       <nav aria-label="Navigare între proiecte">
         {project && <ViewTransitionLink to={`/work/${project.slug}`} onClick={close}>← Înapoi la prezentarea: {project.shortTitle}</ViewTransitionLink>}
         <ViewTransitionLink to="/work" onClick={close}>Vezi proiectele direct →</ViewTransitionLink>
-        <p>Sari la un proiect în experiență</p>
-        {PROJECTS.map((item) => {
+        {project && <ViewTransitionLink to="/" onClick={close}>Deschide experiența 3D completă →</ViewTransitionLink>}
+        {!project && <p>Sari la un proiect în experiență</p>}
+        {!project && PROJECTS.map((item) => {
           const to = projectExperienceUrl(item.slug);
           return to && <ViewTransitionLink key={item.id} to={to} onClick={close}>{item.shortTitle}</ViewTransitionLink>;
         })}
