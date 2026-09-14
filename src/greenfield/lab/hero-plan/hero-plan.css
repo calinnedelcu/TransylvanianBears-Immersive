@@ -5,7 +5,7 @@
    ========================================================================= */
 
 body.hp-lab-mode {
-  background: #090b0c;
+  background: #0a1216;
   overscroll-behavior-y: none;
 }
 
@@ -18,7 +18,7 @@ body.hp-lab-mode {
  */
 .hp-lab,
 .hp-opening {
-  --hp-bg: #090b0c;
+  --hp-bg: #0a1216;
   --hp-ink: #d7d0c3;
   --hp-ink-strong: #f2ede3;
   --hp-muted: #8a928f;
@@ -159,9 +159,23 @@ body.hp-lab-mode {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(58% 46% at 10% 88%, rgb(105 206 208 / 0.10), transparent 66%),
-    radial-gradient(86% 64% at 82% 4%, rgb(43 66 87 / 0.44), transparent 72%),
-    linear-gradient(178deg, rgb(14 20 27 / 0.9) 0%, rgb(9 11 12 / 0.5) 54%, rgb(10 13 15 / 0.85) 100%);
+    radial-gradient(44% 62% at 72% 52%, rgb(105 206 208 / 0.14), transparent 70%),
+    radial-gradient(30% 34% at 70% 54%, rgb(169 133 70 / 0.15), transparent 72%),
+    radial-gradient(62% 58% at 16% 20%, rgb(39 79 97 / 0.34), transparent 76%),
+    radial-gradient(56% 46% at 10% 88%, rgb(105 206 208 / 0.11), transparent 66%),
+    linear-gradient(145deg, rgb(18 37 47 / 0.96) 0%, rgb(10 24 30 / 0.96) 48%, rgb(7 14 17 / 0.98) 100%);
+}
+
+/* Un halo concentric leagă planul de fundal fără să-i deseneze încă o schemă. */
+.hp-aura__wash::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(31% 45% at 72% 52%, rgb(105 206 208 / 0.09), transparent 74%),
+    radial-gradient(14% 20% at 72% 52%, rgb(238 184 91 / 0.11), transparent 78%);
+  opacity: 0.9;
+  mix-blend-mode: screen;
 }
 
 /*
@@ -173,8 +187,8 @@ body.hp-lab-mode {
   inset: -18%;
   background: radial-gradient(
     42% 42% at 70% 50%,
-    rgb(169 133 70 / 0.22),
-    rgb(169 133 70 / 0.08) 36%,
+    rgb(169 133 70 / 0.28),
+    rgb(169 133 70 / 0.10) 36%,
     transparent 64%
   );
   /*
@@ -273,7 +287,7 @@ body.hp-lab-mode {
 .hp-aura__vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(118% 88% at 50% 44%, transparent 40%, rgb(4 6 7 / 0.74) 100%);
+  background: radial-gradient(118% 88% at 50% 44%, transparent 42%, rgb(4 6 7 / 0.58) 100%);
 }
 
 /* Blue hour: apare pe măsură ce planul se înclină, nu de la început. */
