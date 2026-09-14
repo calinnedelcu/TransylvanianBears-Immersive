@@ -27,7 +27,10 @@ export function ExperienceNavigation() {
       <ViewTransitionLink to={`/work/${project.slug}`}>Înapoi la prezentare</ViewTransitionLink>
     </nav>, document.body)}
     <details ref={details} className="experience-nav" onBlur={(event) => {
-      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) close();
+      // Touch browsers often report a null relatedTarget while moving from the
+      // summary to a menu link. Closing here cancels the link's click event.
+      const relatedTarget = event.relatedTarget as Node | null;
+      if (relatedTarget && !event.currentTarget.contains(relatedTarget)) close();
     }} onKeyDown={(event) => {
       if (event.key === 'Escape') { close(); details.current?.querySelector('summary')?.focus(); }
     }}>

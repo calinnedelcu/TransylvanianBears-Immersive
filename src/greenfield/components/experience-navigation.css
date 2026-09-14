@@ -1,8 +1,8 @@
-.experience-nav { position: relative; font: 11px/1.4 'JetBrains Mono', monospace; }
+.experience-nav { position: relative; z-index: 1; font: 11px/1.4 'JetBrains Mono', monospace; touch-action: manipulation; }
 .experience-nav summary { min-height: 44px; display: flex; gap: 8px; align-items: center; padding: 0 10px; color: #c7fff4; cursor: pointer; list-style: none; }
 .experience-nav summary::-webkit-details-marker { display: none; }
-.experience-nav nav { position: absolute; top: calc(100% + 8px); right: 0; width: min(330px, calc(100vw - 32px)); max-height: calc(100dvh - 90px); overflow-y: auto; padding: 10px; background: #081211; border: 1px solid #506962; box-shadow: 0 16px 50px #0009; }
-.experience-nav nav a { display: flex; align-items: center; min-height: 44px; padding: 8px 10px; color: #e1e9e3; text-decoration: none; }
+.experience-nav nav { position: absolute; z-index: 2; top: calc(100% + 8px); right: 0; width: min(330px, calc(100vw - 32px)); max-height: calc(100dvh - 90px); overflow-y: auto; padding: 10px; background: #081211; border: 1px solid #506962; box-shadow: 0 16px 50px #0009; }
+.experience-nav nav a { display: flex; align-items: center; min-height: 44px; padding: 8px 10px; color: #e1e9e3; text-decoration: none; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
 .experience-nav nav a:hover, .experience-nav nav a:focus-visible { background: #17322c; }
 .experience-nav nav p { padding: 12px 10px 4px; border-top: 1px solid #506962; color: #9cb5ac; }
 .experience-nav summary:focus-visible { outline: 2px solid #93d5ce; }
