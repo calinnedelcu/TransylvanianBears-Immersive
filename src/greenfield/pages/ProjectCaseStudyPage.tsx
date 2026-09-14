@@ -1,3 +1,4 @@
+import { PROJECT_EXPERIENCE, projectExperienceUrl } from '../projectExperience';
 import type { MouseEvent } from 'react';
 import { scrollSmoothTo } from '../../components/smoothScroll';
 import { ArrowLeft, ArrowUpRight } from 'lucide-react';
@@ -50,7 +51,7 @@ export function ProjectCaseStudyPage() {
             <h1>{project.title}</h1>
             <p className="cs-summary">{project.summary}</p>
             <ul className="cs-tags" aria-label="Tehnologii și teme">{project.tags.map((tag) => <li key={tag}>{tag}</li>)}</ul>
-            <div className="cs-actions">{project.links.map((link) => <a key={link.href} href={link.href} target="_blank" rel="noreferrer">{link.label}<ArrowUpRight aria-hidden="true" /></a>)}</div>
+            <div className="cs-actions">{projectExperienceUrl(project.slug) && <ViewTransitionLink to={projectExperienceUrl(project.slug)!}>{PROJECT_EXPERIENCE[project.slug].is3D ? 'Explorează acest proiect în 3D' : 'Explorează secțiunea interactivă'} <ArrowUpRight aria-hidden="true" /></ViewTransitionLink>}{project.links.map((link) => <a key={link.href} href={link.href} target="_blank" rel="noreferrer">{link.label}<ArrowUpRight aria-hidden="true" /></a>)}</div>
             <p className="cs-state"><span>{STATE_LABEL[project.state]}</span> / {EVIDENCE_LABEL[project.evidence]}</p>
           </div>
           <ProjectFigure media={PROJECT_COVERS[project.id]} eager />

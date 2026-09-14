@@ -130,14 +130,13 @@ function CountTo({ value, count }: { value: string; count: number | null }) {
 export function HeroPlanTitle({ onFollow }: { onFollow?: () => void }) {
   return (
     <div className="hp-copy">
-      <p className="hp-kicker">Șapte sisteme. O singură cetate.</p>
+      <p className="hp-kicker">Șapte proiecte. O lume 3D de explorat.</p>
       <h1 className="hp-wordmark">
         <span>Transylvanian</span>
         <span>Bears</span>
       </h1>
       <p className="hp-line">
-        Software, jocuri, machine learning și cercetare — construite de șase elevi,
-        într-un singur sistem.
+        Descoperă proiectele noastre într-o experiență 3D interactivă, ghidată prin scroll, sau mergi direct la prezentări.
       </p>
 
       <div className="hp-cta">
@@ -150,11 +149,11 @@ export function HeroPlanTitle({ onFollow }: { onFollow?: () => void }) {
             onFollow();
           }}
         >
-          Urmează semnalul
+          Explorează proiectele în 3D
           <i aria-hidden="true" />
         </a>
-        <Link className="hp-btn" to="/next/work">
-          Deschide indexul
+        <Link className="hp-btn" to="/work">
+          Vezi proiectele direct
           <i aria-hidden="true" />
         </Link>
       </div>

@@ -87,3 +87,6 @@
   .wi-page *, .wi-page *::before, .wi-page *::after { transition: none !important; }
   .wi-card__link:hover .wi-card__visual img, .wi-card__link:hover .wi-card__action svg { transform: none; }
 }
+
+.wi-experience-link { display: flex; gap: 10px; align-items: center; min-height: 48px; padding: 12px 22px; color: #aadbd2; border-top: 1px solid #506962; text-decoration: none; background: #081211; }
+.wi-experience-link svg { width: 16px; }

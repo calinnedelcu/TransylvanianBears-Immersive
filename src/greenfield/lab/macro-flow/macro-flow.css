@@ -4898,3 +4898,7 @@ body.mf-lab-mode {
 @media (max-height: 600px) and (orientation: landscape) {
   .mf-lens-legend { display: none; }
 }
+
+.mf-lab .hp-cta { display: grid; grid-template-columns: 1fr; max-width: 380px; gap: 10px; }
+.mf-lab .hp-cta .hp-btn { white-space: normal; text-align: center; justify-content: center; min-height: 48px; font-size: 11px; }
+@media (max-width: 820px) { .mf-header .mf-chapter-position { width: min(180px, calc(100vw - 220px)); } }

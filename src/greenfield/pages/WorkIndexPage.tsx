@@ -1,3 +1,4 @@
+import { PROJECT_EXPERIENCE, projectExperienceUrl } from '../projectExperience';
 import { ArrowDown, ArrowUpRight } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { GreenfieldPageShell } from '../components/GreenfieldPageShell';
@@ -40,6 +41,9 @@ function ProjectCard({ project, featured }: { project: ProjectDefinition; featur
           <span className="wi-card__action">Explorează proiectul <ArrowUpRight aria-hidden="true" /></span>
         </div>
       </ViewTransitionLink>
+      {projectExperienceUrl(project.slug) && <ViewTransitionLink className="wi-experience-link" to={projectExperienceUrl(project.slug)!}>
+        {PROJECT_EXPERIENCE[project.slug].is3D ? 'Explorează în 3D' : 'Vezi secțiunea interactivă'} <ArrowUpRight aria-hidden="true" />
+      </ViewTransitionLink>}
     </li>
   );
 }

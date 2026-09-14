@@ -1,3 +1,4 @@
+import { ExperienceNavigation } from '../../components/ExperienceNavigation';
 import { NEXUS_SEGMENTS } from './nexusPalette';
 import {
   ArrowDown,
@@ -10,7 +11,6 @@ import {
   ScanLine,
   Volume2,
   VolumeX,
-  Waypoints,
   Wind,
 } from 'lucide-react';
 import {
@@ -841,9 +841,7 @@ function MacroFlowExperience() {
           >
             {audioEnabled ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
           </button>
-          <ViewTransitionLink className="mf-index-link" to="/work" aria-label="Vezi proiectele">
-            Open work index <Waypoints aria-hidden="true" />
-          </ViewTransitionLink>
+          <ExperienceNavigation />
         </div>
       </header>
 
