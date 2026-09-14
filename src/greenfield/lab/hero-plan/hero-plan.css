@@ -154,59 +154,54 @@ body.hp-lab-mode {
   opacity: var(--hp-aura-out);
 }
 
-/* Fereastra rece sus-dreapta, lumina caldă joasă stânga: două surse, deci volum. */
+/* The initial sky color is also the fallback if 2D canvas is unavailable. */
 .hp-aura__wash {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(65% 66% at 5% -12%, rgb(92 145 184 / .28), transparent 76%),
-    radial-gradient(48% 46% at 48% 110%, rgb(65 161 164 / .2), transparent 75%),
-    radial-gradient(44% 70% at 105% 8%, rgb(177 137 90 / .17), transparent 74%),
-    linear-gradient(125deg, #152b3a, #0c1b26 47%, #101b22 75%, #1b262d);
+    radial-gradient(55% 100% at 78% 22%, rgb(75 53 124 / .35), transparent 75%),
+    linear-gradient(135deg, #090f22, #13142d 66%, #080c19);
 }
 
-.hp-light-field {
+.hp-cosmos {
   position: absolute;
   inset: -3%;
-  width: 106%;
-  height: 106%;
-  max-width: none;
-  overflow: visible;
-  translate: calc(var(--hp-px) * -12px) calc(var(--hp-py) * -8px);
-  /* Detail gathers around the opening, leaving the copy quiet. */
-  mask-image: linear-gradient(90deg, rgb(0 0 0 / .55), #000 56%);
 }
 
-.hp-light-field__ribbon {
-  transform-origin: 72% 50%;
-  animation: hp-field-breathe 24s ease-in-out infinite alternate;
+.hp-cosmos canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
-.hp-light-field__echo {
-  transform-origin: 25% 10%;
-  animation: hp-field-breathe 32s ease-in-out infinite alternate-reverse;
-  opacity: .28;
+.hp-cosmos__nebula {
+  translate: calc(var(--hp-px) * -5px) calc(var(--hp-py) * -4px);
+  animation: hp-cosmic-drift 38s ease-in-out infinite alternate;
 }
 
-@keyframes hp-field-breathe {
-  from { transform: translateY(0) rotate(-1deg) scale(1); opacity: .7; }
-  to { transform: translateY(-12px) rotate(1deg) scale(1.03); opacity: 1; }
+.hp-cosmos__stars {
+  translate: calc(var(--hp-px) * -13px) calc(var(--hp-py) * -9px);
 }
 
-.hp-opening[data-plan='world'] .hp-light-field g { animation-play-state: paused; }
-
-@media (max-width: 900px) {
-  .hp-light-field {
-    width: 200%;
-    left: -75%;
-    opacity: .65;
-    mask-image: linear-gradient(#000, rgb(0 0 0 / .2) 70%, transparent);
-  }
+.hp-cosmos__veil {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(27% 35% at 73% 51%, rgb(6 10 23 / .38), transparent 100%),
+    linear-gradient(0deg, rgb(6 10 19 / .65), transparent 28%);
 }
+
+@keyframes hp-cosmic-drift {
+  from { transform: scale(1); opacity: .85; }
+  to { transform: scale(1.035); opacity: 1; }
+}
+
+.hp-opening[data-plan='world'] .hp-cosmos__nebula { animation-play-state: paused; }
 
 @media (prefers-reduced-motion: reduce) {
-  .hp-light-field { translate: none; }
-  .hp-light-field g { animation: none; }
+  .hp-cosmos canvas { translate: none; animation: none; }
 }
 
 /* Un halo concentric leagă planul de fundal fără să-i deseneze încă o schemă. */
