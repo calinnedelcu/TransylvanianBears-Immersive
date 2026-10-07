@@ -1,0 +1,66 @@
+.notfound {
+  position: relative;
+  display: grid;
+  min-height: calc(100dvh - var(--header-h));
+  align-items: center;
+  overflow: clip;
+  background: var(--ink);
+  color: var(--bone);
+}
+
+.notfound__inner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: clamp(28px, 5vw, 72px);
+  padding-block: clamp(40px, 7vw, 100px);
+}
+
+@media (min-width: 900px) {
+  .notfound__inner {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    align-items: center;
+  }
+}
+
+.notfound__code {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.04em;
+  color: var(--gold);
+  font-size: clamp(8rem, 2rem + 24vw, 22rem);
+  line-height: 0.8;
+}
+
+.notfound__code svg {
+  width: 0.62em;
+  height: 0.62em;
+  color: var(--blood);
+  transform: rotate(-10deg);
+}
+
+.notfound__copy {
+  display: grid;
+  gap: 20px;
+}
+
+.notfound__copy .eyebrow {
+  color: var(--gold);
+}
+
+.notfound__copy h1 {
+  max-width: 14ch;
+  font-size: clamp(2.8rem, 1.4rem + 5.4vw, 6rem);
+  line-height: 1;
+}
+
+.notfound__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.notfound .btn {
+  --btn-shadow: var(--bone);
+}

@@ -1,13 +1,23 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
+  "cleanUrls": true,
   "headers": [
     {
-      "source": "/assets/(.*)\\.(js|css|woff2)",
+      "source": "/assets/(.*)\\.(js|css|woff2|woff)",
       "headers": [
         {
           "key": "Cache-Control",
           "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(projects|team|achievements|membrii)/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
         }
       ]
     }

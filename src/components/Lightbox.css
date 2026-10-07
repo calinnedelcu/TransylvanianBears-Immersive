@@ -1,0 +1,78 @@
+.lightbox {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: clamp(14px, 3vw, 40px);
+  border: 0;
+  background: rgb(20 11 13 / 0.985);
+  color: var(--bone);
+}
+
+.lightbox[open] {
+  display: grid;
+  place-items: center;
+  animation: lightbox-in 0.3s var(--ease-out) both;
+}
+
+.lightbox::backdrop {
+  background: transparent;
+}
+
+.lightbox__figure {
+  display: grid;
+  max-width: min(100%, 1500px);
+  max-height: 100%;
+  justify-items: center;
+  gap: 14px;
+}
+
+.lightbox__figure img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: calc(100dvh - 140px);
+  border: var(--line) solid var(--bone);
+  border-radius: var(--r-s);
+  background: #fff;
+  box-shadow: 8px 8px 0 var(--gold);
+  object-fit: contain;
+}
+
+.lightbox__figure figcaption {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.lightbox__close {
+  position: absolute;
+  top: clamp(12px, 2vw, 28px);
+  right: clamp(12px, 2vw, 28px);
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: var(--line) solid var(--ink);
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--ink);
+  box-shadow: 3px 3px 0 var(--bone);
+}
+
+.lightbox__close svg {
+  width: 22px;
+  height: 22px;
+}
+
+@keyframes lightbox-in {
+  from {
+    opacity: 0;
+  }
+}

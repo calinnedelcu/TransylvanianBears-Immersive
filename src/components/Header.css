@@ -1,0 +1,259 @@
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: var(--line) solid var(--ink);
+  background: var(--bone);
+  view-transition-name: site-header;
+}
+
+.site-header__bar {
+  display: flex;
+  min-height: var(--header-h);
+  align-items: center;
+  gap: clamp(12px, 2vw, 28px);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-right: auto;
+}
+
+.brand__mark {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  place-items: center;
+  border: var(--line) solid var(--ink);
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 2px 2px 0 var(--ink);
+  transition: transform 0.35s var(--ease-snap);
+}
+
+.brand__mark svg {
+  width: 24px;
+  height: 24px;
+  color: var(--ink);
+}
+
+a.brand:hover .brand__mark {
+  transform: rotate(-14deg) scale(1.08);
+}
+
+.brand__name {
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.site-nav {
+  display: none;
+  align-items: center;
+  gap: 4px;
+}
+
+.site-nav a {
+  padding: 0.62em 1.05em;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.site-nav a:hover {
+  background: var(--bone-deep);
+}
+
+.site-nav a[data-active] {
+  background: var(--ink);
+  color: var(--bone);
+}
+
+.site-header__cta {
+  display: none;
+}
+
+.menu-toggle {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  flex: none;
+  place-items: center;
+  border: var(--line) solid var(--ink);
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 3px 3px 0 var(--ink);
+  transition:
+    transform 0.2s var(--ease-out),
+    box-shadow 0.2s var(--ease-out);
+}
+
+.menu-toggle:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.menu-toggle:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.menu-toggle svg {
+  width: 22px;
+  height: 22px;
+}
+
+@media (min-width: 900px) {
+  .site-nav {
+    display: flex;
+  }
+
+  .site-header__cta {
+    display: inline-flex;
+  }
+
+  .menu-toggle:not(.menu-toggle--close) {
+    display: none;
+  }
+
+  .brand {
+    margin-right: 0;
+  }
+
+  .site-nav {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .brand__name {
+    font-size: 1.3rem;
+  }
+
+  .brand__mark {
+    width: 38px;
+    height: 38px;
+  }
+}
+
+/* ---------- Full-screen menu (native <dialog>) ---------- */
+
+.menu {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  border: 0;
+  background: var(--ink);
+  color: var(--bone);
+}
+
+.menu[open] {
+  display: flex;
+  flex-direction: column;
+  animation: menu-in 0.45s var(--ease-out) both;
+}
+
+.menu::backdrop {
+  background: transparent;
+}
+
+.menu .brand {
+  margin-right: 0;
+}
+
+.menu .brand__mark {
+  box-shadow: 2px 2px 0 var(--bone);
+}
+
+.menu__top {
+  display: flex;
+  min-height: var(--header-h);
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.menu-toggle--close {
+  display: grid;
+  background: var(--bone);
+  color: var(--ink);
+  box-shadow: 3px 3px 0 var(--gold);
+}
+
+.menu__links {
+  display: grid;
+  flex: 1;
+  align-content: center;
+  padding-block: 24px;
+}
+
+.menu__links a {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  padding-block: clamp(6px, 1.6vh, 14px);
+  border-bottom: 1.5px solid rgb(245 238 223 / 0.22);
+  animation: menu-link-in 0.6s var(--ease-out) both;
+  animation-delay: calc(var(--i) * 70ms + 120ms);
+  transition: color 0.2s;
+}
+
+.menu__links a:hover,
+.menu__links a:focus-visible {
+  color: var(--gold);
+}
+
+.menu__label {
+  font-family: var(--font-display);
+  font-size: clamp(3.6rem, 17vw, 8rem);
+  font-weight: 900;
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.menu__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 20px 28px;
+}
+
+.menu__foot .btn {
+  --btn-shadow: var(--bone);
+}
+
+html:has(dialog[open]) {
+  overflow: hidden;
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+}
+
+@keyframes menu-link-in {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+}

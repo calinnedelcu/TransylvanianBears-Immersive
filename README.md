@@ -1,78 +1,95 @@
-# Transylvanian Bears Experience
+# Transylvanian Bears
 
-Immersive portfolio for the Transylvanian Bears team. The public experience combines
-a continuous, scroll-directed 3D expedition with fast editorial routes for projects,
-people and verified results.
+The team website: seven projects, six builders and the results behind them, in one
+fast, easy-to-navigate page. Live at <https://www.transylvanianbears.com>.
 
-## Public routes
+Built with Vite, React 18, TypeScript and React Router. No 3D runtime, no scroll
+hijacking: it is a normal page with a header that is always visible.
 
-- `/` - 16-chapter immersive story
-- `/work` - seven projects grouped across four overlapping domains
-- `/work/:slug` - semantic project case studies
-- `/team` and `/team/:memberId` - team index and member profiles
-- `/archive` - awards, internships and source-backed results
+## Pages
 
-Old `/next/*` prototype URLs redirect to their final public equivalents.
+| URL | What it is |
+| --- | --- |
+| `/` | Home: hero, manifesto, projects (filterable), results, team, contact |
+| `/work/:slug` | One case study per project (`project-nexus`, `aegis`, `schoolmate`, `the-buried-hands`, `economy-news`, `automation-risk`, `infect-exe`) |
 
-## Content model
+Older addresses still work and land on the matching section of the home page:
+`/work`, `/team`, `/team/:id`, `/archive`, `/proiecte`, `/echipa`, `/premii`, `/aplica`.
 
-The seven projects use overlapping facets:
+## Where things live
 
-- Video games: The Buried Hands, Infect.exe
-- School software: Aegis, SchoolMate
-- Machine learning: Project Nexus, EconomyNews, Automation Risk
-- Research papers: EconomyNews, Automation Risk
+```
+src/
+  data/            all text and facts  ← edit content here
+    projects.ts      the seven case studies (summary, chapters, metrics, links, credits)
+    results.ts       awards and rankings, with the state of the evidence
+    team.ts          the six members and their portraits
+    site.ts          contact e-mail, navigation and the headline copy of each section
+  sections/        the home page, one file per section (+ its .css)
+  pages/           HomePage, ProjectPage, NotFoundPage
+  components/      header, footer, project card, lightbox, before/after slider, marquee …
+  styles/          design tokens (colours, type), reset, buttons/stickers/chips
+public/assets/
+  projects/ achievements/   screenshots, charts, certificates
+  team/                     die-cut portraits (generated, see below)
+  membrii/                  the original portraits
+scripts/           image, favicon, social-card and QA tooling
+```
 
-Project Nexus is applied machine learning and computer vision, not a research paper.
-EconomyNews and Automation Risk are both machine-learning projects and research papers.
+### Common edits
 
-## Architecture
-
-The home page is a continuous braided route, not a hub of disconnected project worlds.
-Editorial clearings keep text, media, proof and 3D space in the same scene. Direct routes
-remain available for accessibility, search engines and visitors who want to browse.
-
-Three.js is deferred until the immersive scene is requested. Project media is lazy-loaded,
-and the editorial shell ships independently from the 3D runtime.
-
-Key documents:
-
-- [`docs/vertical-slice-art-bible.md`](docs/vertical-slice-art-bible.md)
-- [`docs/storyboard-01-04.md`](docs/storyboard-01-04.md)
-- [`docs/asset-production-contract.md`](docs/asset-production-contract.md)
-- [`docs/vertical-slice-sound-design.md`](docs/vertical-slice-sound-design.md)
-- [`docs/greenfield/09-hybrid-world-architecture.md`](docs/greenfield/09-hybrid-world-architecture.md)
-- [`docs/greenfield/08-core-loop-control.md`](docs/greenfield/08-core-loop-control.md)
-- [`docs/greenfield/01-content-inventory.md`](docs/greenfield/01-content-inventory.md)
+- **Change a headline or paragraph on the home page** → `COPY` in `src/data/site.ts`.
+- **Edit a project** → its entry in `src/data/projects.ts`. A chapter can carry one
+  `media` block: a `figure`, a `gallery`, a before/after `compare`, a list of `steps`
+  or a row of `chips`.
+- **Add a result** → add an entry to `RESULTS` in `src/data/results.ts`
+  (`evidence: 'verified'` only when a public source confirms it).
+- **Change a member's role** → `discipline` in `src/data/team.ts`.
+- **Add images** → drop them in `public/assets/…` and reference them from the data
+  files with their real `width` and `height` (this prevents layout shift).
+- **New portraits** → replace the file in `public/assets/membrii/`, then
+  `npm run build:portraits` regenerates the cut-out versions in `public/assets/team/`.
 
 ## Development
 
 ```bash
 npm install
-npm run dev
+npm run dev          # http://localhost:5173
 ```
 
-Production checks:
+Checks before shipping:
 
 ```bash
-npm run build:vertical-slice
 npm run lint
-npm run build
-npm run qa:immersive
-npm run qa:school-act
-npm run qa:buried-act
-npm run qa:visual
-npm audit --omit=dev
+npm run build        # type-check + production build into dist/
+npm run qa           # smoke test of the build: every route at phone, tablet and desktop width,
+                     # console errors, overflow, images, menu, filters, lightbox, redirects
 ```
 
-`build:vertical-slice` regenerates the Blender citadel, its poster, the separately
-authored desktop/mobile camera curves for chapters 01-04, and the complete Buried
-Hands package for chapters 08-10. Camera JSON and runtime assets are schema-checked,
-budget-checked, and verified for exact chapter handoffs by the QA suites.
+Other scripts:
 
-`qa:visual` records the authored opening, all three Nexus lens modes, the Lens-to-Proof
-handoff, the three authentic proof frames, and the mobile opening/Nexus states in
-`/tmp/transylvanian-bears-qa` for visual review.
+| Script | Purpose |
+| --- | --- |
+| `npm run build:portraits` | Trim the member portraits and bake in the sticker outline |
+| `npm run generate:favicons` | Render the PNG favicons from `public/favicon.svg` |
+| `npm run generate:og` | Rebuild `public/og-image.jpg` from the real hero (run after `npm run build`) |
+| `npm run optimize:images` | Convert PNGs under `public/assets` to WebP |
 
-The production build is emitted to `dist/` and deployed on Vercel at
-`https://www.transylvanianbears.com`.
+## Design notes
+
+- Palette and type scale are CSS variables in `src/styles/tokens.css`. Project and member
+  colours come from `data-accent` (see the bottom of that file).
+- Fonts are self-hosted through Fontsource: Big Shoulders (display), Bricolage Grotesque
+  (text) and JetBrains Mono (labels).
+- Motion is progressive: content is readable without it, everything respects
+  `prefers-reduced-motion`, and page transitions use the View Transitions API where the
+  browser has it.
+- Accessibility baseline: skip link, one `h1` per page, keyboard-operable menu, filters,
+  lightbox and comparison slider, visible focus rings, WCAG 2.2 AA contrast. The pages
+  were audited with axe-core with no violations.
+
+## Deployment
+
+Vercel builds `dist/` (`vercel.json` rewrites every non-asset path to `index.html`).
+`docs/` and `PLAN.md` describe the previous 3D version of the site and are kept for
+reference only.

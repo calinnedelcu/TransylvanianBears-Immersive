@@ -1,0 +1,261 @@
+/* ---------- Layout ---------- */
+
+.wrap {
+  width: min(100% - var(--gutter) * 2, var(--max));
+  margin-inline: auto;
+}
+
+.section {
+  position: relative;
+  padding-block: var(--section-y);
+}
+
+/* Landing on a section shows its heading right under the header, not the empty padding above it */
+.section[id] {
+  scroll-margin-top: calc((var(--section-y) - 28px) * -1);
+}
+
+#start {
+  scroll-margin-top: calc((var(--header-h) + 16px) * -1);
+}
+
+/* ---------- Type helpers ---------- */
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 900;
+  line-height: 0.88;
+  letter-spacing: -0.005em;
+  text-transform: uppercase;
+}
+
+.lead {
+  max-width: 46ch;
+  font-size: var(--fs-lead);
+  line-height: 1.45;
+}
+
+/* ---------- Section heading ---------- */
+
+.section-head {
+  display: grid;
+  gap: clamp(14px, 2vw, 22px);
+  margin-bottom: clamp(36px, 5vw, 64px);
+}
+
+.section-head__index {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-head__index::before {
+  content: '';
+  width: 34px;
+  height: var(--line);
+  background: currentColor;
+}
+
+.section-head h2 {
+  max-width: 14ch;
+  font-size: var(--fs-h2);
+  /* air for the accents of Ă, Î, Ș, Ț so they never touch the neighbouring line */
+  line-height: 1.08;
+}
+
+.section-head p {
+  max-width: 52ch;
+  font-size: var(--fs-lead);
+  line-height: 1.45;
+}
+
+@media (min-width: 900px) {
+  .section-head--split {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    align-items: end;
+    column-gap: clamp(32px, 6vw, 96px);
+  }
+
+  .section-head--split .section-head__index {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  --btn-bg: var(--bone);
+  --btn-fg: var(--ink);
+  --btn-shadow: var(--ink);
+  display: inline-flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6em;
+  padding: 0 1.5em;
+  border: var(--line) solid var(--ink);
+  border-radius: 999px;
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  box-shadow: 4px 4px 0 var(--btn-shadow);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    transform 0.2s var(--ease-out),
+    box-shadow 0.2s var(--ease-out),
+    background-color 0.2s;
+}
+
+.btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--btn-shadow);
+}
+
+.btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--btn-shadow);
+}
+
+.btn svg {
+  width: 1.15em;
+  height: 1.15em;
+  flex: none;
+}
+
+.btn--ink {
+  --btn-bg: var(--ink);
+  --btn-fg: var(--bone);
+  --btn-shadow: var(--bone);
+}
+
+.btn--gold {
+  --btn-bg: var(--gold);
+}
+
+.btn--bone {
+  --btn-bg: var(--bone);
+}
+
+.btn--blood {
+  --btn-bg: var(--blood);
+  --btn-fg: #fff;
+}
+
+.btn--sm {
+  min-height: 42px;
+  padding: 0 1.1em;
+  font-size: 0.9rem;
+  box-shadow: 3px 3px 0 var(--btn-shadow);
+}
+
+/* ---------- Stickers & chips ---------- */
+
+.sticker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 0.38em 0.8em;
+  border: var(--line) solid var(--ink);
+  border-radius: 999px;
+  background: var(--sticker-bg, var(--gold));
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.sticker svg {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-list li {
+  padding: 0.32em 0.75em;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.chip {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0 1.1em;
+  border: var(--line) solid var(--ink);
+  border-radius: 999px;
+  background: var(--bone);
+  font-weight: 700;
+  line-height: 1;
+  transition:
+    transform 0.2s var(--ease-out),
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.chip small {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  opacity: 0.6;
+}
+
+.chip:hover {
+  transform: translateY(-2px);
+  background: var(--gold);
+}
+
+.chip[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--bone);
+}
+
+.chip[aria-pressed='true']:hover {
+  background: var(--ink);
+}
+
+/* ---------- Scroll reveal ---------- */
+
+.reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition:
+    opacity 0.7s var(--ease-out),
+    transform 0.7s var(--ease-out);
+  transition-delay: var(--delay, 0ms);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}

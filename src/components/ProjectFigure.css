@@ -1,0 +1,73 @@
+.pfig {
+  display: grid;
+  width: 100%;
+  gap: 12px;
+}
+
+.pfig__btn {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border: var(--line) solid var(--ink);
+  border-radius: var(--r-m);
+  background: #fff;
+  box-shadow: var(--shadow-m);
+  cursor: zoom-in;
+  transition:
+    transform 0.3s var(--ease-out),
+    box-shadow 0.3s var(--ease-out);
+}
+
+.pfig__btn:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 9px 9px 0 var(--ink);
+}
+
+.pfig__btn img {
+  width: 100%;
+  height: auto;
+}
+
+.pfig__zoom {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: var(--line) solid var(--ink);
+  border-radius: 50%;
+  background: var(--gold);
+  opacity: 0;
+  transform: scale(0.8);
+  transition:
+    opacity 0.2s,
+    transform 0.3s var(--ease-snap);
+}
+
+.pfig__btn:hover .pfig__zoom,
+.pfig__btn:focus-visible .pfig__zoom {
+  opacity: 1;
+  transform: none;
+}
+
+@media (hover: none) {
+  .pfig__zoom {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pfig__zoom svg {
+  width: 18px;
+  height: 18px;
+}
+
+.pfig figcaption {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 1.4;
+}

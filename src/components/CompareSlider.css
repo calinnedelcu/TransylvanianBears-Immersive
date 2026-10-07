@@ -1,0 +1,120 @@
+.compare {
+  display: grid;
+  gap: 14px;
+}
+
+.compare__stage {
+  position: relative;
+  overflow: hidden;
+  border: var(--line) solid var(--ink);
+  border-radius: var(--r-m);
+  background: var(--ink);
+  box-shadow: var(--shadow-m);
+  touch-action: pan-y;
+}
+
+.compare__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+}
+
+.compare__img--top {
+  clip-path: inset(0 calc(100% - var(--pos)) 0 0);
+}
+
+.compare__tag {
+  position: absolute;
+  top: 12px;
+  --sticker-bg: var(--bone);
+  box-shadow: 2px 2px 0 var(--ink);
+  pointer-events: none;
+}
+
+.compare__tag--left {
+  left: 12px;
+  transform: rotate(-2deg);
+}
+
+.compare__tag--right {
+  right: 12px;
+  transform: rotate(2deg);
+}
+
+.compare__handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--pos);
+  width: var(--line);
+  background: var(--bone);
+  box-shadow: 0 0 0 1.5px var(--ink);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.compare__grip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  border: var(--line) solid var(--ink);
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 3px 3px 0 var(--ink);
+  transform: translate(-50%, -50%);
+  transition: transform 0.2s var(--ease-out);
+}
+
+.compare__grip svg {
+  width: 24px;
+  height: 24px;
+}
+
+.compare__stage:hover .compare__grip,
+.compare__range:focus-visible ~ .compare__handle .compare__grip {
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.compare__range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: ew-resize;
+  appearance: none;
+}
+
+/* The invisible input owns focus, so show the ring on the stage instead */
+.compare__stage:has(.compare__range:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 4px;
+}
+
+.compare figcaption {
+  display: grid;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+@media (min-width: 700px) {
+  .compare figcaption {
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .compare figcaption span:last-child {
+    text-align: right;
+  }
+}

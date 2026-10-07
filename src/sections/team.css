@@ -1,0 +1,162 @@
+.team {
+  background: var(--bone);
+}
+
+.roster {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(36px, 5vw, 60px) clamp(14px, 2.4vw, 32px);
+  /* room for the portraits that rise above their frames */
+  padding-top: clamp(20px, 3vw, 44px);
+}
+
+@media (min-width: 1000px) {
+  .roster {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.mcard article {
+  display: grid;
+  gap: 18px;
+}
+
+/* ---------- Frame with the portrait popping out of it ---------- */
+
+.mcard__frame {
+  position: relative;
+  isolation: isolate;
+  aspect-ratio: 4 / 5;
+  border: var(--line) solid var(--ink);
+  border-radius: var(--r-l);
+  background-color: var(--accent);
+  background-image: radial-gradient(rgb(20 11 13 / 0.2) 1.5px, transparent 1.9px);
+  background-size: 15px 15px;
+  box-shadow: var(--shadow-m);
+  transition:
+    transform 0.4s var(--ease-out),
+    box-shadow 0.4s var(--ease-out);
+}
+
+.mcard:hover .mcard__frame {
+  transform: translate(-4px, -4px) rotate(var(--tilt));
+  box-shadow: 10px 10px 0 var(--ink);
+}
+
+.mcard__no {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  z-index: 4;
+}
+
+@media (max-width: 699px) {
+  .mcard__no {
+    display: none;
+  }
+}
+
+.mcard__ghost {
+  position: absolute;
+  inset: auto 0 6% 0;
+  z-index: 0;
+  overflow: hidden;
+  color: transparent;
+  font-size: clamp(5rem, 14vw, 10rem);
+  line-height: 0.8;
+  text-align: center;
+  -webkit-text-stroke: 2px rgb(20 11 13 / 0.32);
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* Same box as the frame: clips the portrait at the sides and the base, but not the top */
+.mcard__stage {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow-x: clip;
+  clip-path: inset(-30% 0 0 0 round 0 0 calc(var(--r-l) - var(--line)) calc(var(--r-l) - var(--line)));
+}
+
+.mcard__portrait {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: auto;
+  height: 106%;
+  max-width: none;
+  transform: translateX(-50%);
+  transform-origin: 50% 100%;
+  filter: drop-shadow(2px 0 0 var(--ink)) drop-shadow(-2px 0 0 var(--ink)) drop-shadow(0 -2px 0 var(--ink));
+  transition: transform 0.5s var(--ease-snap);
+}
+
+.mcard:hover .mcard__portrait {
+  transform: translateX(-50%) translateY(-1.5%) scale(1.03);
+}
+
+/* ---------- Body ---------- */
+
+.mcard__body {
+  display: grid;
+  gap: 8px;
+}
+
+.mcard__body h3 {
+  font-size: clamp(1.9rem, 1.3rem + 2vw, 3rem);
+  line-height: 0.92;
+}
+
+.mcard__credits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.mcard__credits a {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 12px 3px 3px;
+  border: var(--line) solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+  transition:
+    transform 0.2s var(--ease-out),
+    background-color 0.2s,
+    box-shadow 0.2s var(--ease-out);
+}
+
+.mcard__credits a span {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+}
+
+.mcard__credits a:hover {
+  transform: translate(-2px, -2px);
+  background: var(--gold);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.mcard__pending {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  opacity: 0.6;
+}

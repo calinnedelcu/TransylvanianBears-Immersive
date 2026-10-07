@@ -1,0 +1,419 @@
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  border-bottom: var(--line) solid var(--ink);
+  background: var(--gold);
+}
+
+/* Halftone dots fading in from the top-right corner */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: radial-gradient(circle, var(--ink) 1.5px, transparent 1.9px);
+  background-size: 15px 15px;
+  opacity: 0.2;
+  -webkit-mask-image: radial-gradient(85% 90% at 100% 0, #000, transparent 68%);
+  mask-image: radial-gradient(85% 90% at 100% 0, #000, transparent 68%);
+}
+
+.hero__stage {
+  position: relative;
+  container-type: inline-size;
+  padding-top: clamp(24px, 4vw, 52px);
+}
+
+/* ---------- Kicker ---------- */
+
+.hero__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0.65em 1.15em;
+  border: var(--line) solid var(--ink);
+  border-radius: 999px;
+  background: var(--bone);
+  box-shadow: 3px 3px 0 var(--ink);
+  animation: hero-fade 0.7s var(--ease-out) both;
+}
+
+.hero__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--blood);
+  animation: hero-pulse 1.9s ease-out infinite;
+}
+
+/* ---------- Title ---------- */
+
+.hero__head {
+  position: relative;
+  margin-top: clamp(14px, 2.6cqw, 30px);
+}
+
+.hero__titlewrap {
+  position: relative;
+}
+
+.hero__title {
+  position: relative;
+  z-index: 1;
+  font-size: 15.55cqw;
+  line-height: 0.8;
+}
+
+.hero__word {
+  display: block;
+  overflow: hidden;
+  padding: 0.04em 0.07em 0.09em 0;
+  margin: -0.04em 0 -0.09em;
+}
+
+.hero__word > span {
+  display: block;
+  animation: hero-rise 1s var(--ease-out) both;
+}
+
+.hero__word--bears > span {
+  color: var(--bone);
+  -webkit-text-stroke: 0.03em var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 0.045em 0.045em 0 var(--ink);
+  animation-delay: 0.12s;
+}
+
+/* ---------- Copy ---------- */
+
+.hero__copy {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  max-width: 560px;
+  gap: 18px;
+  margin-top: 26px;
+  animation: hero-fade 0.9s var(--ease-out) 0.35s both;
+}
+
+.hero__lede {
+  font-size: clamp(1.05rem, 0.96rem + 0.4vw, 1.2rem);
+  font-weight: 500;
+  line-height: 1.42;
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Beside a title that is tall enough to hold it, the copy tucks in next to "BEARS" */
+@media (min-width: 1300px) {
+  .hero__copy {
+    position: absolute;
+    right: 0;
+    bottom: 0.4cqw;
+    width: min(52cqw, 600px);
+    max-width: none;
+    margin-top: 0;
+  }
+}
+
+/* In between, copy sits under the title in two columns */
+@media (min-width: 760px) and (max-width: 1299px) {
+  .hero__copy {
+    max-width: none;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    align-items: center;
+    column-gap: clamp(24px, 4vw, 56px);
+  }
+
+  .hero__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero__actions .btn {
+    justify-content: center;
+  }
+}
+
+/* ---------- Seal ---------- */
+
+.seal {
+  position: absolute;
+  right: 1cqw;
+  bottom: 3cqw;
+  z-index: 4;
+  display: grid;
+  width: clamp(88px, 10cqw, 136px);
+  aspect-ratio: 1;
+  place-items: center;
+  border: var(--line) solid var(--ink);
+  border-radius: 50%;
+  background: var(--bone);
+  box-shadow: var(--shadow-s);
+  transform: rotate(8deg);
+}
+
+.seal__ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  animation: hero-spin 28s linear infinite;
+}
+
+.seal__text {
+  fill: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.seal__paw {
+  width: 34%;
+  color: var(--ink);
+}
+
+@media (min-width: 1300px) {
+  .seal {
+    right: auto;
+    bottom: 5.6cqw;
+    left: 38.4cqw;
+  }
+}
+
+@media (max-width: 559px) {
+  .seal {
+    display: none;
+  }
+}
+
+/* ---------- Lineup ---------- */
+
+.lineup {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  margin-top: clamp(24px, 4cqw, 44px);
+}
+
+/* Only beside the overlaid copy do the heads climb into the title */
+@media (min-width: 1300px) {
+  .lineup {
+    margin-top: -2cqw;
+  }
+}
+
+.lineup__item {
+  position: relative;
+  flex: none;
+  margin-inline: -1.1cqw;
+  animation: hero-lineup 1s var(--ease-out) both;
+  animation-delay: calc(0.4s + var(--i) * 90ms);
+}
+
+.lineup__item:nth-child(1),
+.lineup__item:nth-child(6) {
+  z-index: 1;
+}
+
+.lineup__item:nth-child(2),
+.lineup__item:nth-child(5) {
+  z-index: 2;
+}
+
+.lineup__item:nth-child(3),
+.lineup__item:nth-child(4) {
+  z-index: 3;
+}
+
+.lineup__link {
+  position: relative;
+  display: block;
+  transform-origin: 50% 100%;
+  transition: transform 0.45s var(--ease-snap);
+}
+
+/* Heads grow from their base so the cut edge always stays flush with the marquee */
+.lineup__link:hover,
+.lineup__link:focus-visible {
+  transform: scale(1.07);
+}
+
+.lineup__item:nth-child(odd) .lineup__link:hover,
+.lineup__item:nth-child(odd) .lineup__link:focus-visible {
+  transform: scale(1.07) rotate(-1.4deg);
+}
+
+.lineup__item:nth-child(even) .lineup__link:hover,
+.lineup__item:nth-child(even) .lineup__link:focus-visible {
+  transform: scale(1.07) rotate(1.4deg);
+}
+
+.lineup__item img {
+  width: auto;
+  height: 21.5cqw;
+  max-width: none;
+  filter: drop-shadow(2px 0 0 var(--ink)) drop-shadow(-2px 0 0 var(--ink)) drop-shadow(0 -2px 0 var(--ink))
+    drop-shadow(0 10px 14px rgb(20 11 13 / 0.28));
+}
+
+.lineup__tag {
+  position: absolute;
+  bottom: 9%;
+  left: 50%;
+  display: grid;
+  justify-items: center;
+  padding: 0.5em 0.95em;
+  border: var(--line) solid var(--ink);
+  border-radius: 16px;
+  background: var(--bone);
+  box-shadow: 2px 2px 0 var(--ink);
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.lineup__tag b {
+  font-size: clamp(0.72rem, 1.3cqw, 0.95rem);
+  font-weight: 800;
+}
+
+.lineup__tag small {
+  max-height: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0;
+  transition:
+    max-height 0.3s var(--ease-out),
+    opacity 0.3s,
+    margin 0.3s;
+}
+
+.lineup__link:hover .lineup__tag small,
+.lineup__link:focus-visible .lineup__tag small {
+  max-height: 1.6em;
+  margin-top: 0.35em;
+  opacity: 1;
+}
+
+/* ---------- Small screens: character-select tiles ---------- */
+
+@media (max-width: 559px) {
+  .hero__actions {
+    display: grid;
+  }
+
+  .hero__actions .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 719px) {
+  .lineup {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 30px;
+  }
+
+  .lineup__item {
+    margin: 0;
+    overflow: hidden;
+    border: var(--line) solid var(--ink);
+    border-radius: var(--r-m);
+    background: var(--accent);
+    box-shadow: 3px 3px 0 var(--ink);
+    aspect-ratio: 4 / 5;
+  }
+
+  .lineup__item:nth-child(n) {
+    z-index: auto;
+  }
+
+  .lineup__link {
+    height: 100%;
+  }
+
+  .lineup__item img {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: auto;
+    height: 94%;
+    transform: translateX(-50%);
+    filter: none;
+  }
+
+  .lineup__tag {
+    bottom: 6px;
+    padding: 0.38em 0.6em;
+    border-radius: 999px;
+    box-shadow: none;
+  }
+
+  .lineup__tag b {
+    font-size: 0.7rem;
+  }
+
+  .lineup__tag small {
+    display: none;
+  }
+
+  .lineup__link:hover,
+  .lineup__link:focus-visible,
+  .lineup__item:nth-child(n) .lineup__link:hover,
+  .lineup__item:nth-child(n) .lineup__link:focus-visible {
+    transform: none;
+  }
+}
+
+/* ---------- Motion ---------- */
+
+@keyframes hero-rise {
+  from {
+    transform: translateY(105%);
+  }
+}
+
+@keyframes hero-fade {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes hero-lineup {
+  from {
+    opacity: 0;
+    transform: translateY(46%) scale(0.94);
+  }
+}
+
+@keyframes hero-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes hero-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(212 32 47 / 0.55);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 10px rgb(212 32 47 / 0);
+  }
+}

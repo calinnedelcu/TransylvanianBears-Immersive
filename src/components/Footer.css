@@ -1,0 +1,133 @@
+.footer {
+  position: relative;
+  overflow: clip;
+  background: var(--ink);
+  color: var(--bone);
+}
+
+.footer__inner {
+  position: relative;
+  display: grid;
+  gap: 36px;
+  padding-top: clamp(48px, 7vw, 88px);
+}
+
+.footer__brand {
+  display: grid;
+  gap: 14px;
+}
+
+.footer__brand .brand {
+  margin-right: 0;
+}
+
+.footer__brand .brand__mark {
+  box-shadow: 2px 2px 0 var(--bone);
+}
+
+.footer__brand p:not(.eyebrow) {
+  max-width: 28ch;
+  opacity: 0.8;
+}
+
+.footer__nav,
+.footer__contact {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.footer__nav .eyebrow,
+.footer__contact .eyebrow {
+  color: var(--gold);
+}
+
+.footer__nav ul {
+  display: grid;
+  gap: 8px;
+}
+
+.footer__nav a,
+.footer__mail {
+  font-weight: 700;
+  transition: color 0.2s;
+}
+
+.footer__nav a {
+  font-size: 1.15rem;
+}
+
+.footer__nav a:hover,
+.footer__mail:hover {
+  color: var(--gold);
+}
+
+.footer__mail {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: clamp(1.05rem, 1rem + 0.5vw, 1.4rem);
+  overflow-wrap: anywhere;
+}
+
+.footer__mail svg {
+  width: 1.1em;
+  height: 1.1em;
+  flex: none;
+}
+
+.footer__top {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: var(--line) solid var(--bone);
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--ink);
+  box-shadow: 4px 4px 0 var(--bone);
+  transition:
+    transform 0.2s var(--ease-out),
+    box-shadow 0.2s var(--ease-out);
+}
+
+.footer__top:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--bone);
+}
+
+.footer__top svg {
+  width: 22px;
+  height: 22px;
+}
+
+.footer__wordmark {
+  margin-top: clamp(40px, 7vw, 90px);
+  color: var(--wine);
+  font-size: 10.3vw;
+  line-height: 0.8;
+  text-align: center;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.footer__wordmark::before {
+  content: attr(data-text);
+}
+
+.footer__legal {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 24px;
+  padding-block: 18px 26px;
+  opacity: 0.7;
+}
+
+@media (min-width: 820px) {
+  .footer__inner {
+    grid-template-columns: 1.4fr 0.8fr 1.2fr auto;
+    align-items: start;
+    column-gap: clamp(24px, 4vw, 64px);
+  }
+}

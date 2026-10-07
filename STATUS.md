@@ -1,66 +1,39 @@
-# Transylvanian Bears - Project Status
+# Transylvanian Bears — Status
 
-Last updated: 16 July 2026
+Last updated: 7 October 2026
 
 ## Current state
 
-The greenfield experience is the production website. The old illustrated website and
-the `/next` laboratory shell have been removed from the shipped application.
+The site was rebuilt from scratch as a clear, fast, single-page portfolio with a case
+study per project. It replaces the earlier scroll-driven 3D experience (that version is
+still available in git history and in the `main` / `codex/citadel-first-pass` branches).
 
-- 16-chapter immersive home experience
-- Seven project case studies across four overlapping domains
-- Six team profiles with honest placeholders for unconfirmed personal work
-- Evidence archive for awards, competitions and internships
-- Final public URLs, dynamic metadata, sitemap, robots and standalone SPA fallback
-- Responsive desktop/mobile layouts and keyboard-accessible quick navigation
-- Lazy 3D runtime, optimized project media and viewport-paused canvas animation
-- Final-quality chapters 01-04 vertical slice: Carpathian threshold, Nexus field,
-  interactive lens and reversible proof handoff
-- Blender-authored desktop/mobile camera curves with exact chapter continuity
-- Physical Transylvanian Bears citadel identity, three collectible Nexus evidence cores,
-  adaptive soundscape and deterministic drone piloting
-- Authentic Nexus UE5/AirSim aerial, segmentation and detection outputs integrated into
-  the world and proof inspector
+- Home page with a sticky header, hero, manifesto, filterable projects, results, team and contact
+- Seven case-study pages with chapters, metrics, sources, contributors and previous/next navigation
+- Interactive extras: segmentation ↔ detection slider (Nexus), zoomable proof images, copy-the-e-mail button
+- Old URLs (`/work`, `/team`, `/archive`, …) redirect to the right section
+- Social card, favicons, sitemap and 404 page rebuilt in the new style
+- Initial page weight ≈ 1 MB, first paint ≈ 0.25 s on a fast connection, layout shift ≈ 0.04
 
-## Verified locally
+## Verified
 
-- `npm run lint`
-- `npm run build`
-- `npm run qa:immersive`
-- `npm run qa:visual`
-- `npm audit --omit=dev`
-- Direct refresh on project routes
-- Redirects from old `/next/*` URLs
-- Desktop and 390x844 mobile layouts
-- Full story traversal from opening to final call to action
-- Menu focus trap, Escape close and background inert state
-- Work filters and source links
-- No browser console warnings or errors during QA
-- Desktop threshold: 175 calls / 115,916 triangles
-- Desktop Nexus lens: 58 calls / 16,878 triangles
-- Mobile threshold: 133 calls / 95,281 triangles
-- 3/3 Nexus evidence cores and pixel-stable reversible proof transition
-- Camera assets, citadel GLB, poster and Nexus evidence media within declared budgets
+- `npm run lint`, `npm run build`
+- `npm run qa`: 241 checks (all routes at 390 / 820 / 1440 px, no console errors, no horizontal
+  overflow, every image loads, menu, filters, lightbox, back/forward, legacy redirects, 404)
+- axe-core (WCAG 2.2 AA + best practices): no violations on the home page, five case studies and the 404
 
-## Content still needed
+## Content that still needs the team's confirmation
 
-The remaining placeholders are intentional. Replace them only with source material
-confirmed by the team:
+These are carried over from the previous site and are marked honestly on the page:
 
-- Final project stills, process frames and diagrams at the dimensions listed in each slot
-- Pixel-aligned raw RGB frames corresponding exactly to the current segmentation and
-  detection exports
-- Final Project Nexus gameplay/flight clips and higher-resolution Unreal/AirSim evidence
-- Individual member roles, bios, links and personal projects
-- Exact credits by role for each team project
-- Any award wording or result that needs stronger public-source attribution
-- Final composed audio stems; the current adaptive procedural soundscape is production-safe
-  but remains the technical foundation
-
-## Deferred by product decision
-
-Dedicated Join and Partners pages are not a current priority. Their calls to action use
-prefilled email links, so contact remains functional without adding two shallow pages.
+- Member roles (`discipline` in `src/data/team.ts`) were never confirmed by each member
+- Project credits exist only for Project Nexus and Aegis
+- Automation Risk "Locul 1": competition name and proof missing
+- Hardcore Entrepreneur 6 (SchoolMate) and Deutsche Bank internship: official wording and participants
+- EconomyNews "Mențiune": the photographed diploma is a participation diploma dated 29 May 2026;
+  it does not state the mention, so the entry is shown as "confirmat de echipă", not "verificat"
+- Chronos CTF: no public write-up or official page yet
+- Parahouse and No Other Choice are not listed (they were never classified as team projects)
 
 ## Production
 
@@ -74,10 +47,8 @@ prefilled email links, so contact remains functional without adding two shallow 
 npm run dev
 npm run lint
 npm run build
-npm run qa:immersive
-npm run qa:visual
-npm run preview
-npm run optimize:images
-npm run generate:og
+npm run qa
+npm run build:portraits
 npm run generate:favicons
+npm run generate:og
 ```
