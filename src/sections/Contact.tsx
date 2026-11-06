@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, Check, Copy } from 'lucide-react';
-import { COPY, SITE, mailto } from '../data';
+import { mailto } from '../data';
+import { useContent } from '../i18n/useContent';
 import { PawMark } from '../components/PawMark';
 import { Reveal } from '../components/Reveal';
 import './contact.css';
 
-const TOPICS = ['Colaborări', 'Competiții', 'Mentorat', 'Membri noi'];
-
 export function Contact() {
+  const { COPY, SITE, UI } = useContent();
   const [copied, setCopied] = useState(false);
   const timer = useRef<number>();
 
@@ -21,19 +21,19 @@ export function Contact() {
       timer.current = window.setTimeout(() => setCopied(false), 2200);
     } catch {
       // Clipboard access can be blocked; the address stays visible and selectable.
-      window.prompt('Adresa de e-mail:', SITE.email);
+      window.prompt(UI.emailPrompt, SITE.email);
     }
   };
 
   return (
-    <section id="contact" className="contact section surface-ink grain" aria-labelledby="contact-title">
+    <section id="contact" className="contact section surface-ink grain" aria-labelledby="contact-title" data-station="contact">
       <div className="contact__bg" aria-hidden="true">
         <PawMark className="contact__paw" />
       </div>
 
       <div className="wrap contact__inner">
         <Reveal className="contact__copy">
-          <p className="eyebrow">04 / Contact</p>
+          <p className="eyebrow">{UI.contactIndex}</p>
           <h2 id="contact-title" className="display">
             {COPY.contact.title}
           </h2>
@@ -41,15 +41,15 @@ export function Contact() {
 
           <div className="contact__actions">
             <a className="btn btn--gold btn--lg" href={mailto()}>
-              Scrie-ne
+              {UI.writeToUs}
               <ArrowUpRight aria-hidden="true" />
             </a>
             <button type="button" className="btn btn--bone btn--lg" onClick={copyEmail}>
               {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-              {copied ? 'Adresa e copiată' : 'Copiază adresa'}
+              {copied ? UI.copied : UI.copyAddress}
             </button>
             <span className="sr-only" role="status">
-              {copied ? 'Adresa de e-mail a fost copiată.' : ''}
+              {copied ? UI.copiedStatus : ''}
             </span>
           </div>
 
@@ -59,9 +59,9 @@ export function Contact() {
         </Reveal>
 
         <Reveal className="contact__topics" delay={120}>
-          <p className="eyebrow">Despre ce putem vorbi</p>
+          <p className="eyebrow">{UI.whatToTalkAbout}</p>
           <ul>
-            {TOPICS.map((topic) => (
+            {UI.topics.map((topic) => (
               <li key={topic}>
                 <a href={mailto(`Transylvanian Bears — ${topic}`)}>
                   {topic}

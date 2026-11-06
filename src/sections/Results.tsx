@@ -1,26 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, Award, Briefcase, Check, Clock, Maximize2 } from 'lucide-react';
-import {
-  COPY,
-  EVIDENCE_LABEL,
-  RESULTS,
-  projectById,
-  resultStats,
-  type Evidence,
-  type ResultEntry,
-} from '../data';
+import { RESULTS as RESULTS_RO, type Evidence, type Project, type ResultEntry } from '../data';
+import { useContent } from '../i18n/useContent';
 import { Reveal } from '../components/Reveal';
 import { useLightbox } from '../components/Lightbox';
 import './results.css';
 
-const KIND_LABEL: Record<ResultEntry['kind'], string> = {
-  award: 'Premiu',
-  ranking: 'Clasare',
-  milestone: 'Milestone',
-};
-
-const YEARS = [...new Set(RESULTS.map((entry) => entry.year))].sort((a, b) => b - a);
+const YEARS = [...new Set(RESULTS_RO.map((entry) => entry.year))].sort((a, b) => b - a);
 
 function medalTone(entry: ResultEntry) {
   if (entry.place === 1) return 'gold';
@@ -47,6 +34,7 @@ function Medal({ entry }: { entry: ResultEntry }) {
 }
 
 function EvidenceTag({ status }: { status: Evidence }) {
+  const { EVIDENCE_LABEL } = useContent();
   return (
     <span className="evidence" data-status={status}>
       {status === 'verified' ? <Check aria-hidden="true" /> : <Clock aria-hidden="true" />}
@@ -56,7 +44,7 @@ function EvidenceTag({ status }: { status: Evidence }) {
 }
 
 /** What the sticky preview shows for an entry: its own proof, else the project's cover, else a poster. */
-function previewFor(entry: ResultEntry) {
+function previewFor(entry: ResultEntry, projectById: Record<string, Project>) {
   if (entry.image) return { ...entry.image, fit: entry.image.fit ?? 'contain' };
   const project = entry.projectId ? projectById[entry.projectId] : undefined;
   if (project) return { ...project.cover, fit: project.cover.fit ?? 'cover' };
@@ -64,16 +52,18 @@ function previewFor(entry: ResultEntry) {
 }
 
 export function Results() {
+  const { COPY, RESULTS, UI, path, projectById, resultStats } = useContent();
+  const KIND_LABEL = UI.kind;
   const [activeId, setActiveId] = useState(RESULTS[0].id);
   const lightbox = useLightbox();
   const active = RESULTS.find((entry) => entry.id === activeId) ?? RESULTS[0];
-  const preview = previewFor(active);
+  const preview = previewFor(active, projectById);
 
   return (
-    <section id="rezultate" className="results section surface-ink grain" aria-labelledby="results-title">
+    <section id="rezultate" className="results section surface-ink grain" aria-labelledby="results-title" data-station="results">
       <div className="wrap">
         <Reveal className="section-head section-head--split section-head--long">
-          <p className="section-head__index eyebrow">02 / Rezultate</p>
+          <p className="section-head__index eyebrow">{UI.resultsIndex}</p>
           <h2 id="results-title" className="display">
             {COPY.results.title}
           </h2>
@@ -83,31 +73,31 @@ export function Results() {
         <Reveal as="ul" className="medal-stats" delay={80}>
           <li data-tone="gold">
             <b className="display">{resultStats.first}</b>
-            <span>Locul 1</span>
+            <span>{UI.place1}</span>
           </li>
           <li data-tone="silver">
             <b className="display">{resultStats.second}</b>
-            <span>Locul 2</span>
+            <span>{UI.place2}</span>
           </li>
           <li data-tone="bronze">
             <b className="display">{resultStats.third}</b>
-            <span>Locul 3</span>
+            <span>{UI.place3}</span>
           </li>
           <li data-tone="plain">
             <b className="display">{resultStats.mentions}</b>
-            <span>Mențiuni</span>
+            <span>{UI.mentions}</span>
           </li>
         </Reveal>
 
         <div className="results__layout">
-          <aside className="results__preview" aria-label="Previzualizare dovadă">
+          <aside className="results__preview" aria-label={UI.proofPreview}>
             <figure>
               {preview ? (
                 <button
                   type="button"
                   className="results__shot"
                   data-fit={preview.fit}
-                  aria-label={`Mărește imaginea: ${active.title}`}
+                  aria-label={`${UI.enlarge}: ${active.title}`}
                   onClick={() => lightbox.open({ ...preview, caption: `${active.result} — ${active.title}` })}
                 >
                   <img
@@ -139,7 +129,7 @@ export function Results() {
 
           <div className="results__ledger">
             {YEARS.map((year) => (
-              <section key={year} className="ledger__year" aria-label={`Rezultate ${year}`}>
+              <section key={year} className="ledger__year" aria-label={UI.resultsOf(year)}>
                 <p className="ledger__yearlabel display" aria-hidden="true">
                   {year}
                 </p>
@@ -171,14 +161,14 @@ export function Results() {
                             <div className="ledger__meta">
                               <EvidenceTag status={entry.evidence} />
                               {project && (
-                                <Link className="ledger__link" to={`/work/${project.slug}`}>
+                                <Link className="ledger__link" to={path(`/work/${project.slug}`)}>
                                   {project.shortTitle}
                                   <ArrowUpRight aria-hidden="true" />
                                 </Link>
                               )}
                               {entry.href && (
                                 <a className="ledger__link" href={entry.href} target="_blank" rel="noreferrer">
-                                  Sursa oficială
+                                  {UI.officialSource}
                                   <ArrowUpRight aria-hidden="true" />
                                 </a>
                               )}
@@ -189,7 +179,7 @@ export function Results() {
                               type="button"
                               className="ledger__thumb"
                               data-fit={thumb.fit ?? 'contain'}
-                              aria-label={`Vezi dovada: ${entry.title}`}
+                              aria-label={`${UI.viewProof}: ${entry.title}`}
                               onClick={() => lightbox.open({ ...thumb, caption: `${entry.result} — ${entry.title}` })}
                             >
                               <img src={thumb.src} alt="" width={thumb.width} height={thumb.height} loading="lazy" decoding="async" />

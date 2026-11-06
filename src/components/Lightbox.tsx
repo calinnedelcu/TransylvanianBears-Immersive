@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import type { Picture } from '../data';
+import { useContent } from '../i18n/useContent';
 import './Lightbox.css';
 
 export type LightboxItem = Picture & { caption?: string };
@@ -10,6 +11,7 @@ export type LightboxItem = Picture & { caption?: string };
  * the page is inert while it is open, all without extra code.
  */
 export function useLightbox(): { open: (item: LightboxItem) => void; element: ReactNode } {
+  const { UI } = useContent();
   const ref = useRef<HTMLDialogElement>(null);
   const [item, setItem] = useState<LightboxItem | null>(null);
 
@@ -25,7 +27,7 @@ export function useLightbox(): { open: (item: LightboxItem) => void; element: Re
     <dialog
       ref={ref}
       className="lightbox surface-ink"
-      aria-label={item?.caption ?? item?.alt ?? 'Imagine mărită'}
+      aria-label={item?.caption ?? item?.alt ?? UI.enlargedImage}
       onClick={(event) => {
         if (event.target === event.currentTarget) ref.current?.close();
       }}
@@ -37,7 +39,7 @@ export function useLightbox(): { open: (item: LightboxItem) => void; element: Re
           {item.caption && <figcaption>{item.caption}</figcaption>}
         </figure>
       )}
-      <button type="button" className="lightbox__close" aria-label="Închide imaginea" onClick={() => ref.current?.close()}>
+      <button type="button" className="lightbox__close" aria-label={UI.closeImage} onClick={() => ref.current?.close()}>
         <X aria-hidden="true" />
       </button>
     </dialog>

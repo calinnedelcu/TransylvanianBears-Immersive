@@ -3,23 +3,8 @@
   border-block: var(--line) solid var(--ink);
 }
 
-.projects__toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px 24px;
-  margin-bottom: clamp(24px, 3vw, 40px);
-}
-
-.projects__filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.projects__count {
-  opacity: 0.75;
+.projects .section-head {
+  margin-bottom: clamp(36px, 5vw, 64px);
 }
 
 .pgrid {

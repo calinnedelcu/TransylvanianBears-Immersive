@@ -7,7 +7,7 @@
  * Starts `vite preview` (or uses BASE_URL when set), then walks every route at
  * phone, tablet and desktop widths and checks what a visitor would notice:
  * console errors, horizontal overflow, broken images, headings, landmarks,
- * and the interactive pieces (menu, filters, lightbox, copy button).
+ * and the interactive pieces (menu, lightbox, copy button), plus the 3D world.
  */
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -110,7 +110,7 @@ async function auditPage(page, label) {
 }
 
 async function interactions(browser, baseUrl) {
-  // ----- phone: menu, filters, lightbox -----
+  // ----- phone: menu, project list, lightbox -----
   const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
   const errors = [];
   const { page } = await openPage(phone, `${baseUrl}/`, errors);
@@ -130,14 +130,7 @@ async function interactions(browser, baseUrl) {
 
   await page.locator('#proiecte').scrollIntoViewIfNeeded();
   const total = await page.locator('.pgrid > li').count();
-  check(total === 7, 'project grid shows all 7 projects', `got ${total}`);
-  await page.getByRole('button', { name: /^Jocuri/ }).click();
-  await page.waitForTimeout(500);
-  check(await page.locator('.pgrid > li').count() === 2, 'filter "Jocuri" shows 2 projects');
-  check((await page.getByRole('status').first().textContent())?.includes('2 din 7'), 'filter count is announced');
-  await page.getByRole('button', { name: /^Toate/ }).click();
-  await page.waitForTimeout(500);
-  check(await page.locator('.pgrid > li').count() === 7, 'filter "Toate" restores 7 projects');
+  check(total === 7, 'projects section lists all 7 projects', `got ${total}`);
 
   await page.locator('.ledger__thumb').first().scrollIntoViewIfNeeded();
   await page.locator('.ledger__thumb').first().click();
@@ -201,10 +194,66 @@ async function interactions(browser, baseUrl) {
   await desktop.close();
 }
 
+/** The English site: language, translated text, and the RO / EN switch in both directions. */
+async function englishChecks(browser, baseUrl) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
+  const errors = [];
+  const { page } = await openPage(context, `${baseUrl}/`, errors);
+  await page.locator('.lang-switch').click();
+  await page.waitForURL(/\/en$/);
+  check(await page.evaluate(() => document.documentElement.lang) === 'en', 'EN switch opens the English home page');
+  check(await page.getByRole('link', { name: 'See the projects' }).count() === 1, 'English home page is translated');
+  await page.locator('.pcard a').first().click();
+  await page.waitForURL(/\/en\/work\/project-nexus$/);
+  // The card opens its page with a view transition: let it finish.
+  await page.waitForTimeout(800);
+  check(await page.getByText('All projects').count() > 0, 'English project card opens the English case study');
+  await page.locator('.lang-switch').click();
+  await page.waitForURL(/\/work\/project-nexus$/);
+  await page.waitForTimeout(800);
+  check(!page.url().includes('/en/'), 'RO switch keeps the same case study', page.url());
+  check(await page.evaluate(() => document.documentElement.lang) === 'ro', 'Romanian page sets lang="ro"');
+  check(errors.length === 0, 'language switching: no console errors', errors.slice(0, 2).join(' | '));
+  await context.close();
+}
+
+/** The 3D world (motion allowed): it starts, every station is in place, scrolling end to end is clean. */
+async function worldChecks(browser, baseUrl) {
+  for (const viewport of VIEWPORTS.filter((item) => item.name !== 'tablet')) {
+    const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height } });
+    const errors = [];
+    const { page } = await openPage(context, `${baseUrl}/`, errors);
+    const label = `${viewport.name} 3D world`;
+    const webgl = await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2') ?? document.createElement('canvas').getContext('webgl')));
+    if (!webgl) {
+      console.log(`  (skipped ${label}: this browser has no WebGL)`);
+      await context.close();
+      continue;
+    }
+    const started = await page
+      .waitForFunction(() => document.documentElement.classList.contains('has-world'), null, { timeout: 20000 })
+      .then(() => true, () => false);
+    check(started, `${label}: starts`);
+    const stations = await page.locator('[data-station]').count();
+    check(stations === 1 + 1 + 4 + 1 + 7 + 1 + 1 + 6 + 1, `${label}: every section is a station`, `got ${stations}`);
+    const height = await page.evaluate(() => document.documentElement.scrollHeight);
+    for (let y = 0; y < height; y += viewport.height * 0.8) {
+      await page.evaluate((top) => window.scrollTo({ top, behavior: 'instant' }), y);
+      await page.waitForTimeout(120);
+    }
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    check(overflow <= 0, `${label}: no horizontal overflow`, `${overflow}px`);
+    // Software GPUs used in CI log performance notes about read-backs: not page errors.
+    const real = errors.filter((entry) => !/GL Driver Message|GPU stall|WebGL-/.test(entry));
+    check(real.length === 0, `${label}: no console errors while scrolling`, real.slice(0, 2).join(' | '));
+    await context.close();
+  }
+}
+
 const preview = await startPreview();
 const browser = await chromium.launch();
 try {
-  const routes = ['/', ...SLUGS.map((slug) => `/work/${slug}`)];
+  const routes = ['/', ...SLUGS.map((slug) => `/work/${slug}`), '/en', ...SLUGS.map((slug) => `/en/work/${slug}`)];
   for (const viewport of VIEWPORTS) {
     const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, reducedMotion: 'reduce' });
     for (const route of routes) {
@@ -219,6 +268,8 @@ try {
     await context.close();
   }
   await interactions(browser, preview.url);
+  await englishChecks(browser, preview.url);
+  await worldChecks(browser, preview.url);
 } finally {
   await browser.close();
   preview.stop();

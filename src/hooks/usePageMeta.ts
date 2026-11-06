@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
-import { SITE } from '../data';
+import { CONTENT, LANGS } from '../i18n/content';
+import { useContent } from '../i18n/useContent';
 
 type PageMeta = {
   title: string;
   description?: string;
-  /** Path used for the canonical URL, e.g. "/work/aegis". */
+  /** Path used for the canonical URL, e.g. "/work/aegis" (without the language prefix). */
   path?: string;
   /** Absolute or root-relative image used for social previews. */
   image?: string;
@@ -35,10 +36,31 @@ function upsertCanonical(href: string) {
   element.href = href;
 }
 
-/** Keeps the document title and the SEO / social tags in sync with the current page. */
-export function usePageMeta({ title, description = SITE.defaultDescription, path = '/', image, noindex }: PageMeta) {
+/** One <link rel="alternate" hreflang> per language, plus x-default (Romanian). */
+function upsertAlternates(path: string | null) {
+  document.head.querySelectorAll('link[rel="alternate"][hreflang]').forEach((element) => element.remove());
+  if (path === null) return;
+  const entries: [string, string][] = [
+    ...LANGS.map((lang) => [lang, CONTENT[lang].path(path)] as [string, string]),
+    ['x-default', CONTENT.ro.path(path)],
+  ];
+  for (const [hreflang, href] of entries) {
+    const element = document.createElement('link');
+    element.rel = 'alternate';
+    element.hreflang = hreflang;
+    element.href = `${CONTENT.ro.SITE.url}${href}`;
+    document.head.appendChild(element);
+  }
+}
+
+/** Keeps the document title, language and the SEO / social tags in sync with the current page. */
+export function usePageMeta({ title, description, path = '/', image, noindex }: PageMeta) {
+  const { SITE, lang, path: localize } = useContent();
+  description ??= SITE.defaultDescription;
+
   useEffect(() => {
-    const url = `${SITE.url}${path === '/' ? '/' : path}`;
+    const url = `${SITE.url}${localize(path)}`;
+    document.documentElement.lang = lang;
     const imageUrl = image ? (image.startsWith('http') ? image : `${SITE.url}${image}`) : `${SITE.url}/og-image.jpg`;
 
     document.title = title;
@@ -51,8 +73,10 @@ export function usePageMeta({ title, description = SITE.defaultDescription, path
     upsertMeta('name', 'twitter:description', description);
     upsertMeta('name', 'twitter:image', imageUrl);
     upsertCanonical(url);
+    upsertAlternates(noindex ? null : path);
+    upsertMeta('property', 'og:locale', lang === 'en' ? 'en_GB' : 'ro_RO');
 
     if (noindex) upsertMeta('name', 'robots', 'noindex');
     else removeMeta('name', 'robots');
-  }, [title, description, path, image, noindex]);
+  }, [title, description, path, image, noindex, lang, localize, SITE]);
 }

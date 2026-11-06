@@ -1,15 +1,14 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowDown } from 'lucide-react';
-import { COPY, PROJECTS, RESULTS, TEAM } from '../data';
+import { useContent } from '../i18n/useContent';
 import { Marquee } from '../components/Marquee';
 import { PawMark } from '../components/PawMark';
 import './hero.css';
 
-const TICKER = RESULTS.map((entry) => `${entry.result} · ${entry.short}`);
-
 function Seal() {
-  const text = `${PROJECTS.length} proiecte • ${TEAM.length} constructori • ${RESULTS.length} rezultate • `;
+  const { PROJECTS, RESULTS, TEAM, UI } = useContent();
+  const text = UI.seal(PROJECTS.length, TEAM.length, RESULTS.length);
   return (
     <div className="seal" aria-hidden="true">
       <svg className="seal__ring" viewBox="0 0 200 200">
@@ -28,8 +27,11 @@ function Seal() {
 }
 
 export function Hero() {
+  const { COPY, RESULTS, TEAM, UI, path } = useContent();
+  const home = path('/');
+  const ticker = RESULTS.map((entry) => `${entry.result} · ${entry.short}`);
   return (
-    <section id="start" className="hero grain" aria-labelledby="hero-title">
+    <section id="start" className="hero grain" aria-labelledby="hero-title" data-station="hero">
       <div className="hero__stage wrap">
         <p className="hero__kicker eyebrow">
           <span className="hero__dot" aria-hidden="true" />
@@ -52,18 +54,18 @@ export function Hero() {
           <div className="hero__copy">
             <p className="hero__lede">{COPY.hero.lede}</p>
             <div className="hero__actions">
-              <Link className="btn btn--ink" to={{ pathname: '/', hash: '#proiecte' }}>
-                Vezi proiectele
+              <Link className="btn btn--ink" to={{ pathname: home, hash: '#proiecte' }}>
+                {UI.seeProjects}
                 <ArrowDown aria-hidden="true" />
               </Link>
-              <Link className="btn btn--bone" to={{ pathname: '/', hash: '#echipa' }}>
-                Cunoaște echipa
+              <Link className="btn btn--bone" to={{ pathname: home, hash: '#echipa' }}>
+                {UI.meetTeam}
               </Link>
             </div>
           </div>
         </div>
 
-        <ul className="lineup" aria-label="Echipa">
+        <ul className="lineup" aria-label={UI.teamLineup}>
           {TEAM.map((member, index) => (
             <li
               key={member.id}
@@ -73,7 +75,7 @@ export function Hero() {
             >
               <Link
                 className="lineup__link"
-                to={{ pathname: '/', hash: '#echipa' }}
+                to={{ pathname: home, hash: '#echipa' }}
                 aria-label={`${member.firstName}, ${member.name}, ${member.discipline}`}
               >
                 <img
@@ -94,7 +96,7 @@ export function Hero() {
         </ul>
       </div>
 
-      <Marquee items={TICKER} />
+      <Marquee items={ticker} />
     </section>
   );
 }

@@ -1,11 +1,115 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://www.transylvanianbears.com/</loc><priority>1.0</priority></url>
-  <url><loc>https://www.transylvanianbears.com/work/project-nexus</loc><priority>0.8</priority></url>
-  <url><loc>https://www.transylvanianbears.com/work/aegis</loc><priority>0.8</priority></url>
-  <url><loc>https://www.transylvanianbears.com/work/schoolmate</loc><priority>0.8</priority></url>
-  <url><loc>https://www.transylvanianbears.com/work/the-buried-hands</loc><priority>0.8</priority></url>
-  <url><loc>https://www.transylvanianbears.com/work/economy-news</loc><priority>0.8</priority></url>
-  <url><loc>https://www.transylvanianbears.com/work/automation-risk</loc><priority>0.8</priority></url>
-  <url><loc>https://www.transylvanianbears.com/work/infect-exe</loc><priority>0.8</priority></url>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://www.transylvanianbears.com/</loc>
+    <xhtml:link rel="alternate" hreflang="ro" href="https://www.transylvanianbears.com/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.transylvanianbears.com/en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.transylvanianbears.com/" />
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://www.transylvanianbears.com/en</loc>
+    <xhtml:link rel="alternate" hreflang="ro" href="https://www.transylvanianbears.com/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.transylvanianbears.com/en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.transylvanianbears.com/" />
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://www.transylvanianbears.com/work/project-nexus</loc>
+    <xhtml:link rel="alternate" hreflang="ro" href="https://www.transylvanianbears.com/work/project-nexus" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.transylvanianbears.com/en/work/project-nexus" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.transylvanianbears.com/work/project-nexus" />
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.transylvanianbears.com/en/work/project-nexus</loc>
+    <xhtml:link rel="alternate" hreflang="ro" href="https://www.transylvanianbears.com/work/project-nexus" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.transylvanianbears.com/en/work/project-nexus" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.transylvanianbears.com/work/project-nexus" />
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.transylvanianbears.com/work/aegis</loc>
+    <xhtml:link rel="alternate" hreflang="ro" href="https://www.transylvanianbears.com/work/aegis" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.transylvanianbears.com/en/work/aegis" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.transylvanianbears.com/work/aegis" />
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.transylvanianbears.com/en/work/aegis</loc>
+    <xhtml:link rel="alternate" hreflang="ro" href="https://www.transylvanianbears.com/work/aegis" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.transylvanianbears.com/en/work/aegis" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.transylvanianbears.com/work/aegis" />
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.transylvanianbears.com/work/schoolmate</loc>
+    <xhtml:link rel="alternate" hreflang="ro" href="https://www.transylvanianbears.com/work/schoolmate" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.transylvanianbears.com/en/work/schoolmate" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.transylvanianbears.com/work/schoolmate" />
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.transylvanianbears.com/en/work/schoolmate</loc>
+    <xhtml:link rel="alternate" hreflang="ro" href="https://www.transylvanianbears.com/work/schoolmate" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.transylvanianbears.com/en/work/schoolmate" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.transylvanianbears.com/work/schoolmate" />
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.transylvanianbears.com/work/the-buried-hands</loc>
+    <xhtml:link rel="alternate" hreflang="ro" href="https://www.transylvanianbears.com/work/the-buried-hands" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.transylvanianbears.com/en/work/the-buried-hands" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.transylvanianbears.com/work/the-buried-hands" />
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.transylvanianbears.com/en/work/the-buried-hands</loc>
+    <xhtml:link rel="alternate" hreflang="ro" href="https://www.transylvanianbears.com/work/the-buried-hands" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.transylvanianbears.com/en/work/the-buried-hands" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.transylvanianbears.com/work/the-buried-hands" />
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.transylvanianbears.com/work/economy-news</loc>
+    <xhtml:link rel="alternate" hreflang="ro" href="https://www.transylvanianbears.com/work/economy-news" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.transylvanianbears.com/en/work/economy-news" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.transylvanianbears.com/work/economy-news" />
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.transylvanianbears.com/en/work/economy-news</loc>
+    <xhtml:link rel="alternate" hreflang="ro" href="https://www.transylvanianbears.com/work/economy-news" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.transylvanianbears.com/en/work/economy-news" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.transylvanianbears.com/work/economy-news" />
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.transylvanianbears.com/work/automation-risk</loc>
+    <xhtml:link rel="alternate" hreflang="ro" href="https://www.transylvanianbears.com/work/automation-risk" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.transylvanianbears.com/en/work/automation-risk" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.transylvanianbears.com/work/automation-risk" />
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.transylvanianbears.com/en/work/automation-risk</loc>
+    <xhtml:link rel="alternate" hreflang="ro" href="https://www.transylvanianbears.com/work/automation-risk" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.transylvanianbears.com/en/work/automation-risk" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.transylvanianbears.com/work/automation-risk" />
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.transylvanianbears.com/work/infect-exe</loc>
+    <xhtml:link rel="alternate" hreflang="ro" href="https://www.transylvanianbears.com/work/infect-exe" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.transylvanianbears.com/en/work/infect-exe" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.transylvanianbears.com/work/infect-exe" />
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.transylvanianbears.com/en/work/infect-exe</loc>
+    <xhtml:link rel="alternate" hreflang="ro" href="https://www.transylvanianbears.com/work/infect-exe" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.transylvanianbears.com/en/work/infect-exe" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.transylvanianbears.com/work/infect-exe" />
+    <priority>0.8</priority>
+  </url>
 </urlset>

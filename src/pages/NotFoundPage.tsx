@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowUpRight } from 'lucide-react';
-import { SITE } from '../data';
+import { useContent } from '../i18n/useContent';
 import { PawMark } from '../components/PawMark';
 import { usePageMeta } from '../hooks/usePageMeta';
 import './not-found.css';
 
 export function NotFoundPage() {
-  usePageMeta({ title: `Pagina nu există — ${SITE.name}`, path: '/404', noindex: true });
+  const { SITE, UI, path } = useContent();
+  usePageMeta({ title: `${UI.notFoundTitle} — ${SITE.name}`, path: '/404', noindex: true });
 
   return (
     <section className="notfound surface-ink grain" aria-labelledby="notfound-title">
@@ -17,18 +18,18 @@ export function NotFoundPage() {
           <span>4</span>
         </p>
         <div className="notfound__copy">
-          <p className="eyebrow">Eroare 404</p>
+          <p className="eyebrow">{UI.error404}</p>
           <h1 id="notfound-title" className="display">
-            Drumul acesta nu face parte din sistem.
+            {UI.notFoundHeading}
           </h1>
-          <p className="lead">Ruta cerută nu există. Revino pe pagina principală sau deschide direct proiectele.</p>
+          <p className="lead">{UI.notFoundLead}</p>
           <div className="notfound__actions">
-            <Link className="btn btn--gold" to="/">
+            <Link className="btn btn--gold" to={path('/')}>
               <ArrowLeft aria-hidden="true" />
-              Înapoi acasă
+              {UI.backHome}
             </Link>
-            <Link className="btn btn--bone" to={{ pathname: '/', hash: '#proiecte' }}>
-              Vezi proiectele
+            <Link className="btn btn--bone" to={{ pathname: path('/'), hash: '#proiecte' }}>
+              {UI.seeProjects}
               <ArrowUpRight aria-hidden="true" />
             </Link>
           </div>

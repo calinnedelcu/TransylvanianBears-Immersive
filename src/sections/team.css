@@ -33,13 +33,21 @@
   background-image: radial-gradient(rgb(20 11 13 / 0.2) 1.5px, transparent 1.9px);
   background-size: 15px 15px;
   box-shadow: var(--shadow-m);
+  transform: perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
   transition:
     transform 0.4s var(--ease-out),
     box-shadow 0.4s var(--ease-out);
 }
 
+.mcard__frame.is-tilting {
+  transition:
+    transform 0.12s linear,
+    box-shadow 0.4s var(--ease-out);
+}
+
 .mcard:hover .mcard__frame {
-  transform: translate(-4px, -4px) rotate(var(--tilt));
+  transform: perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translate3d(-4px, -4px, 0)
+    rotate(var(--tilt));
   box-shadow: 10px 10px 0 var(--ink);
 }
 

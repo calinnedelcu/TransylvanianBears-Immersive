@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react';
 import { MoveHorizontal } from 'lucide-react';
 import type { Figure } from '../data';
+import { useContent } from '../i18n/useContent';
 import './CompareSlider.css';
 
 type CompareSliderProps = {
@@ -15,7 +16,10 @@ type CompareSliderProps = {
  * Before / after comparison. A transparent range input covers the stage, so
  * dragging, tapping and the arrow keys all work with no custom pointer code.
  */
-export function CompareSlider({ before, after, label, beforeLabel = 'Segmentare', afterLabel = 'Detecție' }: CompareSliderProps) {
+export function CompareSlider({ before, after, label, beforeLabel, afterLabel }: CompareSliderProps) {
+  const { UI } = useContent();
+  beforeLabel ??= UI.segmentation;
+  afterLabel ??= UI.detection;
   const [position, setPosition] = useState(50);
   const style = { '--pos': `${position}%`, aspectRatio: `${after.width} / ${after.height}` } as CSSProperties;
 

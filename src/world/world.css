@@ -1,0 +1,223 @@
+/*
+ * The 3D world sits fixed behind the home page. Once its first frame is drawn the
+ * <html> element gets `has-world`: section backgrounds turn transparent, the long
+ * sections become a column of stops, and each stop's card floats beside the object
+ * the camera is looking at (world/journey.ts). Without the class the page is flat.
+ */
+
+.world {
+  position: fixed !important;
+  inset: 0 0 auto;
+  z-index: 0;
+  width: 100vw !important;
+  /* The large viewport height stops the canvas from resizing while mobile bars slide */
+  height: 100lvh !important;
+  pointer-events: none;
+  animation: world-in 1s var(--ease-out) both;
+}
+
+@keyframes world-in {
+  from {
+    opacity: 0;
+  }
+}
+
+:is(.hero, .pillars, .projects, .results, .team, .contact) {
+  transition: background-color 0.6s var(--ease-out);
+}
+
+html.has-world :is(.hero, .pillars, .projects, .results, .team, .contact) {
+  background-color: transparent;
+}
+
+html.has-world :is(.hero, .results, .contact)::before,
+html.has-world .contact__bg {
+  display: none;
+}
+
+/* ---------- Floating panels ---------- */
+
+html.has-world :is(.pillars__intro, .projects .section-head, .team .section-head) {
+  max-width: 760px;
+  padding: clamp(22px, 3vw, 40px);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--r-l);
+  background: var(--bone);
+  box-shadow: var(--shadow-l);
+}
+
+html.has-world .projects .section-head,
+html.has-world .team .section-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+html.has-world :is(.projects, .team) .section-head h2 {
+  font-size: clamp(2.6rem, 1.6rem + 4vw, 5.2rem);
+}
+
+/* A stop: one screen tall, its card centred vertically on one side */
+html.has-world :is(.pillar, .pgrid > .pcard, .mcard) {
+  display: flex;
+  min-height: 92vh;
+  align-items: center;
+}
+
+/* ---------- Manifesto ---------- */
+
+html.has-world .pillars__list {
+  border-top: 0;
+}
+
+html.has-world .pillar {
+  border-bottom: 0;
+}
+
+html.has-world .pillar__row {
+  width: min(100%, 560px);
+  padding: clamp(22px, 3vw, 36px);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--r-l);
+  background: var(--bone);
+  box-shadow: var(--shadow-l);
+}
+
+html.has-world .pillar__row::before {
+  inset: 0;
+  border-radius: calc(var(--r-l) - var(--line));
+}
+
+html.has-world .pillar__verb {
+  font-size: clamp(3.2rem, 2rem + 5vw, 6.4rem);
+}
+
+/* Inside the card the verb sits on its own line, the text below it */
+html.has-world .pillar__row {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 16px;
+}
+
+html.has-world .pillar__aside {
+  grid-column: 1 / -1;
+  padding-top: 4px;
+}
+
+html.has-world .pillar__no {
+  align-self: start;
+  padding-top: 0.9em;
+}
+
+/* ---------- Hero: the copy gets a paper backing over the world ---------- */
+
+html.has-world .hero__lede {
+  padding: 14px 18px;
+  border: var(--line) solid var(--ink);
+  border-radius: var(--r-m);
+  background: var(--bone);
+  box-shadow: var(--shadow-s);
+}
+
+/* ---------- Projects ---------- */
+
+html.has-world .pgrid {
+  display: block;
+  padding: 0;
+}
+
+html.has-world .pgrid > .pcard .pcard__inner {
+  width: min(100%, 520px);
+  min-width: 0;
+}
+
+/* The billboard in the world is the picture */
+html.has-world .pcard__media {
+  display: none;
+}
+
+/* ---------- Results and contact: tinted glass over the night sky ---------- */
+
+html.has-world .results {
+  padding-top: 70vh;
+}
+
+html.has-world .results > .wrap {
+  padding: clamp(20px, 3.4vw, 48px);
+  border: var(--line) solid var(--bone);
+  border-radius: var(--r-l);
+  background: rgb(20 11 13 / 0.84);
+  box-shadow: 10px 10px 0 var(--gold);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+html.has-world .contact {
+  padding-top: 72vh;
+}
+
+html.has-world .contact__inner {
+  padding: clamp(22px, 3.4vw, 48px);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--r-l);
+  background: rgb(94 18 36 / 0.9);
+  box-shadow: 10px 10px 0 var(--ink);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+/* ---------- Team ---------- */
+
+html.has-world .roster {
+  display: block;
+  padding-top: 0;
+}
+
+html.has-world .mcard {
+  justify-content: flex-end;
+}
+
+html.has-world .mcard article {
+  width: min(100%, 460px);
+}
+
+/* The standee in the world is the portrait */
+html.has-world .mcard__frame {
+  display: none;
+}
+
+html.has-world .mcard__body {
+  padding: clamp(20px, 3vw, 32px);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--r-l);
+  background: var(--bone);
+  box-shadow: var(--shadow-l);
+}
+
+/* ---------- Phones and narrow tablets: the object above, the card below ---------- */
+
+@media (max-width: 899px), (orientation: portrait) {
+  html.has-world :is(.pillar, .pgrid > .pcard, .mcard) {
+    min-height: 96svh;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 4svh;
+  }
+
+  html.has-world :is(.pillar__row, .pgrid > .pcard .pcard__inner, .mcard article) {
+    width: 100%;
+  }
+
+  html.has-world .pillar__verb {
+    font-size: clamp(2.6rem, 11vw, 4rem);
+  }
+
+  html.has-world .pillar__body {
+    display: none;
+  }
+
+  html.has-world .pcard__summary {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+}

@@ -74,6 +74,17 @@ const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: 'work/:slug', element: <ProjectPage /> },
 
+      // English: the same pages under /en (see src/i18n).
+      {
+        path: 'en',
+        children: [
+          { index: true, element: <HomePage /> },
+          { path: 'work/:slug', element: <ProjectPage /> },
+          { path: 'work', element: <Navigate to={{ pathname: '/en', hash: '#proiecte' }} replace /> },
+          { path: '*', element: <NotFoundPage /> },
+        ],
+      },
+
       { path: 'work', element: toSection('#proiecte') },
       { path: 'proiecte', element: toSection('#proiecte') },
       { path: 'team', element: toSection('#echipa') },

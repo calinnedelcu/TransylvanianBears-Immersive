@@ -241,7 +241,8 @@
 
 .reveal {
   opacity: 0;
-  transform: translateY(26px);
+  transform: perspective(1200px) translateY(34px) rotateX(14deg);
+  transform-origin: 50% 100%;
   transition:
     opacity 0.7s var(--ease-out),
     transform 0.7s var(--ease-out);

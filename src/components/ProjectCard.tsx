@@ -1,8 +1,10 @@
 import type { CSSProperties } from 'react';
 import { Link, useHref, useViewTransitionState } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
-import { STATE_LABEL, type Project } from '../data';
+import type { Project } from '../data';
+import { useContent } from '../i18n/useContent';
 import { Reveal } from './Reveal';
+import { useTilt } from '../hooks/useTilt';
 import './ProjectCard.css';
 
 type ProjectCardProps = {
@@ -15,14 +17,18 @@ type ProjectCardProps = {
   morphing?: boolean;
   eager?: boolean;
   delay?: number;
+  /** Position in the 3D walk (see world/journey.ts); the card becomes a stop on it. */
+  station?: number;
 };
 
-export function ProjectCard({ project, span, spanMd, morphing, eager, delay = 0 }: ProjectCardProps) {
-  const to = `/work/${project.slug}`;
+export function ProjectCard({ project, span, spanMd, morphing, eager, delay = 0, station }: ProjectCardProps) {
+  const { STATE_LABEL, UI, path } = useContent();
+  const to = path(`/work/${project.slug}`);
   const href = useHref(to);
   const navigating = useViewTransitionState(href);
   const { cover } = project;
   const fit = cover.fit ?? 'cover';
+  const tilt = useTilt(6);
 
   const itemStyle = {
     '--span': span,
@@ -45,8 +51,15 @@ export function ProjectCard({ project, span, spanMd, morphing, eager, delay = 0 
   );
 
   return (
-    <Reveal as="li" className="pcard" delay={delay} style={itemStyle}>
-      <article className="pcard__inner" data-accent={project.accent}>
+    <Reveal
+      as="li"
+      className="pcard"
+      delay={delay}
+      style={itemStyle}
+      data-station={station === undefined ? undefined : 'project'}
+      data-index={station}
+    >
+      <article className="pcard__inner" data-accent={project.accent} {...tilt}>
         <Link className="pcard__link" to={to} viewTransition>
           <div className="pcard__media" data-fit={fit}>
             {fit === 'contain' ? <div className="pcard__frame">{image}</div> : image}
@@ -63,7 +76,7 @@ export function ProjectCard({ project, span, spanMd, morphing, eager, delay = 0 
             <h3 className="pcard__title display">{project.shortTitle}</h3>
             <p className="pcard__summary">{project.summary}</p>
             <div className="pcard__foot">
-              <ul className="tag-list" aria-label="Tehnologii și teme">
+              <ul className="tag-list" aria-label={UI.techAndThemes}>
                 {project.tags.slice(0, 3).map((tag) => (
                   <li key={tag}>{tag}</li>
                 ))}

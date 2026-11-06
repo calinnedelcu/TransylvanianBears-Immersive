@@ -4,6 +4,7 @@
 }
 
 .pcard__inner {
+  position: relative;
   display: flex;
   min-width: 100%;
   flex-direction: column;
@@ -12,9 +13,34 @@
   background: var(--accent);
   box-shadow: var(--shadow-m);
   color: var(--on-accent);
+  transform: perspective(1100px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
   transition:
-    transform 0.3s var(--ease-out),
+    transform 0.5s var(--ease-out),
     box-shadow 0.3s var(--ease-out);
+}
+
+/* While the pointer steers the tilt, follow it closely */
+.pcard__inner.is-tilting {
+  transition:
+    transform 0.12s linear,
+    box-shadow 0.3s var(--ease-out);
+}
+
+/* A soft glare that follows the pointer across the tilted card */
+.pcard__inner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  background: radial-gradient(circle at var(--gx, 50%) var(--gy, 0%), rgb(255 255 255 / 0.32), transparent 55%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+
+.pcard__inner.is-tilting::after {
+  opacity: 1;
 }
 
 .pcard__inner[data-accent='ink'] {
@@ -22,7 +48,7 @@
 }
 
 .pcard__inner:hover {
-  transform: translate(-4px, -4px);
+  transform: perspective(1100px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translate3d(-4px, -4px, 0);
   box-shadow: 10px 10px 0 var(--ink);
 }
 

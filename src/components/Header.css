@@ -83,6 +83,34 @@ a.brand:hover .brand__mark {
   display: none;
 }
 
+/* RO / EN: links to the same page in the other language */
+.lang-switch {
+  display: grid;
+  min-width: 46px;
+  height: 46px;
+  flex: none;
+  place-items: center;
+  padding-inline: 10px;
+  border: var(--line) solid var(--ink);
+  border-radius: 999px;
+  background: var(--bone);
+  box-shadow: 3px 3px 0 var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  transition:
+    transform 0.2s var(--ease-out),
+    box-shadow 0.2s var(--ease-out),
+    background-color 0.2s;
+}
+
+.lang-switch:hover {
+  background: var(--gold);
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
 .menu-toggle {
   display: grid;
   width: 46px;
@@ -136,6 +164,17 @@ a.brand:hover .brand__mark {
 }
 
 @media (max-width: 420px) {
+  .site-header__bar {
+    gap: 10px;
+  }
+
+  .lang-switch {
+    min-width: 40px;
+    height: 40px;
+    padding-inline: 6px;
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+
   .brand__name {
     font-size: 1.3rem;
   }

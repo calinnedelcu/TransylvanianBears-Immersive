@@ -1,19 +1,23 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
-import { COPY, PROJECTS, TEAM, type Member } from '../data';
+import type { Member, Project } from '../data';
+import { useContent } from '../i18n/useContent';
 import { Reveal } from '../components/Reveal';
+import { useTilt } from '../hooks/useTilt';
 import './team.css';
 
-function creditsOf(member: Member) {
+function creditsOf(member: Member, PROJECTS: Project[]) {
   return PROJECTS.filter((project) => project.credits.some((credit) => credit.memberId === member.id));
 }
 
 export function Team() {
+  const { COPY, PROJECTS, TEAM, UI, path } = useContent();
+  const tilt = useTilt(8);
   return (
     <section id="echipa" className="team section" aria-labelledby="team-title">
       <div className="wrap">
-        <Reveal className="section-head section-head--split section-head--long">
-          <p className="section-head__index eyebrow">03 / Echipa</p>
+        <Reveal className="section-head section-head--split section-head--long" data-station="team">
+          <p className="section-head__index eyebrow">{UI.teamIndex}</p>
           <h2 id="team-title" className="display">
             {COPY.team.title}
           </h2>
@@ -22,17 +26,19 @@ export function Team() {
 
         <ul className="roster">
           {TEAM.map((member, index) => {
-            const credits = creditsOf(member);
+            const credits = creditsOf(member, PROJECTS);
             return (
               <Reveal
                 as="li"
                 key={member.id}
                 className="mcard"
                 delay={(index % 3) * 80}
+                data-station="member"
+                data-index={index}
                 style={{ '--tilt': index % 2 === 0 ? '-1.2deg' : '1.2deg' } as CSSProperties}
               >
                 <article id={member.id} data-accent={member.accent}>
-                  <div className="mcard__frame">
+                  <div className="mcard__frame" {...tilt}>
                     <span className="mcard__no eyebrow" aria-hidden="true">
                       {String(index + 1).padStart(2, '0')} / {String(TEAM.length).padStart(2, '0')}
                     </span>
@@ -55,10 +61,10 @@ export function Team() {
                     <h3 className="display">{member.name}</h3>
                     <p className="eyebrow">{member.discipline}</p>
                     {credits.length > 0 ? (
-                      <ul className="mcard__credits" aria-label={`Proiecte la care a contribuit ${member.name}`}>
+                      <ul className="mcard__credits" aria-label={UI.contributedTo(member.name)}>
                         {credits.map((project) => (
                           <li key={project.id}>
-                            <Link to={`/work/${project.slug}`} data-accent={project.accent}>
+                            <Link to={path(`/work/${project.slug}`)} data-accent={project.accent}>
                               <span aria-hidden="true">{project.index}</span>
                               {project.shortTitle}
                             </Link>
@@ -66,7 +72,7 @@ export function Team() {
                         ))}
                       </ul>
                     ) : (
-                      <p className="mcard__pending">Credite în validare</p>
+                      <p className="mcard__pending">{UI.creditsPending}</p>
                     )}
                   </div>
                 </article>

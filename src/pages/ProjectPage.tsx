@@ -11,18 +11,8 @@ import {
   Play,
   Presentation,
 } from 'lucide-react';
-import {
-  EVIDENCE_LABEL,
-  PROJECTS,
-  SITE,
-  STATE_LABEL,
-  memberById,
-  projectBySlug,
-  type Chapter,
-  type ChapterMedia,
-  type Project,
-  type ProjectLink,
-} from '../data';
+import type { Chapter, ChapterMedia, Project, ProjectLink } from '../data';
+import { useContent } from '../i18n/useContent';
 import { CompareSlider } from '../components/CompareSlider';
 import { useLightbox, type LightboxItem } from '../components/Lightbox';
 import { ProjectFigure } from '../components/ProjectFigure';
@@ -108,6 +98,7 @@ function ChapterView({ chapter, onOpen }: { chapter: Chapter; onOpen: (item: Lig
 }
 
 function Cover({ project, onOpen }: { project: Project; onOpen: (item: LightboxItem) => void }) {
+  const { UI } = useContent();
   const { cover } = project;
   const contain = cover.fit === 'contain';
 
@@ -128,7 +119,7 @@ function Cover({ project, onOpen }: { project: Project; onOpen: (item: LightboxI
       <button
         type="button"
         className="proj__coverbtn"
-        aria-label={`Mărește imaginea: ${cover.caption}`}
+        aria-label={`${UI.enlarge}: ${cover.caption}`}
         onClick={() => onOpen({ ...cover, caption: cover.caption })}
       >
         {contain ? <span className="proj__panel">{image}</span> : image}
@@ -139,6 +130,7 @@ function Cover({ project, onOpen }: { project: Project; onOpen: (item: LightboxI
 }
 
 export function ProjectPage() {
+  const { EVIDENCE_LABEL, PROJECTS, SITE, STATE_LABEL, UI, memberById, path, projectBySlug } = useContent();
   const { slug } = useParams();
   const project = slug ? projectBySlug[slug] : undefined;
   const lightbox = useLightbox();
@@ -147,11 +139,11 @@ export function ProjectPage() {
 
   usePageMeta({
     title: project ? `${project.title} — ${SITE.name}` : SITE.name,
-    description: project ? `${project.summary} Studiu de caz ${SITE.name}.` : undefined,
+    description: project ? `${project.summary} ${UI.caseStudy} ${SITE.name}.` : undefined,
     path: project ? `/work/${project.slug}` : '/',
   });
 
-  if (!project) return <Navigate to={{ pathname: '/', hash: '#proiecte' }} replace />;
+  if (!project) return <Navigate to={{ pathname: path('/'), hash: '#proiecte' }} replace />;
 
   const position = PROJECTS.findIndex((candidate) => candidate.id === project.id);
   const previous = PROJECTS[(position - 1 + PROJECTS.length) % PROJECTS.length];
@@ -168,9 +160,9 @@ export function ProjectPage() {
         <div className="wrap proj__heroinner">
           <div className="proj__intro">
             <p className="proj__kicker eyebrow">
-              <Link to={{ pathname: '/', hash: '#proiecte' }}>
+              <Link to={{ pathname: path('/'), hash: '#proiecte' }}>
                 <ArrowLeft aria-hidden="true" />
-                Toate proiectele
+                {UI.allProjects}
               </Link>
               <span aria-hidden="true">
                 {project.index} / {String(PROJECTS.length).padStart(2, '0')}
@@ -191,7 +183,7 @@ export function ProjectPage() {
               </span>
             </div>
 
-            <ul className="tag-list" aria-label="Tehnologii și teme">
+            <ul className="tag-list" aria-label={UI.techAndThemes}>
               {project.tags.map((tag) => (
                 <li key={tag}>{tag}</li>
               ))}
@@ -218,7 +210,7 @@ export function ProjectPage() {
       </header>
 
       {project.metrics && project.metrics.length > 0 && (
-        <dl className="wrap proj__metrics" aria-label="Rezultate și date ale proiectului">
+        <dl className="wrap proj__metrics" aria-label={UI.projectFigures}>
           {project.metrics.map((metric) => (
             <div key={metric.label} className="metric">
               <dt className="eyebrow">{metric.label}</dt>
@@ -231,9 +223,9 @@ export function ProjectPage() {
         </dl>
       )}
 
-      <nav className="proj__subnav" aria-label="În acest proiect">
+      <nav className="proj__subnav" aria-label={UI.inThisProject}>
         <div className="wrap proj__subnavinner">
-          <span className="eyebrow">În acest proiect</span>
+          <span className="eyebrow">{UI.inThisProject}</span>
           <ul>
             {project.chapters.map((chapter) => (
               <li key={chapter.id}>
@@ -246,16 +238,16 @@ export function ProjectPage() {
             <li>
               <a href="#surse" aria-current={active === 'surse' ? 'location' : undefined}>
                 <span aria-hidden="true">↗</span>
-                Surse & echipă
+                {UI.sourcesAndTeam}
               </a>
             </li>
           </ul>
         </div>
       </nav>
 
-      <section className="proj__thesis surface-ink" aria-label="Ideea proiectului">
+      <section className="proj__thesis surface-ink" aria-label={UI.projectIdea}>
         <Reveal className="wrap">
-          <p className="eyebrow">Ideea</p>
+          <p className="eyebrow">{UI.idea}</p>
           <blockquote className="display">{project.thesis}</blockquote>
         </Reveal>
       </section>
@@ -269,9 +261,9 @@ export function ProjectPage() {
       <section id="surse" className="proj__sources" tabIndex={-1} aria-labelledby="sources-title">
         <div className="wrap proj__sourcesgrid">
           <Reveal>
-            <p className="eyebrow">Surse</p>
+            <p className="eyebrow">{UI.sources}</p>
             <h2 id="sources-title" className="display">
-              Explorează mai departe.
+              {UI.exploreFurther}
             </h2>
             <ul className="source-list">
               {project.links.map((link) => {
@@ -290,13 +282,13 @@ export function ProjectPage() {
           </Reveal>
 
           <Reveal delay={100}>
-            <p className="eyebrow">Echipa</p>
-            <h2 className="display">Contribuitori.</h2>
+            <p className="eyebrow">{UI.team}</p>
+            <h2 className="display">{UI.contributors}</h2>
             {contributors.length > 0 ? (
               <ul className="contributors">
                 {contributors.map(({ member, role }) => (
                   <li key={member.id}>
-                    <Link to={{ pathname: '/', hash: `#${member.id}` }} data-accent={member.accent}>
+                    <Link to={{ pathname: path('/'), hash: `#${member.id}` }} data-accent={member.accent}>
                       <span className="contributors__avatar">
                         <img src={member.portrait.src} alt="" width={member.portrait.width} height={member.portrait.height} loading="lazy" />
                       </span>
@@ -309,19 +301,19 @@ export function ProjectPage() {
                 ))}
               </ul>
             ) : (
-              <p className="contributors__pending">Creditele pe roluri pentru acest proiect urmează să fie confirmate.</p>
+              <p className="contributors__pending">{UI.contributorsPending}</p>
             )}
           </Reveal>
         </div>
       </section>
 
-      <nav className="proj__more" aria-label="Alte proiecte">
+      <nav className="proj__more" aria-label={UI.moreProjects}>
         <div className="proj__morelist">
           {[
-            { project: previous, label: 'Proiectul anterior', direction: 'prev' as const },
-            { project: next, label: 'Proiectul următor', direction: 'next' as const },
+            { project: previous, label: UI.previousProject, direction: 'prev' as const },
+            { project: next, label: UI.nextProject, direction: 'next' as const },
           ].map(({ project: target, label, direction }) => (
-            <Link key={direction} className="proj__next" to={`/work/${target.slug}`} data-accent={target.accent} data-direction={direction}>
+            <Link key={direction} className="proj__next" to={path(`/work/${target.slug}`)} data-accent={target.accent} data-direction={direction}>
               <span className="eyebrow">
                 {direction === 'prev' && <ArrowLeft aria-hidden="true" />}
                 {label}

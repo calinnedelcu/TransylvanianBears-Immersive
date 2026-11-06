@@ -1,16 +1,17 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
-import { COPY, PILLARS, projectById } from '../data';
+import { useContent } from '../i18n/useContent';
 import { Reveal } from '../components/Reveal';
 import './pillars.css';
 
 export function Pillars() {
+  const { COPY, PILLARS, UI, path, projectById } = useContent();
   return (
     <section id="despre" className="pillars section" aria-labelledby="pillars-title">
       <div className="wrap">
-        <Reveal className="pillars__intro">
-          <p className="eyebrow">Ce ne definește</p>
+        <Reveal className="pillars__intro" data-station="pillars">
+          <p className="eyebrow">{UI.whatDefinesUs}</p>
           <p className="lead">{COPY.pillars.body}</p>
         </Reveal>
 
@@ -22,7 +23,7 @@ export function Pillars() {
           {PILLARS.map((pillar, index) => {
             const projects = pillar.projectIds.map((id) => projectById[id]);
             return (
-              <Reveal as="li" key={pillar.verb} className="pillar" delay={index * 60}>
+              <Reveal as="li" key={pillar.verb} className="pillar" delay={index * 60} data-station="pillar" data-index={index}>
                 <div
                   className="pillar__row"
                   data-accent={projects[0].accent === 'ink' ? 'gold' : projects[0].accent}
@@ -36,7 +37,7 @@ export function Pillars() {
                     <ul className="pillar__projects">
                       {projects.map((project) => (
                         <li key={project.id}>
-                          <Link className="pill-link" to={`/work/${project.slug}`} data-accent={project.accent}>
+                          <Link className="pill-link" to={path(`/work/${project.slug}`)} data-accent={project.accent}>
                             <span className="pill-link__dot" aria-hidden="true">
                               {project.index}
                             </span>

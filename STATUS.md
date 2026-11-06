@@ -1,25 +1,30 @@
 # Transylvanian Bears — Status
 
-Last updated: 7 October 2026
+Last updated: 6 November 2026
 
 ## Current state
 
-The site was rebuilt from scratch as a clear, fast, single-page portfolio with a case
-study per project. It replaces the earlier scroll-driven 3D experience (that version is
-still available in git history and in the `main` / `codex/citadel-first-pass` branches).
+The home page is a walk through one 3D world (three.js / react-three-fiber, toon shading
+with ink outlines). The page scrolls normally; the camera follows the scroll from station
+to station (`src/world/`):
 
-- Home page with a sticky header, hero, manifesto, filterable projects, results, team and contact
-- Seven case-study pages with chapters, metrics, sources, contributors and previous/next navigation
-- Interactive extras: segmentation ↔ detection slider (Nexus), zoomable proof images, copy-the-e-mail button
-- Old URLs (`/work`, `/team`, `/archive`, …) redirect to the right section
-- Social card, favicons, sitemap and 404 page rebuilt in the new style
-- Initial page weight ≈ 1 MB, first paint ≈ 0.25 s on a fast connection, layout shift ≈ 0.04
+- Hero on a gold sky → the four manifesto verbs as monoliths with their symbols
+- Each of the seven projects as a billboard along a dashed road, its card beside it
+- Results under a night sky: podium and a spinning medal per result, behind a glass panel
+- The team as die-cut standees in a half-circle, each member's card beside them
+- Contact: the camera rises over the paw monument
+- On phones the object sits above and the card below; the world loads lazily (≈220 kB
+  gzipped) after first paint
+- With "reduce motion" on or without WebGL the page stays flat: the same sections as a grid
+- Project filters were removed: every project is a stop on the road
+- Seven case-study pages (unchanged), old URLs still redirect, 404 page in the same style
 
 ## Verified
 
 - `npm run lint`, `npm run build`
-- `npm run qa`: 241 checks (all routes at 390 / 820 / 1440 px, no console errors, no horizontal
-  overflow, every image loads, menu, filters, lightbox, back/forward, legacy redirects, 404)
+- `npm run qa`: 246 checks (all routes at 390 / 820 / 1440 px, no console errors, no horizontal
+  overflow, every image loads, menu, lightbox, back/forward, legacy redirects, 404, and the 3D
+  world: starts, all 23 stations present, clean scroll from top to bottom on phone and desktop)
 - axe-core (WCAG 2.2 AA + best practices): no violations on the home page, five case studies and the 404
 
 ## Content that still needs the team's confirmation
